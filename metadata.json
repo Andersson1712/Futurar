@@ -1,0 +1,7 @@
+{
+  "name": "Futurar - Sistema de Acceso Universal",
+  "description": "Una aplicación diseñada para personas con discapacidades motoras severas, utilizando un sistema de barrido (scanning) de pulsador único para crear historias asistidas por IA.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
