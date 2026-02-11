@@ -1,13 +1,15 @@
-
 <!DOCTYPE html>
 <html lang="es" class="dark">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Futurar - Sistema de Barrido</title>
+    <title>Futurar - Sistema de Acceso Universal</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;700;800&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;700;800&display=swap"
+        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+        rel="stylesheet" />
     <script>
         tailwind.config = {
             darkMode: 'class',
@@ -27,33 +29,128 @@
         }
     </script>
     <style>
+        /* Animación de progreso del escaneo */
         @keyframes scan-progress {
-            from { width: 0%; }
-            to { width: 100%; }
+            from {
+                width: 0%;
+            }
+
+            to {
+                width: 100%;
+            }
         }
+
         .scan-progress-bar {
             animation: scan-progress var(--scan-duration) linear infinite;
         }
+
+        /* Iconos de Material */
         .material-symbols-outlined {
             font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
         }
+
+        /* Base */
         body {
             cursor: pointer;
             user-select: none;
         }
+
+        /* Scroll personalizado */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: rgba(30, 41, 59, 0.5);
+            border-radius: 4px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(100, 116, 139, 0.5);
+            border-radius: 4px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: rgba(100, 116, 139, 0.8);
+        }
+
+        /* Animaciones personalizadas */
+        @keyframes fade-in {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .animate-fade-in {
+            animation: fade-in 0.3s ease-out;
+        }
+
+        @keyframes slide-up {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .animate-slide-up {
+            animation: slide-up 0.4s ease-out;
+        }
+
+        /* Estilo de libro */
+        .book-page {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+
+        /* Efecto de brillo */
+        .glow-primary {
+            box-shadow: 0 0 40px rgba(19, 127, 236, 0.4);
+        }
+
+        /* Responsive text */
+        @media (max-width: 768px) {
+            .responsive-heading {
+                font-size: 1.5rem;
+            }
+        }
+
+        /* Print styles */
+        @media print {
+            .print\\:hidden {
+                display: none !important;
+            }
+
+            .print\\:bg-white {
+                background-color: white !important;
+            }
+
+            .print\\:text-black {
+                color: black !important;
+            }
+        }
+
+        /* Fuente serif para contenido de lectura */
+        .font-serif {
+            font-family: Georgia, 'Times New Roman', Times, serif;
+        }
     </style>
-<script type="importmap">
-{
-  "imports": {
-    "@google/genai": "https://esm.sh/@google/genai@^1.39.0",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
-    "react/": "https://esm.sh/react@^19.2.4/",
-    "react": "https://esm.sh/react@^19.2.4"
-  }
-}
-</script>
 </head>
+
 <body class="bg-background-dark text-white font-display overflow-hidden select-none">
     <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
 </body>
+
 </html>

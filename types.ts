@@ -1,4 +1,3 @@
-
 export interface ScanOption {
   id: string;
   label: string;
@@ -21,7 +20,9 @@ export enum AppStep {
   READ_STORY = 'READ_STORY',
   DEDICATE_RECIPIENT = 'DEDICATE_RECIPIENT',
   DEDICATE_REASON = 'DEDICATE_REASON',
-  DEDICATE_POSITION = 'DEDICATE_POSITION'
+  DEDICATE_POSITION = 'DEDICATE_POSITION',
+  SETTINGS = 'SETTINGS',
+  TEACHER_PANEL = 'TEACHER_PANEL'
 }
 
 export interface StoryConfig {
@@ -35,6 +36,7 @@ export interface StoryConfig {
   imageUrl?: string;
   type: 'story' | 'design';
   date?: string;
+  studentId?: string;
 }
 
 export interface DedicationConfig {
@@ -42,3 +44,15 @@ export interface DedicationConfig {
   reason: string;
   position: 'start' | 'end';
 }
+
+// Configuración de accesibilidad para escaneo
+export interface ScanConfig {
+  interval: number;       // Intervalo de escaneo en ms
+  columns: number;        // Columnas en la grilla
+  soundEnabled: boolean;  // Sonido al seleccionar
+  voiceFeedback: boolean; // Lectura en voz alta
+}
+
+// Tema visual
+export type ThemeMode = 'dark' | 'light' | 'high_contrast';
+export type FontSize = 'normal' | 'large' | 'extra_large';
