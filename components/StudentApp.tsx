@@ -60,6 +60,7 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
         type: 'story'
     });
     const [isSpeaking, setIsSpeaking] = useState(false);
+    const [reloadStudents, setReloadStudents] = useState(0);
 
     // Get ONLY pause state from context (for FloatingControls)
     // DO NOT sync student settings to context - this causes infinite render loops
@@ -71,7 +72,7 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
     const soundEnabled = currentStudent?.student_settings?.sound_enabled ?? true;
     const scanColumns = currentStudent?.student_settings?.scan_columns || 2;
 
-    // Cargar estudiantes
+    // Cargar estudiantes al montar y cuando se solicita recarga
     useEffect(() => {
         const loadStudents = async () => {
             try {
@@ -99,7 +100,7 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
             }
         };
         loadStudents();
-    }, []);
+    }, [reloadStudents]);
 
     // TTS Helper - uses shared utility with callbacks for isSpeaking state
     const speakWithState = (text: string) => {
@@ -257,6 +258,7 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
         setStudentScenarios([]);
         setStudentMissions([]);
         setStudentStyles([]);
+        setReloadStudents(prev => prev + 1);
     };
 
     const handleBackToMenu = () => {
@@ -536,9 +538,10 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
                             )}
 
                             <button
-                                onClick={handleBackToProfile}
+                                onClick={(e) => { e.stopPropagation(); handleBackToProfile(); }}
                                 className="p-2 hover:bg-white/10 rounded-full transition-colors text-red-400 hover:text-red-300"
                                 title="Salir"
+                                data-no-scan="true"
                             >
                                 <span className="material-symbols-outlined">logout</span>
                             </button>
@@ -576,6 +579,7 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
                         </h2>
                         {profileOptions.length > 0 ? (
                             <ScanningGrid
+                                key="profile-selection"
                                 options={profileOptions}
                                 onSelect={handleProfileSelect}
                                 columns={Math.min(scanColumns, profileOptions.length)}
@@ -637,6 +641,7 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
                         </h2>
 
                         <ScanningGrid
+                            key={`grid-${step}`}
                             options={
                                 step === 'MENU' ? menuOptions :
                                     step === 'SELECT_PROTAGONIST' ? protagonistOptions :

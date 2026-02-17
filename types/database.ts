@@ -12,7 +12,6 @@ export type Database = {
             ai_config: {
                 Row: {
                     id: string
-                    teacher_id: string
                     active_provider: string
                     gemini_api_key: string | null
                     openai_api_key: string | null
@@ -29,7 +28,6 @@ export type Database = {
                 }
                 Insert: {
                     id?: string
-                    teacher_id: string
                     active_provider?: string
                     gemini_api_key?: string | null
                     openai_api_key?: string | null
@@ -46,7 +44,6 @@ export type Database = {
                 }
                 Update: {
                     id?: string
-                    teacher_id?: string
                     active_provider?: string
                     gemini_api_key?: string | null
                     openai_api_key?: string | null
@@ -61,15 +58,7 @@ export type Database = {
                     created_at?: string | null
                     updated_at?: string | null
                 }
-                Relationships: [
-                    {
-                        foreignKeyName: "ai_config_teacher_id_fkey"
-                        columns: ["teacher_id"]
-                        isOneToOne: true
-                        referencedRelation: "teachers"
-                        referencedColumns: ["id"]
-                    },
-                ]
+                Relationships: []
             }
             stories: {
                 Row: {
@@ -341,7 +330,6 @@ export type Database = {
                     is_active: boolean | null
                     name: string
                     notes: string | null
-                    teacher_id: string
                     updated_at: string | null
                 }
                 Insert: {
@@ -352,7 +340,6 @@ export type Database = {
                     is_active?: boolean | null
                     name: string
                     notes?: string | null
-                    teacher_id: string
                     updated_at?: string | null
                 }
                 Update: {
@@ -363,45 +350,6 @@ export type Database = {
                     is_active?: boolean | null
                     name?: string
                     notes?: string | null
-                    teacher_id?: string
-                    updated_at?: string | null
-                }
-                Relationships: [
-                    {
-                        foreignKeyName: "students_teacher_id_fkey"
-                        columns: ["teacher_id"]
-                        isOneToOne: false
-                        referencedRelation: "teachers"
-                        referencedColumns: ["id"]
-                    },
-                ]
-            }
-            teachers: {
-                Row: {
-                    avatar_url: string | null
-                    created_at: string | null
-                    email: string
-                    id: string
-                    name: string
-                    role: string | null
-                    updated_at: string | null
-                }
-                Insert: {
-                    avatar_url?: string | null
-                    created_at?: string | null
-                    email: string
-                    id?: string
-                    name: string
-                    role?: string | null
-                    updated_at?: string | null
-                }
-                Update: {
-                    avatar_url?: string | null
-                    created_at?: string | null
-                    email?: string
-                    id?: string
-                    name?: string
-                    role?: string | null
                     updated_at?: string | null
                 }
                 Relationships: []
@@ -464,7 +412,6 @@ export type UpdateTables<T extends keyof Database['public']['Tables']> = Databas
 
 // Convenient aliases
 export type AIConfig = Tables<'ai_config'>
-export type Teacher = Tables<'teachers'>
 export type Student = Tables<'students'>
 export type StudentSettings = Tables<'student_settings'>
 export type Story = Tables<'stories'>

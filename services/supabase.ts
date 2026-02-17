@@ -182,11 +182,11 @@ export const endSession = async (sessionId: string) => {
 // API de Configuración de IA
 // =============================================
 
-export const getAIConfig = async (teacherId: string) => {
+export const getAIConfig = async () => {
     const { data, error } = await supabase
         .from('ai_config')
         .select('*')
-        .eq('teacher_id', teacherId)
+        .limit(1)
         .single();
 
     // Si no existe, retornar null (el usuario aún no ha configurado)
@@ -211,13 +211,13 @@ export const createAIConfig = async (
 };
 
 export const updateAIConfig = async (
-    teacherId: string,
+    configId: string,
     config: Partial<Database['public']['Tables']['ai_config']['Update']>
 ) => {
     const { data, error } = await supabase
         .from('ai_config')
         .update(config)
-        .eq('teacher_id', teacherId)
+        .eq('id', configId)
         .select()
         .single();
 
@@ -226,18 +226,17 @@ export const updateAIConfig = async (
 };
 
 export const upsertAIConfig = async (
-    teacherId: string,
     config: Partial<Database['public']['Tables']['ai_config']['Insert']>
 ) => {
     // Intentar obtener configuración existente
-    const existing = await getAIConfig(teacherId);
+    const existing = await getAIConfig();
 
     if (existing) {
         // Actualizar
-        return updateAIConfig(teacherId, config);
+        return updateAIConfig(existing.id, config);
     } else {
         // Crear nueva
-        return createAIConfig({ teacher_id: teacherId, ...config });
+        return createAIConfig(config);
     }
 };
 
