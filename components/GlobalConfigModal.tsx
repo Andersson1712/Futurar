@@ -4,7 +4,6 @@ import type { AIConfig } from '../types/database';
 
 interface GlobalConfigModalProps {
     onClose: () => void;
-    teacherId: string;
 }
 
 interface ProviderInfo {
@@ -80,7 +79,7 @@ const STORY_SIZES = [
     { id: 'large', name: 'Grande', pages: 15, description: 'Cuento extenso con muchos detalles' },
 ];
 
-const GlobalConfigModal: React.FC<GlobalConfigModalProps> = ({ onClose, teacherId }) => {
+const GlobalConfigModal: React.FC<GlobalConfigModalProps> = ({ onClose }) => {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [activeTab, setActiveTab] = useState<'provider' | 'story'>('provider');
@@ -105,12 +104,12 @@ const GlobalConfigModal: React.FC<GlobalConfigModalProps> = ({ onClose, teacherI
 
     useEffect(() => {
         loadConfig();
-    }, [teacherId]);
+    }, []);
 
     const loadConfig = async () => {
         try {
             setLoading(true);
-            const config = await getAIConfig(teacherId);
+            const config = await getAIConfig();
             if (config) {
                 setActiveProvider(config.active_provider || 'gemini');
                 setStorySize(config.story_size || 'medium');
@@ -136,7 +135,7 @@ const GlobalConfigModal: React.FC<GlobalConfigModalProps> = ({ onClose, teacherI
     const handleSave = async () => {
         try {
             setSaving(true);
-            await upsertAIConfig(teacherId, {
+            await upsertAIConfig({
                 active_provider: activeProvider,
                 gemini_api_key: apiKeys.gemini || null,
                 openai_api_key: apiKeys.openai || null,
@@ -184,15 +183,15 @@ const GlobalConfigModal: React.FC<GlobalConfigModalProps> = ({ onClose, teacherI
                             key={provider.id}
                             onClick={() => setActiveProvider(provider.id)}
                             className={`p-4 rounded-xl border-2 text-left transition-all ${activeProvider === provider.id
-                                    ? 'border-primary bg-primary/10'
-                                    : 'border-border-accent hover:border-gray-500 bg-background-dark/50'
+                                ? 'border-primary bg-primary/10'
+                                : 'border-border-accent hover:border-gray-500 bg-background-dark/50'
                                 }`}
                         >
                             <div className="flex items-center justify-between mb-1">
                                 <span className="font-medium text-white">{provider.name}</span>
                                 <span className={`text-xs px-2 py-0.5 rounded-full ${provider.isFree
-                                        ? 'bg-green-500/20 text-green-400'
-                                        : 'bg-yellow-500/20 text-yellow-400'
+                                    ? 'bg-green-500/20 text-green-400'
+                                    : 'bg-yellow-500/20 text-yellow-400'
                                     }`}>
                                     {provider.isFree ? 'Gratis' : 'Pago'}
                                 </span>
@@ -299,8 +298,8 @@ const GlobalConfigModal: React.FC<GlobalConfigModalProps> = ({ onClose, teacherI
                             key={size.id}
                             onClick={() => setStorySize(size.id as 'small' | 'medium' | 'large')}
                             className={`p-4 rounded-xl border-2 text-center transition-all ${storySize === size.id
-                                    ? 'border-primary bg-primary/10'
-                                    : 'border-border-accent hover:border-gray-500 bg-background-dark/50'
+                                ? 'border-primary bg-primary/10'
+                                : 'border-border-accent hover:border-gray-500 bg-background-dark/50'
                                 }`}
                         >
                             <div className="text-3xl mb-2">
@@ -376,8 +375,8 @@ const GlobalConfigModal: React.FC<GlobalConfigModalProps> = ({ onClose, teacherI
                     <button
                         onClick={() => setActiveTab('provider')}
                         className={`flex-1 px-6 py-3 font-medium transition-colors flex items-center justify-center gap-2 ${activeTab === 'provider'
-                                ? 'text-primary border-b-2 border-primary bg-primary/5'
-                                : 'text-gray-400 hover:text-white'
+                            ? 'text-primary border-b-2 border-primary bg-primary/5'
+                            : 'text-gray-400 hover:text-white'
                             }`}
                     >
                         <span className="material-symbols-outlined text-xl">smart_toy</span>
@@ -386,8 +385,8 @@ const GlobalConfigModal: React.FC<GlobalConfigModalProps> = ({ onClose, teacherI
                     <button
                         onClick={() => setActiveTab('story')}
                         className={`flex-1 px-6 py-3 font-medium transition-colors flex items-center justify-center gap-2 ${activeTab === 'story'
-                                ? 'text-primary border-b-2 border-primary bg-primary/5'
-                                : 'text-gray-400 hover:text-white'
+                            ? 'text-primary border-b-2 border-primary bg-primary/5'
+                            : 'text-gray-400 hover:text-white'
                             }`}
                     >
                         <span className="material-symbols-outlined text-xl">auto_stories</span>

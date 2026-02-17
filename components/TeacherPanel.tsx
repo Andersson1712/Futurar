@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../services/supabase';
 import type { Student, StudentSettings, Story } from '../types/database';
+import type { Database } from '../types/database';
 import StudentEditor from './StudentEditor';
 import GlobalConfigModal from './GlobalConfigModal';
 
-// ID de docente por defecto para modo sin autenticación
-const DEFAULT_TEACHER_ID = '00000000-0000-0000-0000-000000000001';
 
 interface StudentWithData extends Student {
     student_settings: StudentSettings | null;
@@ -111,10 +110,7 @@ const TeacherPanel: React.FC<TeacherPanelProps> = ({ onSwitchToStudent }) => {
                 // Crear nuevo estudiante
                 const { data: newStudent, error: stuError } = await supabase
                     .from('students')
-                    .insert({
-                        ...studentData,
-                        teacher_id: DEFAULT_TEACHER_ID
-                    })
+                    .insert(studentData as Database['public']['Tables']['students']['Insert'])
                     .select()
                     .single();
 
@@ -409,7 +405,7 @@ const TeacherPanel: React.FC<TeacherPanelProps> = ({ onSwitchToStudent }) => {
             </div>
 
             {/* Modals */}
-            {showConfig && <GlobalConfigModal onClose={() => setShowConfig(false)} teacherId={DEFAULT_TEACHER_ID} />}
+            {showConfig && <GlobalConfigModal onClose={() => setShowConfig(false)} />}
         </div>
     );
 };
