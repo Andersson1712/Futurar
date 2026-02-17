@@ -27,6 +27,19 @@ const ScanningGrid: React.FC<ScanningGridProps> = ({
 }) => {
   const [index, setIndex] = useState(0);
   const hasSelectedRef = useRef(false);
+  const isMountedRef = useRef(false);
+
+  // Guard: ignorar activaciones durante los primeros 600ms después de montar
+  useEffect(() => {
+    isMountedRef.current = false;
+    const timer = setTimeout(() => {
+      isMountedRef.current = true;
+    }, 600);
+    return () => {
+      clearTimeout(timer);
+      isMountedRef.current = false;
+    };
+  }, [options]);
 
   // Resetear índice cuando cambian las opciones
   useEffect(() => {
@@ -36,7 +49,7 @@ const ScanningGrid: React.FC<ScanningGridProps> = ({
 
   // Avanzar al siguiente elemento automáticamente (respeta pausa)
   useEffect(() => {
-    if (isPaused) return; // No iniciar timer si está pausado
+    if (isPaused || options.length === 0) return; // No iniciar timer si está pausado o no hay opciones
 
     const timer = setInterval(() => {
       setIndex((prev) => (prev + 1) % options.length);
@@ -46,6 +59,7 @@ const ScanningGrid: React.FC<ScanningGridProps> = ({
 
   // Leer en voz alta la opción actual durante el barrido (respeta pausa)
   useEffect(() => {
+    if (options.length === 0) return;
     if (voiceEnabled && options[index] && !isPaused) {
       speakOption(options[index].label);
     }
@@ -53,7 +67,7 @@ const ScanningGrid: React.FC<ScanningGridProps> = ({
 
   // Manejar activación (selección del elemento actual)
   const handleActivate = useCallback(() => {
-    if (hasSelectedRef.current) return;
+    if (hasSelectedRef.current || !isMountedRef.current || options.length === 0) return;
     hasSelectedRef.current = true;
 
     // Parar la voz
@@ -94,6 +108,11 @@ const ScanningGrid: React.FC<ScanningGridProps> = ({
       default: return 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4 max-w-5xl mx-auto';
     }
   };
+
+  // Guard: si no hay opciones, no renderizar nada
+  if (options.length === 0) {
+    return null;
+  }
 
   return (
     <div className="relative w-full">
