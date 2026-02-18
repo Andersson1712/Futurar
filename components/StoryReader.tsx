@@ -1,31 +1,21 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { supabase } from '../services/supabase';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { playSelectionSound } from '../utils/audio';
 import { speak, stopSpeaking, speakOption } from '../utils/speech';
 import { getChapterImage } from '../utils/images';
-import { generateStoryPDF } from '../utils/pdfGenerator';
 
 type StoryReaderProps = {
     title: string;
     content: string;
     protagonist: string;
     scenery: string;
-    mission: string;
     style: string;
-    onClose: () => void;
-    studentId?: string;
-    onRead: (text: string) => void;
-    voiceEnabled?: boolean;
-    onCreateAnother?: () => void;
-    onSaveSuccess?: () => void;
+    onClose: () => void;      // Volver a StoryDetails
+    onExit: () => void;       // Volver a selección de perfiles
+    onGoMenu: () => void;     // Volver al menú principal
     scanInterval?: number;
+    voiceEnabled?: boolean;
+    soundEnabled?: boolean;
 };
-
-interface ActionOption {
-    id: string;
-    label: string;
-    icon: string;
-}
 
 interface Chapter {
     title: string;
@@ -33,42 +23,45 @@ interface Chapter {
     imageUrl: string;
 }
 
-const actionOptions: ActionOption[] = [
-    { id: 'read', label: 'Leer', icon: 'volume_up' },
-    { id: 'save', label: 'Guardar', icon: 'bookmark' }, // TODO: Check if already saved?
-    { id: 'pdf', label: 'PDF', icon: 'picture_as_pdf' },
-    { id: 'new', label: 'Otro', icon: 'restart_alt' },
-    { id: 'home', label: 'Salir', icon: 'home' }
-];
+interface OverlayOption {
+    id: string;
+    label: string;
+    icon: string;
+}
 
-const getChapterImageForStory = (scenery: string, chapterNum: number): string => {
-    return getChapterImage(scenery, chapterNum);
+/** Split text into word tokens preserving whitespace/newlines as separate tokens */
+const tokenize = (text: string): { text: string; isWord: boolean; charStart: number }[] => {
+    const tokens: { text: string; isWord: boolean; charStart: number }[] = [];
+    // Match sequences of non-whitespace (words) or whitespace
+    const regex = /(\S+|\s+)/g;
+    let match: RegExpExecArray | null;
+    while ((match = regex.exec(text)) !== null) {
+        const t = match[1];
+        const isWord = t.trim().length > 0;
+        tokens.push({ text: t, isWord, charStart: match.index });
+    }
+    return tokens;
 };
 
 const parseChapters = (content: string, scenery: string): Chapter[] => {
-    // Ensure we don't have empty sections
     const sections = content.split(/CAPÍTULO \d+[:]?\s?/i).filter(s => s.trim().length > 20);
     const titles = content.match(/CAPÍTULO \d+[:]?\s?[^\n]*/gi) || [];
 
-    return sections.map((section, idx) => ({
-        title: titles[idx] || `Capítulo ${idx + 1}`,
-        content: section.trim(),
-        imageUrl: getChapterImageForStory(scenery, idx + 1)
+    if (sections.length > 0) {
+        return sections.map((section, idx) => ({
+            title: titles[idx] || `Capítulo ${idx + 1}`,
+            content: section.trim(),
+            imageUrl: getChapterImage(scenery, idx + 1)
+        }));
+    }
+
+    // Fallback: split by paragraphs
+    const paragraphs = content.split(/\n\n+/).filter(p => p.trim().length > 0);
+    return paragraphs.map((p, idx) => ({
+        title: `Parte ${idx + 1}`,
+        content: p.trim(),
+        imageUrl: getChapterImage(scenery, idx)
     }));
-};
-
-const stripMarkdown = (text: string): string => {
-    return text
-        .replace(/\*\*(.*?)\*\*/g, '$1') // Bold
-        .replace(/\*(.*?)\*/g, '$1') // Italic
-        .replace(/#(.*?)\n/g, '$1') // Titles
-        .replace(/\[(.*?)\]\(.*?\)/g, '$1') // Links
-        .replace(/`/g, ''); // Code
-};
-
-const getExcerpt = (content: string) => {
-    const clean = stripMarkdown(content);
-    return clean.substring(0, 150) + '...';
 };
 
 const StoryReader: React.FC<StoryReaderProps> = ({
@@ -76,327 +69,460 @@ const StoryReader: React.FC<StoryReaderProps> = ({
     content,
     protagonist,
     scenery,
-    mission,
     style,
     onClose,
-    studentId,
-    onRead,
+    onExit,
+    onGoMenu,
+    scanInterval = 3000,
     voiceEnabled = true,
-    onCreateAnother,
-    onSaveSuccess,
-    scanInterval = 3000
+    soundEnabled = true
 }) => {
-    const [scanIndex, setScanIndex] = useState(0);
     const [chapters, setChapters] = useState<Chapter[]>([]);
-    const [isSaving, setIsSaving] = useState(false);
-    const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
-    const [saveMessage, setSaveMessage] = useState<string | null>(null);
-    const [isSpeaking, setIsSpeaking] = useState(false);
-    const hasSelectedRef = useRef(false);
-    const [pdfProgress, setPdfProgress] = useState<string>('');
+    const [currentChapter, setCurrentChapter] = useState(0);
+    const [isReading, setIsReading] = useState(false);
+    const [isPausedByUser, setIsPausedByUser] = useState(false);
+    const [readingFinished, setReadingFinished] = useState(false);
+    const [showOverlay, setShowOverlay] = useState(false);
+    const [overlayScanIndex, setOverlayScanIndex] = useState(0);
 
-    // Parse chapters logic
-    useEffect(() => {
-        if (content && scenery) {
-            setChapters(parseChapters(content, scenery));
-            if (voiceEnabled) {
-                setTimeout(() => {
-                    speak('¡Cuento listo! ¿Qué deseas hacer?');
-                }, 1000);
-            }
-        }
-    }, [content, scenery, voiceEnabled]);
+    // Word highlighting state
+    const [highlightCharIndex, setHighlightCharIndex] = useState(-1);
+    const [highlightCharLength, setHighlightCharLength] = useState(0);
 
-    // Barrido automático
-    useEffect(() => {
-        if (isGeneratingPDF || isSaving) return;
+    const chapterRefs = useRef<(HTMLDivElement | null)[]>([]);
+    const containerRef = useRef<HTMLDivElement>(null);
+    const readingChapterRef = useRef(0);
+    const activeWordRef = useRef<HTMLSpanElement | null>(null);
 
-        const timer = setInterval(() => {
-            setScanIndex((prev) => (prev + 1) % actionOptions.length);
-        }, scanInterval);
-
-        return () => clearInterval(timer);
-    }, [isGeneratingPDF, isSaving, scanInterval]);
-
-    // Anunciar opción
-    useEffect(() => {
-        if (voiceEnabled && !isGeneratingPDF && !isSaving) {
-            const currentOption = actionOptions[scanIndex];
-            const descriptions: Record<string, string> = {
-                'read': 'Leer cuento en voz alta',
-                'save': 'Guardar en mi biblioteca',
-                'pdf': 'Descargar como PDF',
-                'new': 'Crear otro cuento',
-                'home': 'Volver al inicio',
+    // Overlay options - adapts based on reading state
+    const getOverlayOptions = useCallback((): OverlayOption[] => {
+        const firstOption: OverlayOption = readingFinished
+            ? { id: 'replay', label: 'Volver a leer', icon: 'replay' }
+            : {
+                id: 'pause',
+                label: isPausedByUser ? 'Reanudar' : 'Pausar',
+                icon: isPausedByUser ? 'play_circle' : 'pause_circle'
             };
 
-            speakOption(descriptions[currentOption.id] || currentOption.label);
-        }
-    }, [scanIndex, voiceEnabled, isGeneratingPDF, isSaving]);
+        return [
+            firstOption,
+            { id: 'back', label: 'Volver', icon: 'arrow_back' },
+            { id: 'home', label: 'Menú', icon: 'home' },
+            { id: 'exit', label: 'Salir', icon: 'logout' }
+        ];
+    }, [isPausedByUser, readingFinished]);
 
-    // Guardar historia en biblioteca
-    const handleSaveStory = useCallback(async () => {
-        if (!studentId) {
-            setSaveMessage('Error: No se puede guardar sin estudiante');
-            setTimeout(() => setSaveMessage(null), 3000);
+    const overlayOptions = getOverlayOptions();
+
+    // Pre-tokenize all chapters
+    const chapterTokens = useMemo(() => {
+        return chapters.map(ch => tokenize(ch.content));
+    }, [chapters]);
+
+    // Parse chapters on mount
+    useEffect(() => {
+        if (content && scenery) {
+            const parsed = parseChapters(content, scenery);
+            setChapters(parsed);
+            chapterRefs.current = new Array(parsed.length).fill(null);
+        }
+    }, [content, scenery]);
+
+    // Start reading once chapters are ready
+    useEffect(() => {
+        if (chapters.length > 0 && !isReading && !isPausedByUser && !showOverlay) {
+            readChapter(readingChapterRef.current);
+        }
+    }, [chapters]);
+
+    // Auto-scroll to highlighted word
+    useEffect(() => {
+        if (activeWordRef.current && containerRef.current) {
+            const wordEl = activeWordRef.current;
+            const container = containerRef.current;
+            const wordRect = wordEl.getBoundingClientRect();
+            const containerRect = container.getBoundingClientRect();
+
+            // If word is below or near the bottom of the container, scroll down
+            const distanceFromBottom = containerRect.bottom - wordRect.bottom;
+            const distanceFromTop = wordRect.top - containerRect.top;
+
+            if (distanceFromBottom < 80 || distanceFromTop < 0) {
+                // Scroll so the word is roughly 40% from the top
+                const scrollTarget = wordEl.offsetTop - container.offsetTop - containerRect.height * 0.4;
+                container.scrollTo({ top: scrollTarget, behavior: 'smooth' });
+            }
+        }
+    }, [highlightCharIndex]);
+
+    // Read a specific chapter
+    const readChapter = useCallback((chapterIdx: number) => {
+        if (chapterIdx >= chapters.length) {
+            setIsReading(false);
+            setHighlightCharIndex(-1);
+            setReadingFinished(true);
+            if (voiceEnabled) {
+                speak('Fin del cuento.', {
+                    onEnd: () => {
+                        setShowOverlay(true);
+                        setOverlayScanIndex(0);
+                    }
+                });
+            } else {
+                setShowOverlay(true);
+                setOverlayScanIndex(0);
+            }
             return;
         }
 
-        setIsSaving(true);
-        try {
-            const { error } = await supabase.from('stories').insert({
-                student_id: studentId,
-                title: title,
-                content: content,
-                protagonist: protagonist,
-                scenery: scenery,
-                mission: mission,
-                style: style,
-                type: 'story',
-                image_url: chapters[0]?.imageUrl || null,
+        setCurrentChapter(chapterIdx);
+        readingChapterRef.current = chapterIdx;
+        setIsReading(true);
+        setHighlightCharIndex(-1);
+
+        // Scroll to chapter header
+        const chapterEl = chapterRefs.current[chapterIdx];
+        if (chapterEl && containerRef.current) {
+            chapterEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        if (voiceEnabled) {
+            const chapterText = chapters[chapterIdx].content;
+            speak(chapterText, {
+                rate: 0.85,
+                onStart: () => setIsReading(true),
+                onBoundary: (charIndex: number, charLength: number) => {
+                    setHighlightCharIndex(charIndex);
+                    setHighlightCharLength(charLength);
+                },
+                onEnd: () => {
+                    setHighlightCharIndex(-1);
+                    setTimeout(() => {
+                        const next = chapterIdx + 1;
+                        readingChapterRef.current = next;
+                        readChapter(next);
+                    }, 800);
+                }
             });
-
-            if (error) throw error;
-
-            setSaveMessage('¡Cuento guardado en tu biblioteca!');
-            if (voiceEnabled) speak('Cuento guardado en tu biblioteca');
-            onSaveSuccess?.();
-        } catch (err: any) {
-            console.error('Error saving story:', err);
-            setSaveMessage('Error al guardar: ' + err.message);
-        } finally {
-            setIsSaving(false);
-            setTimeout(() => setSaveMessage(null), 3000);
         }
-    }, [studentId, title, content, protagonist, scenery, mission, style, chapters, voiceEnabled, onSaveSuccess]);
+    }, [chapters, voiceEnabled]);
 
-    // Generar PDF usando la utilidad centralizada
-    const generatePDF = async () => {
-        setIsGeneratingPDF(true);
-        setPdfProgress('Iniciando generación de PDF...');
-        if (voiceEnabled) speak('Iniciando generación de PDF. Esto puede tomar unos momentos.');
+    // Resume reading
+    const resumeReading = useCallback(() => {
+        setIsPausedByUser(false);
+        setShowOverlay(false);
+        readChapter(readingChapterRef.current);
+    }, [readChapter]);
 
-        try {
-            await generateStoryPDF({
-                title,
-                content,
-                protagonist,
-                scenery,
-                mission,
-                style,
-                onProgress: (status) => setPdfProgress(status)
-            });
-
-            console.log('PDF saved successfully');
-            setPdfProgress('¡Listo!');
-
-            if (voiceEnabled) {
-                speak('PDF descargado correctamente.');
-            }
-        } catch (error: any) {
-            console.error('Error generando PDF:', error);
-            setPdfProgress('Error al generar PDF');
-            if (voiceEnabled) {
-                speak('Error al generar el PDF: ' + (error.message || 'Error desconocido'));
-            }
-        } finally {
-            setIsGeneratingPDF(false);
-            setTimeout(() => setPdfProgress(''), 3000);
-        }
-    };
-
-    // Manejar selección
-    const handleSelect = useCallback((optionId: string) => {
-        if (hasSelectedRef.current) return;
-        hasSelectedRef.current = true;
-
-        // Sonido de selección
-        playSelectionSound();
-
-        switch (optionId) {
-            case 'read':
-                onRead(content);
-                break;
-            case 'save':
-                handleSaveStory();
-                break;
-            case 'pdf':
-                generatePDF();
-                break;
-            case 'new':
-                onCreateAnother?.();
-                break;
-            case 'home':
-                onClose();
-                break;
-        }
-
-        setTimeout(() => {
-            hasSelectedRef.current = false;
-        }, 1000);
-    }, [content, onRead, onCreateAnother, onClose, handleSaveStory, generatePDF]);
-
-    // Manejar teclas
+    // Handle switch press (Space/Enter)
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if (e.code === 'Space' || e.code === 'Enter') {
                 e.preventDefault();
-                handleSelect(actionOptions[scanIndex].id);
+
+                if (showOverlay) {
+                    handleOverlaySelect(overlayOptions[overlayScanIndex].id);
+                } else if (!isPausedByUser) {
+                    // Interrupt reading → show overlay
+                    stopSpeaking();
+                    setIsReading(false);
+                    setHighlightCharIndex(-1);
+                    setShowOverlay(true);
+                    setOverlayScanIndex(0);
+                    if (soundEnabled) playSelectionSound();
+                }
             }
         };
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [scanIndex, handleSelect]);
+    }, [showOverlay, overlayScanIndex, overlayOptions, soundEnabled, isPausedByUser]);
 
-    const excerpt = getExcerpt(content);
-    const coverImage = chapters[0]?.imageUrl || getChapterImageForStory(scenery, 0);
+    // Overlay scanning timer
+    useEffect(() => {
+        if (!showOverlay) return;
+
+        const timer = setInterval(() => {
+            setOverlayScanIndex(prev => (prev + 1) % overlayOptions.length);
+        }, scanInterval);
+
+        return () => clearInterval(timer);
+    }, [showOverlay, scanInterval, overlayOptions.length]);
+
+    // Announce overlay option
+    useEffect(() => {
+        if (showOverlay && voiceEnabled) {
+            speakOption(overlayOptions[overlayScanIndex].label);
+        }
+    }, [overlayScanIndex, showOverlay, voiceEnabled, overlayOptions]);
+
+    // Handle overlay option selection
+    const handleOverlaySelect = useCallback((optionId: string) => {
+        if (soundEnabled) playSelectionSound();
+
+        switch (optionId) {
+            case 'pause':
+                if (isPausedByUser) {
+                    resumeReading();
+                } else {
+                    setIsPausedByUser(true);
+                    setShowOverlay(false);
+                    stopSpeaking();
+                    setHighlightCharIndex(-1);
+                }
+                break;
+            case 'replay':
+                // Re-read from the beginning
+                setReadingFinished(false);
+                setShowOverlay(false);
+                setCurrentChapter(0);
+                readingChapterRef.current = 0;
+                readChapter(0);
+                break;
+            case 'back':
+                stopSpeaking();
+                setIsReading(false);
+                onClose();
+                break;
+            case 'home':
+                stopSpeaking();
+                setIsReading(false);
+                onGoMenu();
+                break;
+            case 'exit':
+                stopSpeaking();
+                setIsReading(false);
+                onExit();
+                break;
+        }
+    }, [isPausedByUser, readingFinished, resumeReading, readChapter, onClose, onGoMenu, onExit, soundEnabled]);
+
+    // When paused and user presses switch → show overlay again
+    useEffect(() => {
+        if (!isPausedByUser || showOverlay) return;
+
+        const handlePausedKeyDown = (e: KeyboardEvent) => {
+            if (e.code === 'Space' || e.code === 'Enter') {
+                e.preventDefault();
+                setShowOverlay(true);
+                setOverlayScanIndex(0);
+                if (soundEnabled) playSelectionSound();
+            }
+        };
+
+        window.addEventListener('keydown', handlePausedKeyDown);
+        return () => window.removeEventListener('keydown', handlePausedKeyDown);
+    }, [isPausedByUser, showOverlay, soundEnabled]);
+
+    /** Render chapter text with word-level highlighting */
+    const renderChapterText = (chapterIdx: number) => {
+        const tokens = chapterTokens[chapterIdx];
+        if (!tokens) return null;
+        const isCurrentChapter = chapterIdx === currentChapter && isReading;
+
+        return tokens.map((token, i) => {
+            if (!token.isWord) {
+                // Preserve whitespace (including newlines)
+                return <span key={i}>{token.text}</span>;
+            }
+
+            // Check if this word is the currently highlighted one
+            const isHighlighted = isCurrentChapter
+                && highlightCharIndex >= 0
+                && token.charStart >= highlightCharIndex
+                && token.charStart < highlightCharIndex + highlightCharLength + 5
+                && token.charStart <= highlightCharIndex + 1;
+
+            return (
+                <span
+                    key={i}
+                    ref={isHighlighted ? (el) => { activeWordRef.current = el; } : undefined}
+                    className={`transition-colors duration-150 rounded-sm ${isHighlighted
+                        ? 'bg-primary/40 text-white font-bold px-0.5'
+                        : ''
+                        }`}
+                >
+                    {token.text}
+                </span>
+            );
+        });
+    };
 
     return (
-        <div className="w-full h-full flex flex-col bg-gradient-to-b from-slate-900 to-slate-950">
+        <div className="w-full h-screen flex flex-col bg-gradient-to-b from-slate-900 to-slate-950 text-white">
+
             {/* Header */}
-            <div className="flex items-center justify-between px-4 md:px-6 py-3 bg-black/30 border-b border-white/10">
-                <div className="flex items-center gap-3">
-                    <button
-                        onClick={onClose}
-                        className="p-2 hover:bg-white/10 rounded-full transition-colors"
-                    >
-                        <span className="material-symbols-outlined text-xl">arrow_back</span>
-                    </button>
-                    <div>
-                        <h1 className="text-lg md:text-xl font-black text-white truncate max-w-[200px] md:max-w-none">{title}</h1>
-                        <p className="text-xs text-gray-400">{chapters.length} capítulos</p>
+            <div className="flex items-center justify-between px-4 md:px-8 py-3 bg-black/40 border-b border-white/10 shrink-0">
+                <div className="flex items-center gap-3 min-w-0">
+                    <div className="size-10 bg-primary/20 text-primary flex items-center justify-center rounded-xl shrink-0">
+                        <span className="material-symbols-outlined text-xl">auto_stories</span>
+                    </div>
+                    <div className="min-w-0">
+                        <h1 className="text-base md:text-lg font-black text-white truncate">{title}</h1>
+                        <p className="text-xs text-gray-500">
+                            {chapters.length > 0
+                                ? `Capítulo ${currentChapter + 1} de ${chapters.length}`
+                                : 'Cargando...'
+                            }
+                        </p>
                     </div>
                 </div>
-                {isSpeaking && (
-                    <div className="flex items-center gap-2 bg-green-500/20 px-3 py-1 rounded-full">
-                        <span className="material-symbols-outlined text-green-400 animate-pulse">volume_up</span>
-                        <span className="text-xs text-green-400 font-bold hidden sm:block">Leyendo...</span>
-                    </div>
-                )}
-                {isSaving && (
-                    <div className="flex items-center gap-2 bg-primary/20 px-3 py-1 rounded-full">
-                        <span className="material-symbols-outlined text-primary animate-spin">progress_activity</span>
-                        <span className="text-xs text-primary font-bold hidden sm:block">Guardando...</span>
-                    </div>
-                )}
-            </div>
 
-            {/* Save Message Toast */}
-            {saveMessage && (
-                <div className={`fixed top-20 left-1/2 -translate-x-1/2 z-50 px-6 py-3 rounded-xl shadow-lg animate-fade-in ${saveMessage.includes('Error') ? 'bg-red-500/90' : 'bg-green-500/90'
-                    } text-white font-bold flex items-center gap-2`}>
-                    <span className="material-symbols-outlined">
-                        {saveMessage.includes('Error') ? 'error' : 'check_circle'}
-                    </span>
-                    {saveMessage}
-                </div>
-            )}
-
-            {/* Contenido Principal - 2 Columnas */}
-            <div className="flex-1 flex flex-col md:flex-row gap-4 p-4 md:p-6 overflow-hidden">
-
-                {/* Columna Izquierda - Extracto del Cuento */}
-                <div className="md:w-1/2 flex flex-col bg-slate-800/50 rounded-2xl border border-slate-700 overflow-hidden">
-                    {/* Imagen de portada */}
-                    <div className="relative h-40 md:h-48 overflow-hidden">
-                        <img
-                            src={coverImage}
-                            alt={title}
-                            className="w-full h-full object-cover"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-slate-900 to-transparent" />
-                        <div className="absolute bottom-4 left-4 right-4">
-                            <span className="px-2 py-1 bg-primary/80 text-white text-xs font-bold rounded-full">
-                                {protagonist} • {scenery}
-                            </span>
+                {/* Reading indicator */}
+                <div className="flex items-center gap-2 shrink-0">
+                    {isReading && (
+                        <div className="flex items-center gap-2 bg-green-500/20 px-3 py-1.5 rounded-full animate-pulse">
+                            <span className="material-symbols-outlined text-green-400 text-lg">volume_up</span>
+                            <span className="text-xs text-green-400 font-bold hidden sm:block">Leyendo...</span>
                         </div>
-                    </div>
-
-                    {/* Extracto */}
-                    <div className="flex-1 p-4 md:p-6 overflow-y-auto custom-scrollbar">
-                        <h2 className="text-xl font-black text-primary mb-3">Vista Previa</h2>
-                        <p className="text-gray-300 leading-relaxed text-sm md:text-base font-serif">
-                            {excerpt}
-                        </p>
-                        <p className="mt-4 text-xs text-gray-500 italic">
-                            Misión: {mission} • Estilo: {style}
-                        </p>
-                    </div>
-                </div>
-
-                {/* Columna Derecha - Opciones con Barrido */}
-                <div className="md:w-1/2 flex flex-col gap-3">
-                    <h2 className="text-lg font-bold text-gray-400 text-center mb-2">
-                        ¿Qué deseas hacer?
-                    </h2>
-
-                    {actionOptions.map((option, idx) => {
-                        const isActive = idx === scanIndex;
-                        return (
-                            <button
-                                key={option.id}
-                                onClick={() => handleSelect(option.id)}
-                                disabled={isGeneratingPDF}
-                                className={`
-                                    flex items-center gap-4 p-4 md:p-6 rounded-2xl transition-all duration-300
-                                    ${isActive
-                                        ? 'bg-primary border-2 border-white shadow-[0_0_30px_rgba(19,127,236,0.5)] scale-[1.02]'
-                                        : 'bg-slate-800 border border-slate-700 opacity-60 hover:opacity-80'}
-                                    ${isGeneratingPDF ? 'cursor-wait' : 'cursor-pointer'}
-                                `}
-                            >
-                                <div className={`
-                                    size-12 md:size-14 rounded-full flex items-center justify-center
-                                    ${isActive ? 'bg-white/20' : 'bg-slate-900'}
-                                `}>
-                                    <span className={`material-symbols-outlined text-2xl md:text-3xl ${isActive ? 'text-white' : 'text-primary'}`}>
-                                        {option.icon}
-                                    </span>
-                                </div>
-                                <span className={`text-lg md:text-xl font-bold ${isActive ? 'text-white' : 'text-gray-300'}`}>
-                                    {option.label}
-                                </span>
-
-                                {/* Indicador de selección */}
-                                {isActive && (
-                                    <div className="ml-auto">
-                                        <span className="material-symbols-outlined text-white animate-pulse">check_circle</span>
-                                    </div>
-                                )}
-
-                                {/* Barra de progreso del barrido */}
-                                {isActive && (
-                                    <div className="absolute bottom-0 left-0 w-full h-1 bg-white/20 rounded-b-2xl overflow-hidden">
-                                        <div
-                                            className="h-full bg-white scan-progress-bar"
-                                            style={{ '--scan-duration': `${scanInterval}ms` } as React.CSSProperties}
-                                        />
-                                    </div>
-                                )}
-                            </button>
-                        );
-                    })}
-
-                    {/* Indicador de generación PDF con Progreso */}
-                    {isGeneratingPDF && (
-                        <div className="flex flex-col items-center justify-center gap-3 p-4 bg-yellow-500/20 rounded-xl border border-yellow-500/30">
-                            <div className="flex items-center gap-3">
-                                <span className="material-symbols-outlined animate-spin text-yellow-400 text-3xl">auto_awesome</span>
-                                <span className="text-yellow-400 font-bold text-lg">IA Creando Arte...</span>
-                            </div>
-                            <p className="text-yellow-200 text-sm animate-pulse text-center">{pdfProgress}</p>
+                    )}
+                    {isPausedByUser && !showOverlay && (
+                        <div className="flex items-center gap-2 bg-amber-500/20 px-3 py-1.5 rounded-full">
+                            <span className="material-symbols-outlined text-amber-400 text-lg">pause_circle</span>
+                            <span className="text-xs text-amber-400 font-bold hidden sm:block">En pausa</span>
                         </div>
                     )}
                 </div>
             </div>
 
-            {/* Footer */}
-            <div className="px-4 py-2 bg-black/30 border-t border-white/10 text-center">
+            {/* Chapter progress bar */}
+            <div className="w-full h-1 bg-slate-800 shrink-0">
+                <div
+                    className="h-full bg-gradient-to-r from-primary to-blue-400 transition-all duration-700"
+                    style={{ width: chapters.length > 0 ? `${((currentChapter + 1) / chapters.length) * 100}%` : '0%' }}
+                />
+            </div>
+
+            {/* Story content - scrollable */}
+            <div
+                ref={containerRef}
+                className="flex-1 overflow-y-auto px-4 md:px-8 lg:px-16 py-6 md:py-10"
+                style={{ scrollBehavior: 'smooth' }}
+            >
+                <div className="max-w-3xl mx-auto space-y-10">
+                    {chapters.map((chapter, idx) => (
+                        <div
+                            key={idx}
+                            ref={el => { chapterRefs.current[idx] = el; }}
+                            className={`transition-all duration-500 ${idx === currentChapter
+                                ? 'opacity-100'
+                                : idx < currentChapter
+                                    ? 'opacity-60'
+                                    : 'opacity-30'
+                                }`}
+                        >
+                            {/* Chapter image */}
+                            <div className="relative w-full h-40 md:h-56 rounded-2xl overflow-hidden mb-6 shadow-lg">
+                                <img
+                                    src={chapter.imageUrl}
+                                    alt={chapter.title}
+                                    className="w-full h-full object-cover"
+                                />
+                                <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-transparent to-transparent" />
+                                <div className="absolute bottom-4 left-4 right-4">
+                                    <h2 className={`text-lg md:text-2xl font-black ${idx === currentChapter
+                                        ? 'text-primary'
+                                        : 'text-white'
+                                        }`}>
+                                        {chapter.title}
+                                    </h2>
+                                </div>
+                            </div>
+
+                            {/* Chapter text with word highlights */}
+                            <div className={`text-lg md:text-xl leading-loose whitespace-pre-line ${idx === currentChapter
+                                ? 'text-gray-200'
+                                : 'text-gray-500'
+                                }`}>
+                                {renderChapterText(idx)}
+                            </div>
+
+                            {/* Chapter divider */}
+                            {idx < chapters.length - 1 && (
+                                <div className="flex items-center justify-center gap-3 my-8 opacity-30">
+                                    <div className="h-px flex-1 bg-white/20" />
+                                    <span className="material-symbols-outlined text-sm text-white/30">auto_awesome</span>
+                                    <div className="h-px flex-1 bg-white/20" />
+                                </div>
+                            )}
+                        </div>
+                    ))}
+
+                    {/* End of story */}
+                    {chapters.length > 0 && currentChapter >= chapters.length - 1 && !isReading && (
+                        <div className="text-center py-10">
+                            <span className="material-symbols-outlined text-5xl text-primary mb-3">auto_awesome</span>
+                            <p className="text-xl font-bold text-gray-300">Fin del cuento</p>
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {/* Bottom bar with hint */}
+            <div className="px-4 py-2 bg-black/40 border-t border-white/10 text-center shrink-0">
                 <p className="text-xs text-gray-500">
-                    Presiona <kbd className="px-1.5 py-0.5 bg-slate-800 rounded">Espacio</kbd> o <kbd className="px-1.5 py-0.5 bg-slate-800 rounded">Enter</kbd> para seleccionar
+                    {isPausedByUser && !showOverlay
+                        ? 'Presiona tu pulsador para ver las opciones'
+                        : isReading
+                            ? 'Presiona tu pulsador para pausar'
+                            : ''
+                    }
                 </p>
             </div>
+
+            {/* Overlay modal with scanning options */}
+            {showOverlay && (
+                <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+                    <div className="w-full max-w-md space-y-4">
+                        <h2 className="text-2xl font-black text-center text-white mb-6">
+                            ¿Qué deseas hacer?
+                        </h2>
+
+                        {overlayOptions.map((option, idx) => {
+                            const isActive = idx === overlayScanIndex;
+                            return (
+                                <button
+                                    key={option.id}
+                                    onClick={() => handleOverlaySelect(option.id)}
+                                    className={`
+                                        w-full flex items-center gap-4 p-5 rounded-2xl transition-all duration-300 relative overflow-hidden
+                                        ${isActive
+                                            ? 'bg-primary border-2 border-white shadow-[0_0_40px_rgba(19,127,236,0.5)] scale-[1.03]'
+                                            : 'bg-slate-800/80 border border-slate-700 opacity-50'}
+                                    `}
+                                >
+                                    <div className={`
+                                        size-14 rounded-full flex items-center justify-center shrink-0
+                                        ${isActive ? 'bg-white/20' : 'bg-slate-900'}
+                                    `}>
+                                        <span className={`material-symbols-outlined text-3xl ${isActive ? 'text-white' : 'text-primary'}`}>
+                                            {option.icon}
+                                        </span>
+                                    </div>
+                                    <span className={`text-xl font-bold ${isActive ? 'text-white' : 'text-gray-300'}`}>
+                                        {option.label}
+                                    </span>
+
+                                    {isActive && (
+                                        <>
+                                            <div className="ml-auto">
+                                                <span className="material-symbols-outlined text-white animate-pulse">check_circle</span>
+                                            </div>
+                                            {/* Scan progress bar */}
+                                            <div className="absolute bottom-0 left-0 w-full h-1 bg-white/20">
+                                                <div
+                                                    className="h-full bg-white scan-progress-bar"
+                                                    style={{ '--scan-duration': `${scanInterval}ms` } as React.CSSProperties}
+                                                />
+                                            </div>
+                                        </>
+                                    )}
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

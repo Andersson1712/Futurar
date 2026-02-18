@@ -240,7 +240,9 @@ const StudentEditor: React.FC<StudentEditorProps> = ({
         scan_interval: student?.student_settings?.scan_interval || 3000,
         scan_columns: student?.student_settings?.scan_columns || 2,
         voice_feedback: student?.student_settings?.voice_feedback ?? true,
-        sound_enabled: student?.student_settings?.sound_enabled ?? true
+        sound_enabled: student?.student_settings?.sound_enabled ?? true,
+        story_length: student?.student_settings?.story_length || 'medium',
+        target_audience: student?.student_settings?.target_audience || 'child'
     });
 
     // Elements Data
@@ -337,7 +339,9 @@ const StudentEditor: React.FC<StudentEditorProps> = ({
                 scan_interval: settingsData.scan_interval,
                 scan_columns: settingsData.scan_columns,
                 voice_feedback: settingsData.voice_feedback,
-                sound_enabled: settingsData.sound_enabled
+                sound_enabled: settingsData.sound_enabled,
+                story_length: settingsData.story_length,
+                target_audience: settingsData.target_audience
             }
         );
     };
@@ -387,7 +391,7 @@ const StudentEditor: React.FC<StudentEditorProps> = ({
                                 }`}
                         >
                             <span className="material-symbols-outlined text-sm">auto_stories</span>
-                            Elementos de Creación
+                            Configuración de Cuentos
                         </button>
                     )}
                 </div>
@@ -578,6 +582,68 @@ const StudentEditor: React.FC<StudentEditorProps> = ({
                                 </div>
                             ) : (
                                 <div className="space-y-6">
+                                    {/* Configuración de Cuentos */}
+                                    <div className="bg-surface-dark rounded-xl p-4 border border-border-accent">
+                                        <h3 className="font-bold text-lg flex items-center gap-2 mb-4">
+                                            <span className="material-symbols-outlined text-primary">tune</span>
+                                            Preferencias de Generación
+                                        </h3>
+
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            {/* Largo del Cuento */}
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-400 mb-2">
+                                                    Largo del Cuento
+                                                </label>
+                                                <div className="flex gap-2">
+                                                    {[
+                                                        { value: 'short', label: 'Corto' },
+                                                        { value: 'medium', label: 'Medio' },
+                                                        { value: 'long', label: 'Largo' }
+                                                    ].map(opt => (
+                                                        <button
+                                                            key={opt.value}
+                                                            type="button"
+                                                            onClick={() => setSettingsData(prev => ({ ...prev, story_length: opt.value as any }))}
+                                                            className={`flex-1 py-2 px-3 rounded-lg border transition-all ${settingsData.story_length === opt.value
+                                                                ? 'bg-primary text-white border-primary'
+                                                                : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10'
+                                                                }`}
+                                                        >
+                                                            {opt.label}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+
+                                            {/* Público Objetivo */}
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-400 mb-2">
+                                                    Público Objetivo
+                                                </label>
+                                                <div className="flex gap-2">
+                                                    {[
+                                                        { value: 'child', label: 'Niño' },
+                                                        { value: 'adolescent', label: 'Adolescente' },
+                                                        { value: 'adult', label: 'Adulto' }
+                                                    ].map(opt => (
+                                                        <button
+                                                            key={opt.value}
+                                                            type="button"
+                                                            onClick={() => setSettingsData(prev => ({ ...prev, target_audience: opt.value as any }))}
+                                                            className={`flex-1 py-2 px-3 rounded-lg border transition-all ${settingsData.target_audience === opt.value
+                                                                ? 'bg-primary text-white border-primary'
+                                                                : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10'
+                                                                }`}
+                                                        >
+                                                            {opt.label}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
                                     <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl mb-6">
                                         <p className="text-amber-400 text-sm flex items-center gap-2">
                                             <span className="material-symbols-outlined">info</span>

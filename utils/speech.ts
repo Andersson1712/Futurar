@@ -10,6 +10,7 @@ export interface SpeakOptions {
     lang?: string;
     onStart?: () => void;
     onEnd?: () => void;
+    onBoundary?: (charIndex: number, charLength: number) => void;
 }
 
 const defaultOptions: SpeakOptions = {
@@ -44,6 +45,13 @@ export const speak = (text: string, options: SpeakOptions = {}): SpeechSynthesis
     }
     if (opts.onEnd) {
         utterance.onend = opts.onEnd;
+    }
+    if (opts.onBoundary) {
+        utterance.onboundary = (event: SpeechSynthesisEvent) => {
+            if (event.name === 'word') {
+                opts.onBoundary!(event.charIndex, event.charLength);
+            }
+        };
     }
 
     window.speechSynthesis.speak(utterance);

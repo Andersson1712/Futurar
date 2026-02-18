@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Story } from '../types/database';
 import { supabase } from '../services/supabase';
 import { generateStoryPDF } from '../utils/pdfGenerator';
-import { speak } from '../utils/speech';
+import { speak, speakOption, stopSpeaking } from '../utils/speech';
+import { playSelectionSound } from '../utils/audio';
 
 interface StoryDetailsProps {
     story: Story;
@@ -10,6 +11,15 @@ interface StoryDetailsProps {
     onRead: () => void;
     onGoMenu: () => void;
     voiceEnabled?: boolean;
+    scanInterval?: number;
+    soundEnabled?: boolean;
+}
+
+interface ActionOption {
+    id: string;
+    label: string;
+    icon: string;
+    description: string;
 }
 
 const StoryDetails: React.FC<StoryDetailsProps> = ({
@@ -17,7 +27,9 @@ const StoryDetails: React.FC<StoryDetailsProps> = ({
     onBack,
     onRead,
     onGoMenu,
-    voiceEnabled = true
+    voiceEnabled = true,
+    scanInterval = 3000,
+    soundEnabled = true
 }) => {
     const [isExporting, setIsExporting] = useState(false);
     const [showDedicationModal, setShowDedicationModal] = useState(false);
@@ -26,6 +38,95 @@ const StoryDetails: React.FC<StoryDetailsProps> = ({
     const [exportStatus, setExportStatus] = useState('');
     const [isSaving, setIsSaving] = useState(false);
     const [hasSaved, setHasSaved] = useState(false);
+    const [scanIndex, setScanIndex] = useState(0);
+
+    // Action options for scanning
+    const actionOptions: ActionOption[] = [
+        { id: 'read', label: 'Leer Cuento', icon: 'auto_stories', description: 'Leer cuento en voz alta' },
+        { id: 'pdf', label: 'Descargar PDF', icon: 'picture_as_pdf', description: 'Descargar como PDF' },
+        {
+            id: 'save',
+            label: hasSaved ? 'Guardado' : 'Guardar',
+            icon: hasSaved ? 'check_circle' : 'bookmark_add',
+            description: hasSaved ? 'Ya está guardado' : 'Guardar en mi biblioteca'
+        },
+        { id: 'menu', label: 'Menú Principal', icon: 'home', description: 'Volver al menú principal' },
+    ];
+
+    // Check if story already exists in the database on mount
+    useEffect(() => {
+        const checkAlreadySaved = async () => {
+            if (!story.student_id || !story.title) return;
+            try {
+                const { data } = await supabase
+                    .from('stories')
+                    .select('id')
+                    .eq('student_id', story.student_id)
+                    .eq('title', story.title)
+                    .limit(1);
+
+                if (data && data.length > 0) {
+                    setHasSaved(true);
+                }
+            } catch (err) {
+                // Silently ignore
+            }
+        };
+        checkAlreadySaved();
+    }, [story.student_id, story.title]);
+
+    // Scanning timer
+    useEffect(() => {
+        if (isExporting || isSaving || showDedicationModal) return;
+
+        const timer = setInterval(() => {
+            setScanIndex(prev => (prev + 1) % actionOptions.length);
+        }, scanInterval);
+
+        return () => clearInterval(timer);
+    }, [isExporting, isSaving, showDedicationModal, scanInterval, actionOptions.length]);
+
+    // Announce scanned option
+    useEffect(() => {
+        if (voiceEnabled && !isExporting && !isSaving && !showDedicationModal) {
+            speakOption(actionOptions[scanIndex].description);
+        }
+    }, [scanIndex, voiceEnabled, isExporting, isSaving, showDedicationModal]);
+
+    // Handle switch press
+    useEffect(() => {
+        if (showDedicationModal) return;
+
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.code === 'Space' || e.code === 'Enter') {
+                e.preventDefault();
+                handleSelect(actionOptions[scanIndex].id);
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [scanIndex, showDedicationModal, actionOptions]);
+
+    const handleSelect = useCallback((optionId: string) => {
+        if (soundEnabled) playSelectionSound();
+        stopSpeaking();
+
+        switch (optionId) {
+            case 'read':
+                onRead();
+                break;
+            case 'pdf':
+                setShowDedicationModal(true);
+                break;
+            case 'save':
+                if (!hasSaved) handleSave();
+                break;
+            case 'menu':
+                onGoMenu();
+                break;
+        }
+    }, [onRead, onGoMenu, hasSaved, soundEnabled]);
 
     const handleSave = async () => {
         if (isSaving || hasSaved) return;
@@ -99,7 +200,7 @@ const StoryDetails: React.FC<StoryDetailsProps> = ({
         <div className="w-full h-full flex flex-col bg-gradient-to-b from-slate-900 to-slate-950 p-6 md:p-8 animate-fade-in relative">
 
             {/* Header */}
-            <div className="flex items-center justify-between mb-8">
+            <div className="flex items-center justify-between mb-6">
                 <button
                     onClick={onBack}
                     className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors"
@@ -118,6 +219,17 @@ const StoryDetails: React.FC<StoryDetailsProps> = ({
                             src={story.image_url}
                             alt={story.title}
                             className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                            onError={(e) => {
+                                const target = e.currentTarget;
+                                target.style.display = 'none';
+                                const parent = target.parentElement;
+                                if (parent) {
+                                    const placeholder = document.createElement('div');
+                                    placeholder.className = 'w-full h-full flex items-center justify-center bg-slate-700';
+                                    placeholder.innerHTML = '<span class="material-symbols-outlined text-6xl text-slate-500">auto_stories</span>';
+                                    parent.insertBefore(placeholder, target);
+                                }
+                            }}
                         />
                     ) : (
                         <div className="w-full h-full flex items-center justify-center bg-slate-700">
@@ -128,9 +240,9 @@ const StoryDetails: React.FC<StoryDetailsProps> = ({
                 </div>
 
                 {/* Info y Acciones */}
-                <div className="w-full md:w-2/3 space-y-8">
+                <div className="w-full md:w-2/3 space-y-6">
                     <div>
-                        <h1 className="text-4xl md:text-6xl font-black text-white mb-4 leading-tight">
+                        <h1 className="text-3xl md:text-5xl font-black text-white mb-4 leading-tight">
                             {story.title}
                         </h1>
                         <div className="flex flex-wrap gap-3">
@@ -146,48 +258,63 @@ const StoryDetails: React.FC<StoryDetailsProps> = ({
                         </div>
                     </div>
 
-                    <div className="flex flex-wrap gap-4">
-                        <button
-                            onClick={onRead}
-                            className="flex-1 min-w-[200px] py-4 bg-primary hover:bg-primary/90 rounded-2xl font-bold text-xl flex items-center justify-center gap-3 transition-all hover:scale-105 shadow-lg shadow-primary/20"
-                        >
-                            <span className="material-symbols-outlined text-3xl">auto_stories</span>
-                            Leer Cuento
-                        </button>
+                    {/* Scanning action buttons */}
+                    <div className="space-y-3">
+                        {actionOptions.map((option, idx) => {
+                            const isActive = idx === scanIndex;
+                            const isDisabled = option.id === 'save' && (hasSaved || isSaving);
 
-                        <button
-                            onClick={handleExportClick}
-                            className="flex-1 min-w-[200px] py-4 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-2xl font-bold text-xl text-white flex items-center justify-center gap-3 transition-all hover:scale-105"
-                        >
-                            <span className="material-symbols-outlined text-3xl">picture_as_pdf</span>
-                            Descargar PDF
-                        </button>
+                            return (
+                                <button
+                                    key={option.id}
+                                    onClick={() => handleSelect(option.id)}
+                                    disabled={isDisabled && !isActive}
+                                    className={`
+                                        w-full flex items-center gap-4 p-4 rounded-2xl transition-all duration-300 relative overflow-hidden
+                                        ${isActive
+                                            ? 'bg-primary border-2 border-white shadow-[0_0_40px_rgba(19,127,236,0.5)] scale-[1.02]'
+                                            : option.id === 'save' && hasSaved
+                                                ? 'bg-green-900/30 border border-green-700/50 opacity-60'
+                                                : 'bg-slate-800/60 border border-slate-700/50 opacity-40'
+                                        }
+                                    `}
+                                >
+                                    <div className={`
+                                        size-12 rounded-full flex items-center justify-center shrink-0
+                                        ${isActive ? 'bg-white/20' : 'bg-slate-900/50'}
+                                    `}>
+                                        <span className={`material-symbols-outlined text-2xl ${isActive ? 'text-white'
+                                                : option.id === 'save' && hasSaved ? 'text-green-400'
+                                                    : 'text-primary'
+                                            }`}>
+                                            {option.icon}
+                                        </span>
+                                    </div>
+                                    <span className={`text-lg font-bold ${isActive ? 'text-white' : 'text-gray-300'}`}>
+                                        {option.label}
+                                    </span>
 
-                        <button
-                            onClick={handleSave}
-                            disabled={isSaving || hasSaved}
-                            className={`flex-1 min-w-[200px] py-4 rounded-2xl font-bold text-xl flex items-center justify-center gap-3 transition-all hover:scale-105 shadow-lg ${hasSaved
-                                ? 'bg-green-600 text-white cursor-default'
-                                : 'bg-white text-slate-900 hover:bg-gray-100'}`}
-                        >
-                            <span className="material-symbols-outlined text-3xl">
-                                {hasSaved ? 'check_circle' : (isSaving ? 'progress_activity' : 'bookmark_add')}
-                            </span>
-                            {hasSaved ? 'Guardado' : (isSaving ? 'Guardando...' : 'Guardar')}
-                        </button>
+                                    {isActive && (
+                                        <>
+                                            <div className="ml-auto">
+                                                <span className="material-symbols-outlined text-white animate-pulse">check_circle</span>
+                                            </div>
+                                            {/* Scan progress bar */}
+                                            <div className="absolute bottom-0 left-0 w-full h-1 bg-white/20">
+                                                <div
+                                                    className="h-full bg-white scan-progress-bar"
+                                                    style={{ '--scan-duration': `${scanInterval}ms` } as React.CSSProperties}
+                                                />
+                                            </div>
+                                        </>
+                                    )}
+                                </button>
+                            );
+                        })}
                     </div>
 
-                    <div className="flex justify-center mt-4">
-                        <button
-                            onClick={onGoMenu}
-                            className="px-8 py-3 bg-slate-800/50 hover:bg-slate-800 border border-slate-700 rounded-full text-gray-300 hover:text-white font-bold transition-all flex items-center gap-2"
-                        >
-                            <span className="material-symbols-outlined">home</span>
-                            Volver al Menú Principal
-                        </button>
-                    </div>
-
-                    <div className="p-6 bg-white/5 rounded-2xl border border-white/10">
+                    {/* Mission details */}
+                    <div className="p-5 bg-white/5 rounded-2xl border border-white/10">
                         <h3 className="text-lg font-bold text-gray-300 mb-2 flex items-center gap-2">
                             <span className="material-symbols-outlined text-yellow-500">lightbulb</span>
                             Detalles de la Misión
@@ -197,6 +324,13 @@ const StoryDetails: React.FC<StoryDetailsProps> = ({
                         </p>
                     </div>
                 </div>
+            </div>
+
+            {/* Bottom hint */}
+            <div className="text-center mt-4">
+                <p className="text-xs text-gray-500">
+                    Presiona tu pulsador para seleccionar
+                </p>
             </div>
 
             {/* Modal de Dedicatoria */}

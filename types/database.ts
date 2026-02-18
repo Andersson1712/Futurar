@@ -278,6 +278,8 @@ export type Database = {
                     theme: string | null
                     updated_at: string | null
                     voice_feedback: boolean | null
+                    story_length: 'short' | 'medium' | 'long' | null
+                    target_audience: 'child' | 'adolescent' | 'adult' | 'all' | null
                 }
                 Insert: {
                     content_filter_level?: string | null
@@ -294,6 +296,8 @@ export type Database = {
                     theme?: string | null
                     updated_at?: string | null
                     voice_feedback?: boolean | null
+                    story_length?: 'short' | 'medium' | 'long' | null
+                    target_audience?: 'child' | 'adolescent' | 'adult' | 'all' | null
                 }
                 Update: {
                     content_filter_level?: string | null
@@ -310,6 +314,8 @@ export type Database = {
                     theme?: string | null
                     updated_at?: string | null
                     voice_feedback?: boolean | null
+                    story_length?: 'short' | 'medium' | 'long' | null
+                    target_audience?: 'child' | 'adolescent' | 'adult' | 'all' | null
                 }
                 Relationships: [
                     {

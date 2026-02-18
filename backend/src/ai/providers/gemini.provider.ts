@@ -5,9 +5,11 @@ export class GeminiProvider implements AIProvider {
     name = 'gemini';
     displayName = 'Google Gemini';
     private client: GoogleGenAI;
+    private model: string;
 
-    constructor(apiKey: string) {
+    constructor(apiKey: string, model: string = 'gemini-2.0-flash') {
         this.client = new GoogleGenAI({ apiKey });
+        this.model = model;
     }
 
     async generateStory(config: StoryGenerationConfig): Promise<StoryResult> {
@@ -16,7 +18,7 @@ export class GeminiProvider implements AIProvider {
         const prompt = this.buildPrompt(config, numPages);
 
         const response = await this.client.models.generateContent({
-            model: 'gemini-2.0-flash',
+            model: this.model,
             contents: {
                 role: 'user',
                 parts: [{ text: prompt }],

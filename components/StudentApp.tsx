@@ -4,6 +4,7 @@ import ScanningGrid from './ScanningGrid';
 import StoryReader from './StoryReader';
 import StoryDetails from './StoryDetails';
 import StudentLibrary from './StudentLibrary';
+import GeneratingView from './GeneratingView';
 import FloatingControls from './FloatingControls';
 import { generateStoryContent, generateStoryImage } from '../services/ai';
 import { ScanSettingsProvider, useScanSettings } from '../contexts/ScanSettingsContext';
@@ -288,7 +289,9 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
                             config.protagonist,
                             config.scenery,
                             config.mission,
-                            config.style
+                            config.style,
+                            currentStudent?.student_settings?.story_length || 'medium',
+                            currentStudent?.student_settings?.target_audience || 'child'
                         ),
                         generateStoryImage(
                             `Portada de cuento infantil. Protagonista: ${config.protagonist}. Escenario: ${config.scenery}. Estilo: ${config.style}. Sin texto.`,
@@ -330,10 +333,10 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
                     setError(`Error al generar: ${e.message}`);
                     setGenerationProgress({ status: 'Error...', progress: 0 });
 
-                    setTimeout(() => {
-                        setStep('MENU');
-                        setError(null);
-                    }, 3000);
+                    // setTimeout(() => {
+                    //     setStep('MENU');
+                    //     setError(null);
+                    // }, 3000);
                 }
             };
 
@@ -386,6 +389,8 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
                         speakWithState("Menú principal");
                     }}
                     voiceEnabled={voiceEnabled}
+                    scanInterval={scanInterval}
+                    soundEnabled={soundEnabled}
                 />
             </div>
         );
@@ -396,38 +401,28 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
     // Vista de lectura del cuento
     if (step === 'RESULT_VIEW' && config.content) {
         return (
-            <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-950">
-                <StoryReader
-                    title={config.title || `Las Aventuras de ${config.protagonist}`}
-                    content={config.content}
-                    protagonist={config.protagonist}
-                    scenery={config.scenery}
-                    mission={config.mission}
-                    style={config.style}
-                    studentId={currentStudent?.id}
-                    onClose={() => setStep('STORY_DETAILS')}
-                    onRead={speakWithState}
-                    onCreateAnother={handleCreateAnother}
-                    isSpeaking={isSpeaking}
-                    scanInterval={scanInterval}
-                    voiceEnabled={voiceEnabled}
-                />
-                <FloatingControls onGoToMenu={handleBackToMenu} />
-
-                {/* Pause Overlay */}
-                {isPaused && (
-                    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-40 flex flex-col items-center justify-center print:hidden">
-                        <span className="material-symbols-outlined text-9xl text-amber-400 animate-pulse">
-                            pause_circle
-                        </span>
-                        <h2 className="text-3xl font-bold mt-6 text-white">En Pausa</h2>
-                        <p className="text-gray-400 mt-2">Toma un descanso</p>
-                        <p className="text-gray-500 text-sm mt-6">
-                            Presiona el botón flotante para continuar
-                        </p>
-                    </div>
-                )}
-            </div>
+            <StoryReader
+                title={config.title || `Las Aventuras de ${config.protagonist}`}
+                content={config.content}
+                protagonist={config.protagonist}
+                scenery={config.scenery}
+                style={config.style}
+                onClose={() => {
+                    handleStopSpeaking();
+                    setStep('STORY_DETAILS');
+                }}
+                onExit={() => {
+                    handleStopSpeaking();
+                    handleBackToProfile();
+                }}
+                onGoMenu={() => {
+                    handleStopSpeaking();
+                    handleBackToMenu();
+                }}
+                scanInterval={scanInterval}
+                voiceEnabled={voiceEnabled}
+                soundEnabled={soundEnabled}
+            />
         );
     }
 
@@ -682,41 +677,17 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
 
                 {/* Generating State */}
                 {step === 'GENERATING' && (
-                    <div className="flex flex-col items-center text-center max-w-lg">
-                        <div className="relative mb-8">
-                            <span className="material-symbols-outlined text-8xl text-primary animate-pulse">auto_fix</span>
-                            <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
-                                <span className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                                <span className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                                <span className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                            </div>
-                        </div>
-
-                        <h2 className="text-3xl md:text-4xl font-black mb-4">
-                            Creando tu historia...
-                        </h2>
-
-                        <p className="text-lg text-gray-400 mb-6">
-                            {generationProgress.status || 'La IA está escribiendo tu aventura única'}
-                        </p>
-
-                        {/* Progress Bar */}
-                        <div className="w-full h-3 bg-slate-800 rounded-full overflow-hidden">
-                            <div
-                                className="h-full bg-gradient-to-r from-primary to-blue-500 transition-all duration-500 ease-out rounded-full"
-                                style={{ width: `${generationProgress.progress}%` }}
-                            />
-                        </div>
-
-                        {/* Story Preview */}
-                        <div className="mt-8 p-4 bg-slate-800/50 rounded-2xl border border-slate-700">
-                            <p className="text-sm text-gray-400">
-                                Protagonista: <span className="text-primary font-bold">{config.protagonist}</span> •
-                                Escenario: <span className="text-blue-400 font-bold">{config.scenery}</span> •
-                                Misión: <span className="text-green-400 font-bold">{config.mission}</span>
-                            </p>
-                        </div>
-                    </div>
+                    <GeneratingView
+                        progress={generationProgress}
+                        protagonist={config.protagonist}
+                        scenery={config.scenery}
+                        mission={config.mission}
+                        error={error}
+                        onCancel={() => {
+                            setStep('MENU');
+                            setError(null);
+                        }}
+                    />
                 )}
             </main>
 
