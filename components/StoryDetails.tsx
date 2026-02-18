@@ -138,6 +138,7 @@ const StoryDetails: React.FC<StoryDetailsProps> = ({
                 mission: story.mission,
                 style: story.style,
                 image_url: story.image_url,
+                pages: story.pages as any, // Cast to any for Json type compatibility
                 type: 'story'
             });
 
@@ -166,7 +167,9 @@ const StoryDetails: React.FC<StoryDetailsProps> = ({
                 scenery: story.scenery,
                 mission: story.mission,
                 style: story.style,
+
                 images: story.image_url ? { 0: story.image_url } : {},
+                pages: story.pages as any, // Pass pages with images
                 onProgress: (status) => setExportStatus(status)
             });
 

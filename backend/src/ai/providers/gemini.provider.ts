@@ -6,8 +6,10 @@ export class GeminiProvider implements AIProvider {
     displayName = 'Google Gemini';
     private client: GoogleGenAI;
     private model: string;
+    private apiKey: string;
 
     constructor(apiKey: string, model: string = 'gemini-2.0-flash') {
+        this.apiKey = apiKey;
         this.client = new GoogleGenAI({ apiKey });
         this.model = model;
     }
@@ -122,7 +124,7 @@ REGLAS:
 
             // Usamos la API REST directa para Imagen 3 ya que el SDK puede variar en soporte
             // Model: imagen-3.0-generate-001
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-001:predict?key=${this.client.apiKey}`;
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-001:predict?key=${this.apiKey}`;
 
             const response = await fetch(url, {
                 method: 'POST',

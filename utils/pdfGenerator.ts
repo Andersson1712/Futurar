@@ -15,6 +15,7 @@ interface GeneratePDFOptions {
     mission: string;
     style: string;
     images?: Record<number, string>; // Pre-loaded images if any
+    pages?: any[]; // Generated pages with content and images
     dedication?: Dedication;
     onProgress?: (status: string) => void;
 }
@@ -55,6 +56,7 @@ export const generateStoryPDF = async ({
     mission,
     style,
     images = {},
+    pages: imagesFromPages, // Alias to avoid conflict with local vars
     dedication,
     onProgress
 }: GeneratePDFOptions): Promise<void> => {
@@ -139,14 +141,35 @@ export const generateStoryPDF = async ({
 
         // --- CAPÍTULOS ---
         const cleanContent = stripMarkdown(content);
-        const chapterSections = cleanContent.split(/CAPÍTULO \d+[:]?\s?/i).filter(s => s.trim().length > 20);
-        const chapterTitles = cleanContent.match(/CAPÍTULO \d+[:]?\s?[^\n]*/gi) || [];
 
-        for (let idx = 0; idx < chapterSections.length; idx++) {
-            const section = chapterSections[idx];
-            const chapterNum = idx + 1;
+        // Determine source of chapters: from pages prop or parsing content
+        let chaptersToRender: { title: string; content: string; imageUrl?: string; pageNum: number }[] = [];
 
-            onProgress?.(`Generando imagen para capítulo ${chapterNum}...`);
+        if (imagesFromPages && imagesFromPages.length > 0) {
+            chaptersToRender = imagesFromPages.map((p, i) => ({
+                title: `CAPÍTULO ${p.pageNumber}`,
+                content: p.content,
+                imageUrl: p.imageUrl,
+                pageNum: p.pageNumber
+            }));
+        } else {
+            const chapterSections = cleanContent.split(/CAPÍTULO \d+[:]?\s?/i).filter(s => s.trim().length > 20);
+            const chapterTitles = cleanContent.match(/CAPÍTULO \d+[:]?\s?[^\n]*/gi) || [];
+
+            chaptersToRender = chapterSections.map((section, idx) => ({
+                title: (chapterTitles[idx] || `CAPÍTULO ${idx + 1}`).toUpperCase(),
+                content: section.trim(),
+                imageUrl: images[idx + 1],
+                pageNum: idx + 1
+            }));
+        }
+
+        for (let idx = 0; idx < chaptersToRender.length; idx++) {
+            const chapter = chaptersToRender[idx];
+            const section = chapter.content;
+            const chapterNum = chapter.pageNum;
+
+            onProgress?.(`Procesando capítulo ${chapterNum}...`);
             doc.addPage();
 
             // Fondo página
@@ -162,9 +185,16 @@ export const generateStoryPDF = async ({
 
             // Generar imagen de capítulo
             try {
-                let finalImgData = images[chapterNum];
+                let finalImgData = chapter.imageUrl;
+
+                // LEGACY fallback: If no image in page data, check images map or generate
+                if (!finalImgData) {
+                    finalImgData = images[chapterNum];
+                }
 
                 if (!finalImgData) {
+                    // Only generate if we absolutely have no image from anywhere
+                    onProgress?.(`Generando imagen faltante para capítulo ${chapterNum}...`);
                     const sceneContent = section.substring(0, 150).replace(/\n/g, ' ');
                     const imgPrompt = `Ilustración de cuento infantil. Capítulo ${chapterNum}. Protagonista: ${protagonist}. Escenario: ${scenery}. Acción: ${sceneContent}. Estilo: ${style}.`;
                     const imgData = await generateStoryImage(imgPrompt, style);
@@ -178,6 +208,10 @@ export const generateStoryPDF = async ({
                 if (finalImgData) {
                     const imgW = contentWidth;
                     const imgH = 100;
+
+                    // Maintain aspect ratio if possible, but fit within bounds
+                    // For now keeping fixed 100 height as per design, could be improved
+
                     doc.addImage(finalImgData, 'PNG', margin, currentY, imgW, imgH);
 
                     doc.setDrawColor(150, 130, 100);
@@ -202,12 +236,11 @@ export const generateStoryPDF = async ({
             }
 
             // Título del capítulo
-            const fullTitle = (chapterTitles[idx] || `CAPÍTULO ${idx + 1}`).toUpperCase();
             doc.setFont("helvetica", "bold");
             doc.setFontSize(18);
             doc.setTextColor(100, 70, 0);
 
-            const wrappedTitle = doc.splitTextToSize(fullTitle, contentWidth);
+            const wrappedTitle = doc.splitTextToSize(chapter.title, contentWidth);
             doc.text(wrappedTitle, pageWidth / 2, currentY, { align: 'center' });
             currentY += (wrappedTitle.length * 8) + 5;
 
@@ -221,7 +254,7 @@ export const generateStoryPDF = async ({
             doc.setFont("times", "normal");
             doc.setFontSize(11);
             doc.setTextColor(30, 30, 30);
-            const bodyLines = doc.splitTextToSize(section.trim(), contentWidth);
+            const bodyLines = doc.splitTextToSize(section, contentWidth);
 
             bodyLines.forEach((line: string) => {
                 if (currentY > pageHeight - margin - 15) {
@@ -236,7 +269,7 @@ export const generateStoryPDF = async ({
                     doc.setFont("helvetica", "bold");
                     doc.setFontSize(8);
                     doc.setTextColor(150, 130, 100);
-                    doc.text(title.toUpperCase(), pageWidth / 2, 15, { align: 'center' });
+                    doc.text(chapter.title, pageWidth / 2, 15, { align: 'center' });
 
                     currentY = 30;
                     doc.setFont("times", "normal");

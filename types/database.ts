@@ -13,6 +13,7 @@ export type Database = {
                 Row: {
                     id: string
                     active_provider: string
+                    active_image_provider: string | null
                     gemini_api_key: string | null
                     openai_api_key: string | null
                     claude_api_key: string | null
@@ -30,6 +31,7 @@ export type Database = {
                 Insert: {
                     id?: string
                     active_provider?: string
+                    active_image_provider?: string | null
                     gemini_api_key?: string | null
                     openai_api_key?: string | null
                     claude_api_key?: string | null
@@ -47,6 +49,7 @@ export type Database = {
                 Update: {
                     id?: string
                     active_provider?: string
+                    active_image_provider?: string | null
                     gemini_api_key?: string | null
                     openai_api_key?: string | null
                     claude_api_key?: string | null
@@ -80,6 +83,7 @@ export type Database = {
                     style: string
                     title: string
                     type: string | null
+                    pages: Json | null
                 }
                 Insert: {
                     content?: string | null
@@ -97,6 +101,7 @@ export type Database = {
                     style: string
                     title: string
                     type?: string | null
+                    pages?: Json | null
                 }
                 Update: {
                     content?: string | null
@@ -114,6 +119,7 @@ export type Database = {
                     style?: string
                     title?: string
                     type?: string | null
+                    pages?: Json | null
                 }
                 Relationships: [
                     {
