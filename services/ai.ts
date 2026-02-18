@@ -1,9 +1,11 @@
 /**
  * Servicio unificado de IA para Futurar
  * Soporta: Gemini, OpenAI, Claude, Groq, Cloudflare, Together AI
+ * Updated: 2026-02-17
  */
 
 import { GoogleGenAI } from "@google/genai";
+import { getRandomImage } from '../utils/images';
 
 // Tipos
 export interface StoryPage {
@@ -27,10 +29,14 @@ export interface AIConfig {
 }
 
 // Mapeo de tamaño a capítulos/páginas
+// Mapeo de tamaño a capítulos/páginas
 const STORY_SIZE_CONFIG = {
-    small: { chapters: 3, wordsPerChapter: 200 },
-    medium: { chapters: 5, wordsPerChapter: 400 },
-    large: { chapters: 10, wordsPerChapter: 800 },
+    short: { chapters: 3, wordsPerChapter: 150 },
+    medium: { chapters: 5, wordsPerChapter: 300 },
+    long: { chapters: 8, wordsPerChapter: 500 },
+    // Backward compatibility
+    small: { chapters: 3, wordsPerChapter: 150 },
+    large: { chapters: 8, wordsPerChapter: 500 },
 };
 
 /**
@@ -88,12 +94,26 @@ const buildStoryPrompt = (
     mission: string,
     style: string,
     sizeConfig: { chapters: number; wordsPerChapter: number },
-    customStructure?: string
+    customStructure?: string,
+    targetAudience: 'child' | 'adolescent' | 'adult' | 'all' = 'child'
 ): string => {
-    let prompt = `Actúa como un autor galardonado de cuentos infantiles educativos.
+
+    // Configuración de audiencia
+    let audienceInstruction = "El cuento debe ser apropiado para niños: emocionante, tierno y educativo.";
+    let toneInstruction = "Usa un lenguaje sencillo y claro.";
+
+    if (targetAudience === 'adolescent') {
+        audienceInstruction = "El cuento está dirigido a adolescentes. Puede incluir temas más complejos, acción dinámica y conflictos emocionales apropiados.";
+        toneInstruction = "Usa un tono más maduro, pero accesible. Puedes usar vocabulario un poco más avanzado.";
+    } else if (targetAudience === 'adult') {
+        audienceInstruction = "El cuento está dirigido a adultos (aunque apto para todo público). Debe tener profundidad temática y narrativa.";
+        toneInstruction = "Usa un estilo literario rico, con metáforas y descripciones elaboradas.";
+    }
+
+    let prompt = `Actúa como un autor galardonado de cuentos.
     
 INSTRUCCIÓN PRINCIPAL:
-Escribe un cuento épico y creativo.
+Escribe un cuento creativo y envolvente.
 La PRIMERA LÍNEA de tu respuesta debe ser el TÍTULO del cuento (creativo, llamativo y sin etiquetas como "Título:").
 Después del título, deja una línea en blanco y comienza la historia.
 
@@ -102,17 +122,19 @@ SINOPSIS:
 - Escenario: ${scenery}  
 - Misión/Objetivo: ${mission}
 - Estilo visual: ${style}
+- Público Objetivo: ${targetAudience}
 
 REQUISITOS OBLIGATORIOS:
 1. NO USES MARKDOWN en el título o contenido (nada de **, ##, etc). Solo texto plano.
-2. Escribe EXACTAMENTE ${sizeConfig.chapters} capítulos largos y bien desarrollados.
+2. Escribe EXACTAMENTE ${sizeConfig.chapters} capítulos.
 3. Inicia cada capítulo con: "CAPÍTULO [NÚMERO]: [TÍTULO CREATIVO]"
-4. Cada capítulo debe tener MÍNIMO ${sizeConfig.wordsPerChapter} palabras.
+4. Cada capítulo debe tener APROXIMADAMENTE ${sizeConfig.wordsPerChapter} palabras.
 5. Incluye diálogos entre personajes para dar vida a la historia.
 6. Usa descripciones sensoriales (colores, sonidos, olores, texturas).
-7. El cuento debe ser apropiado para niños: emocionante, tierno y educativo.
-8. Incluye una moraleja positiva al final.
-9. La misión debe completarse exitosamente.`;
+7. ${audienceInstruction}
+8. ${toneInstruction}
+9. Incluye una moraleja o conclusión satisfactoria al final.
+10. La misión debe completarse exitosamente.`;
 
     if (customStructure && customStructure.trim()) {
         prompt += `
@@ -123,7 +145,7 @@ ${customStructure}`;
 
     prompt += `
 
-Genera el cuento completo ahora. Comienza directamente con "CAPÍTULO 1:".`;
+Genera el cuento completo ahora. Comienza directamente con el TÍTULO y luego "CAPÍTULO 1:".`;
 
     return prompt;
 };
@@ -133,14 +155,15 @@ Genera el cuento completo ahora. Comienza directamente con "CAPÍTULO 1:".`;
  */
 const generateWithGemini = async (
     apiKey: string,
-    prompt: string
+    prompt: string,
+    model: string = 'gemini-2.0-flash'
 ): Promise<string> => {
-    console.log('🔵 Usando Gemini para generación');
+    console.log(`🔵 Usando Gemini para generación (Modelo: ${model})`);
 
     const ai = new GoogleGenAI({ apiKey });
 
     const response = await ai.models.generateContent({
-        model: 'gemini-2.0-flash',
+        model: model,
         contents: prompt,
     });
 
@@ -335,18 +358,28 @@ export const generateStoryContent = async (
     protagonist: string,
     scenery: string,
     mission: string,
-    style: string
+    style: string,
+    storyLength?: 'short' | 'medium' | 'long',
+    targetAudience?: 'child' | 'adolescent' | 'adult' | 'all'
 ): Promise<string> => {
     const config = getStoredAIConfig();
     const provider = config?.activeProvider || 'gemini';
-    const storySize = config?.storySize || 'medium';
+
+    // Use passed length or fall back to stored config (mapping 'small' -> 'short', 'large' -> 'long' if needed)
+    let effectiveSize = storyLength || config?.storySize || 'medium';
+    // Normalize keys if needed
+    if (effectiveSize === 'small') effectiveSize = 'short';
+    if (effectiveSize === 'large') effectiveSize = 'long';
+
     const customStructure = config?.customStructure || '';
-    const sizeConfig = STORY_SIZE_CONFIG[storySize];
+    const sizeConfig = STORY_SIZE_CONFIG[effectiveSize as keyof typeof STORY_SIZE_CONFIG] || STORY_SIZE_CONFIG.medium;
     const preferredModel = config?.preferredModel;
+    const effectiveAudience = targetAudience || 'child';
 
     console.log('🚀 Iniciando generación de cuento');
     console.log('📋 Proveedor:', provider);
-    console.log('📖 Tamaño:', storySize, '- Capítulos:', sizeConfig.chapters);
+    console.log('📖 Tamaño:', effectiveSize, '- Capítulos:', sizeConfig.chapters);
+    console.log('👥 Audiencia:', effectiveAudience);
 
     const apiKey = getApiKey(provider);
 
@@ -354,7 +387,7 @@ export const generateStoryContent = async (
         throw new Error(`No se encontró API Key para ${provider}. Configúrala en el Panel Docente.`);
     }
 
-    const prompt = buildStoryPrompt(protagonist, scenery, mission, style, sizeConfig, customStructure);
+    const prompt = buildStoryPrompt(protagonist, scenery, mission, style, sizeConfig, customStructure, effectiveAudience);
     console.log('📝 Prompt generado:', prompt.length, 'caracteres');
 
     let content = '';
@@ -362,7 +395,7 @@ export const generateStoryContent = async (
     try {
         switch (provider) {
             case 'gemini':
-                content = await generateWithGemini(apiKey, prompt);
+                content = await generateWithGemini(apiKey, prompt, preferredModel || 'gemini-2.0-flash');
                 break;
             case 'openai':
                 content = await generateWithOpenAI(apiKey, prompt, preferredModel || 'gpt-4o-mini');
@@ -380,7 +413,7 @@ export const generateStoryContent = async (
                 // Fallback a Gemini
                 const geminiKey = getApiKey('gemini');
                 if (geminiKey) {
-                    content = await generateWithGemini(geminiKey, prompt);
+                    content = await generateWithGemini(geminiKey, prompt, preferredModel || 'gemini-2.0-flash');
                 } else {
                     throw new Error(`Proveedor "${provider}" no soportado y no hay fallback disponible`);
                 }
@@ -458,8 +491,8 @@ export const generateStoryImage = async (
 
     const apiKey = getApiKey(provider);
     if (!apiKey) {
-        console.warn('No API key for image generation');
-        return 'https://images.unsplash.com/photo-1532012197267-da84d127e765?w=800&auto=format';
+        console.warn('No API key for image generation, using scenery fallback');
+        return getRandomImage(prompt);
     }
 
     try {
@@ -486,9 +519,8 @@ export const generateStoryImage = async (
         return data.data; // Base64 or URL
     } catch (error) {
         console.error("Error generando imagen AI:", error);
-        // Fallback to Unsplash matching keywords
-        const keywords = prompt.split(' ').slice(0, 3).join(',');
-        return `https://source.unsplash.com/1600x900/?illustration,children,${keywords}`;
+        // Fallback to scenery-matched Unsplash image
+        return getRandomImage(prompt);
     }
 };
 

@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Futurar - Sistema de Acceso Universal</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;700;800&display=swap"
         rel="stylesheet">
@@ -106,6 +107,40 @@
 
         .animate-slide-up {
             animation: slide-up 0.4s ease-out;
+        }
+
+        @keyframes float-sparkle {
+
+            0%,
+            100% {
+                transform: translate(0, 0) scale(1) rotate(0deg);
+                opacity: 0.8;
+            }
+
+            50% {
+                transform: translate(10px, -15px) scale(1.2) rotate(180deg);
+                opacity: 0.4;
+            }
+        }
+
+        .animate-float-sparkle {
+            animation: float-sparkle 3s ease-in-out infinite;
+        }
+
+        @keyframes shimmer {
+            0% {
+                background-position: -200% 0;
+            }
+
+            100% {
+                background-position: 200% 0;
+            }
+        }
+
+        .animate-shimmer {
+            background: linear-gradient(to right, transparent 0%, rgba(255, 255, 255, 0.3) 50%, transparent 100%);
+            background-size: 200% 100%;
+            animation: shimmer 2s infinite linear;
         }
 
         /* Estilo de libro */

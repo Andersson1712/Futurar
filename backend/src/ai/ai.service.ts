@@ -16,7 +16,7 @@ export class AIService {
         switch (config.provider) {
             case 'gemini':
                 if (!config.apiKey) throw new BadRequestException('Gemini API Key requerida');
-                return new GeminiProvider(config.apiKey);
+                return new GeminiProvider(config.apiKey, config.model);
 
             case 'openai':
                 if (!config.apiKey) throw new BadRequestException('OpenAI API Key requerida');
@@ -94,7 +94,19 @@ export class AIService {
                 description: 'IA de Google, gratis con límites generosos',
                 isFree: true,
                 requiredFields: ['apiKey'],
-                models: ['gemini-2.0-flash', 'gemini-1.5-pro'],
+                models: [
+                    'gemini-2.0-flash',
+                    'gemini-2.0-flash-lite-preview-02-05',
+                    'gemini-2.0-pro-exp-02-05',
+                    'gemini-2.0-flash-thinking-exp-01-21',
+                    'gemini-1.5-pro',
+                    'gemini-1.5-flash',
+                    // Modelos solicitados (beta/futuros)
+                    'gemini-2.5-flash',
+                    'gemini-2.5-pro',
+                    'gemini-3.0-flash',
+                    'gemini-3.0-pro',
+                ],
                 getKeyUrl: 'https://aistudio.google.com/app/apikey',
             },
             {

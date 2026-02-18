@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+// Force update
 import { getAIConfig, upsertAIConfig } from '../services/supabase';
 import type { AIConfig } from '../types/database';
 
@@ -23,7 +24,19 @@ const PROVIDERS: ProviderInfo[] = [
         description: 'IA de Google, gratis con límites generosos',
         isFree: true,
         requiredFields: ['apiKey'],
-        models: ['gemini-2.0-flash', 'gemini-1.5-pro'],
+        models: [
+            'gemini-2.0-flash',
+            'gemini-2.0-flash-lite-preview-02-05',
+            'gemini-2.0-pro-exp-02-05',
+            'gemini-2.0-flash-thinking-exp-01-21',
+            'gemini-1.5-pro',
+            'gemini-1.5-flash',
+            // Modelos solicitados (beta/futuros)
+            'gemini-2.5-flash',
+            'gemini-2.5-pro',
+            'gemini-3.0-flash',
+            'gemini-3.0-pro',
+        ],
         getKeyUrl: 'https://aistudio.google.com/app/apikey',
     },
     {
