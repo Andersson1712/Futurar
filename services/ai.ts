@@ -22,13 +22,11 @@ export interface StoryResult {
 
 export interface AIConfig {
     activeProvider: string;
+    activeImageProvider?: string;
     apiKeys: Record<string, string>;
     preferredModel?: string;
-    storySize: 'small' | 'medium' | 'large';
-    customStructure?: string;
 }
 
-// Mapeo de tamaño a capítulos/páginas
 // Mapeo de tamaño a capítulos/páginas
 const STORY_SIZE_CONFIG = {
     short: { chapters: 3, wordsPerChapter: 150 },
@@ -375,19 +373,19 @@ export const generateStoryContent = async (
     scenery: string,
     mission: string,
     style: string,
-    storyLength?: 'short' | 'medium' | 'long',
-    targetAudience?: 'child' | 'adolescent' | 'adult' | 'all'
+    storyLength: 'short' | 'medium' | 'long' = 'medium',
+    targetAudience: 'child' | 'adolescent' | 'adult' | 'all' = 'child',
+    customConfigStructure?: string
 ): Promise<string> => {
     const config = getStoredAIConfig();
     const provider = config?.activeProvider || 'gemini';
 
-    // Use passed length or fall back to stored config (mapping 'small' -> 'short', 'large' -> 'long' if needed)
-    let effectiveSize = storyLength || config?.storySize || 'medium';
     // Normalize keys if needed
-    if (effectiveSize === 'small') effectiveSize = 'short';
-    if (effectiveSize === 'large') effectiveSize = 'long';
+    let effectiveSize = storyLength;
+    if (effectiveSize === 'small' as any) effectiveSize = 'short';
+    if (effectiveSize === 'large' as any) effectiveSize = 'long';
 
-    const customStructure = config?.customStructure || '';
+    const customStructure = customConfigStructure || '';
     const sizeConfig = STORY_SIZE_CONFIG[effectiveSize as keyof typeof STORY_SIZE_CONFIG] || STORY_SIZE_CONFIG.medium;
     const preferredModel = config?.preferredModel;
     const effectiveAudience = targetAudience || 'child';
@@ -499,36 +497,34 @@ export const generateStoryImage = async (
 ): Promise<string> => {
     const config = getStoredAIConfig();
     const provider = config?.activeProvider || 'openai';
+
+    // Default image provider logic:
+    // 1. Explicitly selected image provider
+    // 2. If 'freepik' key exists -> default to freepik (legacy behavior)
+    // 3. Fallback to active text provider
+    const imageProviderPreference = config?.activeImageProvider || (config?.apiKeys?.freepik ? 'freepik' : provider);
+
     const preferredModel = config?.preferredModel;
 
-    // 1. Intentar usar Freepik (si hay Key) - Especializado en imágenes
-    // 2. Intentar usar OpenAI (DALL-E 3)
-    // 3. Fallback al proveedor activo (ej. Gemini/Imagen) o Unsplash
+    // const apiKey = getApiKey(provider); // Text provider key - not directly used for image generation key
+    // const freepikKey = getApiKey('freepik'); // Not directly used, checked via config?.apiKeys?.freepik
+    // const openaiKey = getApiKey('openai'); // Not directly used, getApiKey(imageProvider) handles it
 
-    const apiKey = getApiKey(provider);
-    const freepikKey = getApiKey('freepik');
-    const openaiKey = getApiKey('openai');
+    let imageProvider = imageProviderPreference;
+    let imageApiKey = getApiKey(imageProvider);
+    let imageModel = preferredModel;
 
-    let imageProvider = provider;
-    let imageApiKey = apiKey;
-    let imageModel = preferredModel; // Use preference by default
-
-    if (freepikKey) {
+    // Special case: If provider is freepik, ensure model is correct
+    if (imageProvider === 'freepik') {
         console.log('🎨 Usando Freepik para generar imagen');
-        imageProvider = 'freepik';
-        imageApiKey = freepikKey;
-        if (!imageModel || !imageModel.includes('flux') && !imageModel.includes('mystic')) {
-            imageModel = 'flux-realism'; // Default high quality if preference is not a freepik model
+        if (!imageModel || (!imageModel.includes('flux') && !imageModel.includes('mystic'))) {
+            imageModel = 'flux-realism';
         }
-    } else if (openaiKey) {
+    } else if (imageProvider === 'openai') {
         console.log('🎨 Usando OpenAI para generar imagen');
-        imageProvider = 'openai';
-        imageApiKey = openaiKey;
-        imageModel = 'dall-e-3'; // OpenAI usually just has this for images
+        imageModel = 'dall-e-3';
     } else {
-        // Fallback to active provider
-        imageProvider = provider;
-        imageApiKey = apiKey;
+        // Fallback or other providers
     }
 
     if (!imageApiKey) {

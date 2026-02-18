@@ -2,7 +2,7 @@ import { IsString, IsNotEmpty, IsOptional, IsEnum } from 'class-validator';
 import type { AIProviderType } from '../providers/ai-provider.interface';
 
 export class GenerateImageDto {
-    @IsEnum(['openai', 'gemini', 'claude', 'groq', 'cloudflare', 'together'])
+    @IsEnum(['openai', 'gemini', 'claude', 'groq', 'cloudflare', 'together', 'freepik'])
     provider: AIProviderType;
 
     @IsString()

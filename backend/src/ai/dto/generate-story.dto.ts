@@ -21,8 +21,8 @@ export class GenerateStoryDto {
     customStructure?: string;
 
     // Configuración del proveedor
-    @IsIn(['gemini', 'openai', 'claude', 'groq', 'cloudflare', 'together'])
-    provider: 'gemini' | 'openai' | 'claude' | 'groq' | 'cloudflare' | 'together';
+    @IsIn(['gemini', 'openai', 'claude', 'groq', 'cloudflare', 'together', 'freepik'])
+    provider: 'gemini' | 'openai' | 'claude' | 'groq' | 'cloudflare' | 'together' | 'freepik';
 
     @IsOptional()
     @IsString()
@@ -38,8 +38,8 @@ export class GenerateStoryDto {
 }
 
 export class ValidateApiKeyDto {
-    @IsIn(['gemini', 'openai', 'claude', 'groq', 'cloudflare', 'together'])
-    provider: 'gemini' | 'openai' | 'claude' | 'groq' | 'cloudflare' | 'together';
+    @IsIn(['gemini', 'openai', 'claude', 'groq', 'cloudflare', 'together', 'freepik'])
+    provider: 'gemini' | 'openai' | 'claude' | 'groq' | 'cloudflare' | 'together' | 'freepik';
 
     @IsOptional()
     @IsString()

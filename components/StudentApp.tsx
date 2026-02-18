@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { supabase } from '../services/supabase';
+import { getActiveStudents, getStudentStories, createStory, updateStoryDedication, getAIConfig } from '../services/supabase';
 import ScanningGrid from './ScanningGrid';
 import StoryReader from './StoryReader';
 import StoryDetails from './StoryDetails';
@@ -22,6 +23,7 @@ interface StoryConfig {
     title?: string;
     content?: string;
     imageUrl?: string;
+    pages?: any[];
     type: 'story' | 'design';
 }
 
@@ -102,6 +104,40 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
         };
         loadStudents();
     }, [reloadStudents]);
+
+    useEffect(() => {
+        // Cargar configuración inicial
+        const loadInitialData = async () => {
+            try {
+                // 2. Sincronizar configuración de IA desde Supabase a LocalStorage
+                // Esto asegura que la API Key esté disponible incluso si no se abre el modal
+                const aiConfig = await getAIConfig();
+                if (aiConfig) {
+                    localStorage.setItem('futurar_ai_config', JSON.stringify({
+                        activeProvider: aiConfig.active_provider,
+                        apiKeys: {
+                            gemini: aiConfig.gemini_api_key,
+                            openai: aiConfig.openai_api_key,
+                            claude: aiConfig.claude_api_key,
+                            groq: aiConfig.groq_api_key,
+                            cloudflare_account: aiConfig.cloudflare_account_id,
+                            cloudflare_token: aiConfig.cloudflare_api_token,
+                            together: aiConfig.together_api_key,
+                            freepik: aiConfig.freepik_api_key,
+                        },
+                        preferredModel: aiConfig.preferred_model,
+                        storySize: aiConfig.story_size,
+                        customStructure: aiConfig.custom_story_structure,
+                    }));
+                    console.log('🔄 Configuración de IA sincronizada correctamente');
+                }
+            } catch (error) {
+                console.error('Error loading initial data:', error);
+            }
+        };
+
+        loadInitialData();
+    }, []);
 
     // TTS Helper - uses shared utility with callbacks for isSpeaking state
     const speakWithState = (text: string) => {
@@ -278,65 +314,104 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
     useEffect(() => {
         if (step === 'GENERATING') {
             const doGenerate = async () => {
-                setGenerationProgress({ status: 'Iniciando...', progress: 10 });
+                setGenerationProgress({ status: 'Iniciando...', progress: 5 });
 
                 try {
                     console.log('🚀 Iniciando generación de cuento con IA...');
-                    setGenerationProgress({ status: 'Conectando con la IA...', progress: 20 });
+                    setGenerationProgress({ status: 'Escribiendo tu historia...', progress: 10 });
 
-                    const [genContent, genImageUrl] = await Promise.all([
-                        generateStoryContent(
-                            config.protagonist,
-                            config.scenery,
-                            config.mission,
-                            config.style,
-                            currentStudent?.student_settings?.story_length || 'medium',
-                            currentStudent?.student_settings?.target_audience || 'child'
-                        ),
-                        generateStoryImage(
-                            `Portada de cuento infantil. Protagonista: ${config.protagonist}. Escenario: ${config.scenery}. Estilo: ${config.style}. Sin texto.`,
-                            config.style
-                        )
-                    ]);
+                    // 1. Generate Content First
+                    const genContent = await generateStoryContent(
+                        config.protagonist,
+                        config.scenery,
+                        config.mission,
+                        config.style,
+                        currentStudent?.student_settings?.story_length || 'medium',
+                        currentStudent?.student_settings?.target_audience || 'child'
+                    );
 
-                    setGenerationProgress({ status: 'Procesando el cuento...', progress: 80 });
-
-                    if (genContent && genContent.length > 100) {
-                        // Extract title from first line
-                        const lines = genContent.split('\n');
-                        let title = lines[0].trim();
-                        let contentBody = genContent;
-
-                        // Basic validation to ensure first line is actually a title
-                        if (title.length < 100 && !title.includes('CAPÍTULO')) {
-                            contentBody = lines.slice(1).join('\n').trim();
-                        } else {
-                            title = `Las Aventuras de ${config.protagonist}`;
-                        }
-
-                        // Remove quotes if present
-                        title = title.replace(/^["']|["']$/g, '');
-
-                        setConfig(prev => ({ ...prev, title, content: contentBody, imageUrl: genImageUrl }));
-                        setGenerationProgress({ status: '¡Cuento listo!', progress: 100 });
-
-                        setTimeout(() => {
-                            setStep('STORY_DETAILS');
-                            speakWithState("¡Tu cuento está listo! Mira los detalles antes de leerlo.");
-                        }, 500);
-                    } else {
+                    if (!genContent || genContent.length < 100) {
                         throw new Error('El contenido generado es muy corto');
                     }
+
+                    // 2. Process Content
+                    setGenerationProgress({ status: 'Analizando el cuento...', progress: 40 });
+
+                    const lines = genContent.split('\n');
+                    let title = lines[0].trim();
+                    let contentBody = genContent;
+
+                    if (title.length < 100 && !title.includes('CAPÍTULO')) {
+                        contentBody = lines.slice(1).join('\n').trim();
+                    } else {
+                        title = `Las Aventuras de ${config.protagonist}`;
+                    }
+                    title = title.replace(/^["']|["']$/g, ''); // Clean quotes
+
+                    // Parse chapters for individual images
+                    const chapterSections = contentBody.split(/CAPÍTULO \d+[:]?\s?/i).filter(s => s.trim().length > 20);
+                    const pagesData = [];
+
+                    // 3. Generate Cover Image (Context Aware)
+                    setGenerationProgress({ status: 'Dibujando la portada...', progress: 50 });
+                    const coverPrompt = `Portada de libro de cuentos infantil. Título: "${title}". Protagonista: ${config.protagonist}. Escenario: ${config.scenery}. Acción: ${config.mission}. Estilo: ${config.style}. Sin texto.`;
+
+                    const coverImageUrl = await generateStoryImage(coverPrompt, config.style);
+
+                    // 4. Generate Chapter Images
+                    if (chapterSections.length > 0) {
+                        const totalChapters = chapterSections.length;
+                        for (let i = 0; i < totalChapters; i++) {
+                            const progressPerChapter = 40 / totalChapters;
+                            setGenerationProgress({
+                                status: `Dibujando capítulo ${i + 1} de ${totalChapters}...`,
+                                progress: 60 + (i * progressPerChapter)
+                            });
+
+                            const chapContent = chapterSections[i].trim();
+                            // Create a context-aware prompt for the chapter
+                            // Extract first ~100 chars as a summary hint + keywords
+                            const contextHint = chapContent.substring(0, 150).replace(/\n/g, ' ');
+
+                            const chapterPrompt = `Ilustración de cuento infantil. Estilo: ${config.style}. Escena: ${config.protagonist} en ${config.scenery}. Contexto: ${contextHint}. Sin texto.`;
+
+                            const chapImg = await generateStoryImage(chapterPrompt, config.style);
+
+                            pagesData.push({
+                                pageNumber: i + 1,
+                                content: chapContent,
+                                imageUrl: chapImg
+                            });
+                        }
+                    } else {
+                        // Fallback structure if no chapters detected
+                        pagesData.push({
+                            pageNumber: 1,
+                            content: contentBody,
+                            imageUrl: coverImageUrl // Reuse cover if single page
+                        });
+                    }
+
+                    setGenerationProgress({ status: '¡Cuento listo!', progress: 100 });
+
+                    // Save to config with new structure
+                    setConfig(prev => ({
+                        ...prev,
+                        title,
+                        content: contentBody,
+                        imageUrl: coverImageUrl,
+                        pages: pagesData
+                    }));
+
+                    setTimeout(() => {
+                        setStep('STORY_DETAILS');
+                        speakWithState("¡Tu cuento está listo! Mira los detalles antes de leerlo.");
+                    }, 500);
 
                 } catch (e: any) {
                     console.error("❌ Error generando historia:", e);
                     setError(`Error al generar: ${e.message}`);
                     setGenerationProgress({ status: 'Error...', progress: 0 });
-
-                    // setTimeout(() => {
-                    //     setStep('MENU');
-                    //     setError(null);
-                    // }, 3000);
                 }
             };
 
@@ -368,6 +443,7 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
             mission: config.mission,
             style: config.style,
             image_url: config.imageUrl || null,
+            pages: config.pages || [], // Pass pages
             student_id: currentStudent?.id || '',
             type: config.type
         };
@@ -404,6 +480,7 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
             <StoryReader
                 title={config.title || `Las Aventuras de ${config.protagonist}`}
                 content={config.content}
+                pages={config.pages} // Pass generated pages
                 protagonist={config.protagonist}
                 scenery={config.scenery}
                 style={config.style}
@@ -438,6 +515,7 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
                 title: story.title,
                 content: story.content || '',
                 imageUrl: story.image_url || undefined,
+                pages: story.pages ? (Array.isArray(story.pages) ? story.pages : []) : [], // Load pages
                 type: (story.type as 'story' | 'design') || 'story',
             });
             setStep('STORY_DETAILS');

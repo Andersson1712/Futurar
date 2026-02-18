@@ -6,6 +6,7 @@ import { getChapterImage } from '../utils/images';
 type StoryReaderProps = {
     title: string;
     content: string;
+    pages?: any[]; // Generated pages with images
     protagonist: string;
     scenery: string;
     style: string;
@@ -64,9 +65,18 @@ const parseChapters = (content: string, scenery: string): Chapter[] => {
     }));
 };
 
+const parseChaptersFromPages = (pages: any[], scenery: string): Chapter[] => {
+    return pages.map((p, idx) => ({
+        title: `Capítulo ${p.pageNumber}`,
+        content: p.content,
+        imageUrl: p.imageUrl || getChapterImage(scenery, idx)
+    }));
+};
+
 const StoryReader: React.FC<StoryReaderProps> = ({
     title,
     content,
+    pages,
     protagonist,
     scenery,
     style,
@@ -121,12 +131,18 @@ const StoryReader: React.FC<StoryReaderProps> = ({
 
     // Parse chapters on mount
     useEffect(() => {
-        if (content && scenery) {
+        if (pages && pages.length > 0) {
+            // Use pre-generated pages with images
+            const parsed = parseChaptersFromPages(pages, scenery);
+            setChapters(parsed);
+            chapterRefs.current = new Array(parsed.length).fill(null);
+        } else if (content && scenery) {
+            // Fallback: parse from text
             const parsed = parseChapters(content, scenery);
             setChapters(parsed);
             chapterRefs.current = new Array(parsed.length).fill(null);
         }
-    }, [content, scenery]);
+    }, [content, scenery, pages]);
 
     // Start reading once chapters are ready
     useEffect(() => {
@@ -412,11 +428,11 @@ const StoryReader: React.FC<StoryReaderProps> = ({
                                 }`}
                         >
                             {/* Chapter image */}
-                            <div className="relative w-full h-40 md:h-56 rounded-2xl overflow-hidden mb-6 shadow-lg">
+                            <div className="relative w-full rounded-2xl overflow-hidden mb-6 shadow-lg">
                                 <img
                                     src={chapter.imageUrl}
                                     alt={chapter.title}
-                                    className="w-full h-full object-cover"
+                                    className="w-full h-auto object-contain max-h-[60vh] mx-auto bg-black/20"
                                 />
                                 <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-transparent to-transparent" />
                                 <div className="absolute bottom-4 left-4 right-4">
