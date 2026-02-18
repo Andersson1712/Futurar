@@ -116,4 +116,47 @@ REGLAS:
             return false;
         }
     }
+    async generateImage(prompt: string, style: string = 'vivid'): Promise<string> {
+        try {
+            console.log(`🎨 Generando imagen con Gemini (Imagen 3)... Style: ${style}`);
+
+            // Usamos la API REST directa para Imagen 3 ya que el SDK puede variar en soporte
+            // Model: imagen-3.0-generate-001
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-001:predict?key=${this.client.apiKey}`;
+
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    instances: [
+                        { prompt: `${style} style. ${prompt}` }
+                    ],
+                    parameters: {
+                        sampleCount: 1,
+                        aspectRatio: "1:1"
+                    }
+                })
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Gemini Imagen API Error: ${response.status} - ${errorText}`);
+            }
+
+            const data = await response.json();
+            const b64 = data.predictions?.[0]?.bytesBase64Encoded;
+
+            if (!b64) {
+                throw new Error('No image data returned from Gemini Imagen');
+            }
+
+            return `data:image/png;base64,${b64}`;
+        } catch (error) {
+            console.error('Error generating image with Gemini:', error);
+            // Fallback: throw error to let upper layer handle it or return undefined
+            throw error;
+        }
+    }
 }

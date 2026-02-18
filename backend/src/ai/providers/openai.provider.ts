@@ -106,13 +106,34 @@ Crea exactamente ${numPages} páginas. El cuento debe ser emocionante y apropiad
 
     async generateImage(prompt: string, style: string = 'vivid'): Promise<string> {
         try {
+            // Map user styles to DALL-E 3 parameters and prompt enhancements
+            let dalleStyle: 'vivid' | 'natural' = 'vivid';
+            let stylePrompt = style;
+
+            const styleLower = style.toLowerCase();
+            if (styleLower.includes('acuarela') || styleLower.includes('watercolor')) {
+                dalleStyle = 'natural';
+                stylePrompt = "Estilo pintura en acuarela, suave, artístico, trazos manuales, colores pasteles y vibrantes mezclados con agua";
+            } else if (styleLower.includes('cartoon') || styleLower.includes('animado')) {
+                dalleStyle = 'vivid';
+                stylePrompt = "Estilo de dibujos animados modernos, líneas limpias, colores planos y vibrantes, expresivo, tipo Disney o Pixar 2D";
+            } else if (styleLower.includes('realista') || styleLower.includes('realistic')) {
+                dalleStyle = 'vivid'; // Vivid helps with punchy realism
+                stylePrompt = "Estilo fotorealista ultra detallado, iluminación cinematográfica, texturas reales, 8k, fotografía profesional";
+            } else if (styleLower.includes('pixel') || styleLower.includes('8-bit')) {
+                dalleStyle = 'vivid';
+                stylePrompt = "Estilo pixel art retro, gráficas de 16-bits, colores limitados pero vibrantes, definición de sprites";
+            }
+
+            console.log(`🎨 Generating DALL-E 3 image. User Style: ${style}, DALL-E Style: ${dalleStyle}, Prompt Addon: ${stylePrompt}`);
+
             const response = await this.client.images.generate({
                 model: 'dall-e-3',
-                prompt: `${prompt}. Estilo: ${style}. Alta calidad, apropiado para niños.`,
+                prompt: `${stylePrompt}. ${prompt}. Alta calidad, apropiado para niños.`,
                 n: 1,
                 size: '1024x1024',
-                response_format: 'b64_json', // Usamos base64 para evitar URLs firmadas que expiran pronto
-                style: 'vivid', // vivid or natural
+                response_format: 'b64_json',
+                style: dalleStyle,
             });
 
             const b64 = response?.data?.[0]?.b64_json;

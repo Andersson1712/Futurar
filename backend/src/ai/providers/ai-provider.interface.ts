@@ -35,7 +35,8 @@ export const STORY_SIZE_PAGES: Record<'small' | 'medium' | 'large', number> = {
 };
 
 // Proveedores disponibles
-export type AIProviderType = 'gemini' | 'openai' | 'claude' | 'groq' | 'cloudflare' | 'together';
+// Proveedores disponibles
+export type AIProviderType = 'gemini' | 'openai' | 'claude' | 'groq' | 'cloudflare' | 'together' | 'freepik';
 
 export interface AIProviderConfig {
     provider: AIProviderType;

@@ -84,6 +84,15 @@ const PROVIDERS: ProviderInfo[] = [
         models: ['claude-3-5-sonnet-latest', 'claude-3-5-haiku-latest'],
         getKeyUrl: 'https://console.anthropic.com/settings/keys',
     },
+    {
+        id: 'freepik',
+        name: 'Freepik (Flux/Mystic)',
+        description: 'Imágenes generativas de alta calidad',
+        isFree: false,
+        requiredFields: ['apiKey'],
+        models: ['flux-realism', 'mystic', 'classic-fast'],
+        getKeyUrl: 'https://freepik.com',
+    },
 ];
 
 const STORY_SIZES = [
@@ -108,6 +117,7 @@ const GlobalConfigModal: React.FC<GlobalConfigModalProps> = ({ onClose }) => {
         cloudflare_account: '',
         cloudflare_token: '',
         together: '',
+        freepik: '',
     });
     const [preferredModel, setPreferredModel] = useState('');
 
@@ -136,6 +146,7 @@ const GlobalConfigModal: React.FC<GlobalConfigModalProps> = ({ onClose }) => {
                     cloudflare_account: config.cloudflare_account_id || '',
                     cloudflare_token: config.cloudflare_api_token || '',
                     together: config.together_api_key || '',
+                    freepik: config.freepik_api_key || '',
                 });
             }
         } catch (error) {
@@ -157,6 +168,7 @@ const GlobalConfigModal: React.FC<GlobalConfigModalProps> = ({ onClose }) => {
                 cloudflare_account_id: apiKeys.cloudflare_account || null,
                 cloudflare_api_token: apiKeys.cloudflare_token || null,
                 together_api_key: apiKeys.together || null,
+                freepik_api_key: apiKeys.freepik || null,
                 preferred_model: preferredModel || null,
                 story_size: storySize,
                 custom_story_structure: customStructure || null,
