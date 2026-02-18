@@ -32,9 +32,6 @@ const StoryDetails: React.FC<StoryDetailsProps> = ({
     soundEnabled = true
 }) => {
     const [isExporting, setIsExporting] = useState(false);
-    const [showDedicationModal, setShowDedicationModal] = useState(false);
-    const [dedicationText, setDedicationText] = useState('');
-    const [dedicationPosition, setDedicationPosition] = useState<'start' | 'end'>('start');
     const [exportStatus, setExportStatus] = useState('');
     const [isSaving, setIsSaving] = useState(false);
     const [hasSaved, setHasSaved] = useState(false);
@@ -77,26 +74,24 @@ const StoryDetails: React.FC<StoryDetailsProps> = ({
 
     // Scanning timer
     useEffect(() => {
-        if (isExporting || isSaving || showDedicationModal) return;
+        if (isExporting || isSaving) return;
 
         const timer = setInterval(() => {
             setScanIndex(prev => (prev + 1) % actionOptions.length);
         }, scanInterval);
 
         return () => clearInterval(timer);
-    }, [isExporting, isSaving, showDedicationModal, scanInterval, actionOptions.length]);
+    }, [isExporting, isSaving, scanInterval, actionOptions.length]);
 
     // Announce scanned option
     useEffect(() => {
-        if (voiceEnabled && !isExporting && !isSaving && !showDedicationModal) {
+        if (voiceEnabled && !isExporting && !isSaving) {
             speakOption(actionOptions[scanIndex].description);
         }
-    }, [scanIndex, voiceEnabled, isExporting, isSaving, showDedicationModal]);
+    }, [scanIndex, voiceEnabled, isExporting, isSaving]);
 
     // Handle switch press
     useEffect(() => {
-        if (showDedicationModal) return;
-
         const handleKeyDown = (e: KeyboardEvent) => {
             if (e.code === 'Space' || e.code === 'Enter') {
                 e.preventDefault();
@@ -106,7 +101,7 @@ const StoryDetails: React.FC<StoryDetailsProps> = ({
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [scanIndex, showDedicationModal, actionOptions]);
+    }, [scanIndex, actionOptions, isExporting, isSaving]); // Added dependencies for safety
 
     const handleSelect = useCallback((optionId: string) => {
         if (soundEnabled) playSelectionSound();
@@ -117,7 +112,7 @@ const StoryDetails: React.FC<StoryDetailsProps> = ({
                 onRead();
                 break;
             case 'pdf':
-                setShowDedicationModal(true);
+                handleGeneratePDF();
                 break;
             case 'save':
                 if (!hasSaved) handleSave();
@@ -126,7 +121,7 @@ const StoryDetails: React.FC<StoryDetailsProps> = ({
                 onGoMenu();
                 break;
         }
-    }, [onRead, onGoMenu, hasSaved, soundEnabled]);
+    }, [onRead, onGoMenu, hasSaved, soundEnabled]); // Removed handleGeneratePDF dependency loop if possible, but it is calling it so it's fine.
 
     const handleSave = async () => {
         if (isSaving || hasSaved) return;
@@ -158,10 +153,6 @@ const StoryDetails: React.FC<StoryDetailsProps> = ({
         }
     };
 
-    const handleExportClick = () => {
-        setShowDedicationModal(true);
-    };
-
     const handleGeneratePDF = async () => {
         setIsExporting(true);
         setExportStatus('Iniciando...');
@@ -176,16 +167,11 @@ const StoryDetails: React.FC<StoryDetailsProps> = ({
                 mission: story.mission,
                 style: story.style,
                 images: story.image_url ? { 0: story.image_url } : {},
-                dedication: dedicationText.trim() ? {
-                    text: dedicationText,
-                    position: dedicationPosition
-                } : undefined,
                 onProgress: (status) => setExportStatus(status)
             });
 
             setExportStatus('¡Listo!');
             if (voiceEnabled) speak('Tu PDF ha sido descargado correctamente.');
-            setShowDedicationModal(false);
         } catch (error) {
             console.error(error);
             setExportStatus('Error al generar PDF');
@@ -284,8 +270,8 @@ const StoryDetails: React.FC<StoryDetailsProps> = ({
                                         ${isActive ? 'bg-white/20' : 'bg-slate-900/50'}
                                     `}>
                                         <span className={`material-symbols-outlined text-2xl ${isActive ? 'text-white'
-                                                : option.id === 'save' && hasSaved ? 'text-green-400'
-                                                    : 'text-primary'
+                                            : option.id === 'save' && hasSaved ? 'text-green-400'
+                                                : 'text-primary'
                                             }`}>
                                             {option.icon}
                                         </span>
@@ -332,100 +318,6 @@ const StoryDetails: React.FC<StoryDetailsProps> = ({
                     Presiona tu pulsador para seleccionar
                 </p>
             </div>
-
-            {/* Modal de Dedicatoria */}
-            {showDedicationModal && (
-                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                    <div className="bg-slate-900 border border-slate-700 rounded-3xl p-8 max-w-lg w-full shadow-2xl animate-scale-in">
-                        <div className="flex items-center justify-between mb-6">
-                            <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-                                <span className="material-symbols-outlined text-primary">favorite</span>
-                                Agregar Dedicatoria
-                            </h2>
-                            <button
-                                onClick={() => setShowDedicationModal(false)}
-                                className="text-gray-400 hover:text-white"
-                                disabled={isExporting}
-                            >
-                                <span className="material-symbols-outlined">close</span>
-                            </button>
-                        </div>
-
-                        <div className="space-y-6">
-                            <div>
-                                <label className="block text-sm font-bold text-gray-400 mb-2">
-                                    Mensaje especial
-                                </label>
-                                <textarea
-                                    value={dedicationText}
-                                    onChange={(e) => setDedicationText(e.target.value)}
-                                    placeholder="Para mi querido..."
-                                    className="w-full bg-slate-800 border border-slate-700 rounded-xl p-4 text-white focus:outline-none focus:border-primary min-h-[120px]"
-                                    disabled={isExporting}
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-bold text-gray-400 mb-3">
-                                    Posición en el cuento
-                                </label>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <button
-                                        onClick={() => setDedicationPosition('start')}
-                                        className={`p-4 rounded-xl border flex flex-col items-center gap-2 transition-all ${dedicationPosition === 'start'
-                                            ? 'bg-primary/20 border-primary text-white'
-                                            : 'bg-slate-800 border-slate-700 text-gray-400 hover:bg-slate-750'
-                                            }`}
-                                        disabled={isExporting}
-                                    >
-                                        <div className="w-8 h-10 border-2 border-current rounded-sm flex flex-col p-1 gap-1">
-                                            <div className="w-full h-1 bg-current rounded-full"></div>
-                                            <div className="w-2/3 h-1 bg-current/50 rounded-full"></div>
-                                        </div>
-                                        <span className="font-bold">Al Inicio</span>
-                                    </button>
-
-                                    <button
-                                        onClick={() => setDedicationPosition('end')}
-                                        className={`p-4 rounded-xl border flex flex-col items-center gap-2 transition-all ${dedicationPosition === 'end'
-                                            ? 'bg-primary/20 border-primary text-white'
-                                            : 'bg-slate-800 border-slate-700 text-gray-400 hover:bg-slate-750'
-                                            }`}
-                                        disabled={isExporting}
-                                    >
-                                        <div className="w-8 h-10 border-2 border-current rounded-sm flex flex-col-reverse p-1 gap-1">
-                                            <div className="w-full h-1 bg-current rounded-full"></div>
-                                            <div className="w-2/3 h-1 bg-current/50 rounded-full"></div>
-                                        </div>
-                                        <span className="font-bold">Al Final</span>
-                                    </button>
-                                </div>
-                            </div>
-
-                            <button
-                                onClick={handleGeneratePDF}
-                                disabled={isExporting}
-                                className={`w-full py-4 rounded-xl font-bold text-lg transition-all flex items-center justify-center gap-2 ${isExporting
-                                    ? 'bg-gray-600 cursor-wait'
-                                    : 'bg-white text-slate-900 hover:bg-gray-100 hover:scale-[1.02]'
-                                    }`}
-                            >
-                                {isExporting ? (
-                                    <>
-                                        <span className="material-symbols-outlined animate-spin">progress_activity</span>
-                                        {exportStatus || 'Generando...'}
-                                    </>
-                                ) : (
-                                    <>
-                                        <span className="material-symbols-outlined">download</span>
-                                        Descargar PDF
-                                    </>
-                                )}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
         </div>
     );
 };

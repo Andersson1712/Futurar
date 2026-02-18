@@ -682,6 +682,7 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
                         protagonist={config.protagonist}
                         scenery={config.scenery}
                         mission={config.mission}
+                        style={config.style}
                         error={error}
                         onCancel={() => {
                             setStep('MENU');

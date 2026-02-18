@@ -6,6 +6,7 @@ import { ClaudeProvider } from './providers/claude.provider';
 import { GroqProvider } from './providers/groq.provider';
 import { CloudflareProvider } from './providers/cloudflare.provider';
 import { TogetherProvider } from './providers/together.provider';
+import { FreepikProvider } from './providers/freepik.provider';
 
 @Injectable()
 export class AIService {
@@ -40,6 +41,10 @@ export class AIService {
                 if (!config.apiKey) throw new BadRequestException('Together AI API Key requerida');
                 return new TogetherProvider(config.apiKey, config.model);
 
+            case 'freepik':
+                if (!config.apiKey) throw new BadRequestException('Freepik API Key requerida');
+                return new FreepikProvider(config.apiKey, config.model);
+
             default:
                 throw new BadRequestException(`Proveedor "${config.provider}" no soportado`);
         }
@@ -63,9 +68,24 @@ export class AIService {
     ): Promise<string> {
         const provider = this.getProvider(providerConfig);
         if (!provider.generateImage) {
-            throw new BadRequestException(`El proveedor ${provider.name} no soporta generación de imágenes`);
+            // No throw error, just return fallback
+            console.warn(`El proveedor ${provider.name} no soporta generación de imágenes`);
+            return this.getFallbackImage(style);
         }
-        return provider.generateImage(prompt, style);
+
+        try {
+            return await provider.generateImage(prompt, style);
+        } catch (error) {
+            console.error(`Error generating image with ${providerConfig.provider}:`, error);
+            return this.getFallbackImage(style);
+        }
+    }
+
+    private getFallbackImage(style: string): string {
+        // Return a reliable placeholder or local asset based on style/context if possible
+        // For now, returning a generic story placeholder from Unsplash or similar
+        const keywords = style.split(' ').join(',');
+        return `https://source.unsplash.com/1024x1024/?illustration,${keywords},cartoon`;
     }
 
     /**

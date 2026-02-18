@@ -72,6 +72,8 @@ const getApiKey = (provider: string): string | null => {
                 return config.apiKeys.groq || null;
             case 'together':
                 return config.apiKeys.together || null;
+            case 'freepik':
+                return config.apiKeys.freepik || import.meta.env.VITE_FREEPIK_API_KEY || null;
             default:
                 return null;
         }
@@ -110,6 +112,19 @@ const buildStoryPrompt = (
         toneInstruction = "Usa un estilo literario rico, con metáforas y descripciones elaboradas.";
     }
 
+    // Configuración de estilo narrativo basado en estilo visual
+    let styleNarrativeInstruction = "";
+    const styleLower = style.toLowerCase();
+    if (styleLower.includes('acuarela') || styleLower.includes('watercolor')) {
+        styleNarrativeInstruction = "Usa un tono suave, poético y soñador, como una pintura en acuarela.";
+    } else if (styleLower.includes('cartoon') || styleLower.includes('animado')) {
+        styleNarrativeInstruction = "Usa un tono enérgico, divertido y dinámico, como una caricatura.";
+    } else if (styleLower.includes('realista') || styleLower.includes('realistic')) {
+        styleNarrativeInstruction = "Usa descripciones detalladas y tangibles, haciendo que el mundo se sienta real y vivo.";
+    } else if (styleLower.includes('pixel') || styleLower.includes('8-bit')) {
+        styleNarrativeInstruction = "Usa una narrativa directa y aventurera, evocando la sensación de un videojuego retro.";
+    }
+
     let prompt = `Actúa como un autor galardonado de cuentos.
     
 INSTRUCCIÓN PRINCIPAL:
@@ -133,8 +148,9 @@ REQUISITOS OBLIGATORIOS:
 6. Usa descripciones sensoriales (colores, sonidos, olores, texturas).
 7. ${audienceInstruction}
 8. ${toneInstruction}
-9. Incluye una moraleja o conclusión satisfactoria al final.
-10. La misión debe completarse exitosamente.`;
+9. ${styleNarrativeInstruction}
+10. Incluye una moraleja o conclusión satisfactoria al final.
+11. La misión debe completarse exitosamente.`;
 
     if (customStructure && customStructure.trim()) {
         prompt += `
@@ -483,31 +499,56 @@ export const generateStoryImage = async (
 ): Promise<string> => {
     const config = getStoredAIConfig();
     const provider = config?.activeProvider || 'openai';
+    const preferredModel = config?.preferredModel;
 
-    // Only OpenAI supports DALL-E 3 reliably for now within our implementation
-    // If another provider is selected, we might want to fallback to OpenAI if key exists, 
-    // or just try the active provider if it supports it.
-    // For now, let's try the active provider via the backend.
+    // 1. Intentar usar Freepik (si hay Key) - Especializado en imágenes
+    // 2. Intentar usar OpenAI (DALL-E 3)
+    // 3. Fallback al proveedor activo (ej. Gemini/Imagen) o Unsplash
 
     const apiKey = getApiKey(provider);
-    if (!apiKey) {
+    const freepikKey = getApiKey('freepik');
+    const openaiKey = getApiKey('openai');
+
+    let imageProvider = provider;
+    let imageApiKey = apiKey;
+    let imageModel = preferredModel; // Use preference by default
+
+    if (freepikKey) {
+        console.log('🎨 Usando Freepik para generar imagen');
+        imageProvider = 'freepik';
+        imageApiKey = freepikKey;
+        if (!imageModel || !imageModel.includes('flux') && !imageModel.includes('mystic')) {
+            imageModel = 'flux-realism'; // Default high quality if preference is not a freepik model
+        }
+    } else if (openaiKey) {
+        console.log('🎨 Usando OpenAI para generar imagen');
+        imageProvider = 'openai';
+        imageApiKey = openaiKey;
+        imageModel = 'dall-e-3'; // OpenAI usually just has this for images
+    } else {
+        // Fallback to active provider
+        imageProvider = provider;
+        imageApiKey = apiKey;
+    }
+
+    if (!imageApiKey) {
         console.warn('No API key for image generation, using scenery fallback');
         return getRandomImage(prompt);
     }
 
     try {
-        console.log(`🎨 Generando imagen con ${provider}... Prompt: ${prompt.substring(0, 50)}...`);
-        const response = await fetch('http://127.0.0.1:3000/api/ai/image', {
+        console.log(`🎨 Generando imagen con ${imageProvider}...`);
+        const response = await fetch('/api/ai/image', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                provider,
-                apiKey,
+                provider: imageProvider,
+                apiKey: imageApiKey,
                 prompt,
                 style,
-                model: 'dall-e-3' // Default for OpenAI, ignored by others if not verified
+                model: imageModel
             }),
         });
 

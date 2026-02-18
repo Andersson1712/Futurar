@@ -8,6 +8,7 @@ interface GeneratingViewProps {
     protagonist: string;
     scenery: string;
     mission: string;
+    style: string;
     error: string | null;
     onCancel: () => void;
 }
@@ -31,6 +32,7 @@ const GeneratingView: React.FC<GeneratingViewProps> = ({
     protagonist,
     scenery,
     mission,
+    style,
     error,
     onCancel
 }) => {
@@ -139,6 +141,12 @@ const GeneratingView: React.FC<GeneratingViewProps> = ({
                         <span className="material-symbols-outlined text-green-400 text-lg">flag</span>
                         <span className="text-sm text-gray-400">
                             <span className="text-green-400 font-bold">{mission}</span>
+                        </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <span className="material-symbols-outlined text-purple-400 text-lg">palette</span>
+                        <span className="text-sm text-gray-400">
+                            <span className="text-purple-400 font-bold">{style}</span>
                         </span>
                     </div>
                 </div>
