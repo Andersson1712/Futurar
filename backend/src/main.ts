@@ -10,6 +10,7 @@ async function bootstrap() {
     origin: [
       'http://localhost:5173', // Vite dev
       'http://localhost:3000',
+      'http://localhost:4000', // Docker local dev
       'http://localhost:4173', // Vite preview
       /\.vercel\.app$/,       // Cualquier dominio de Vercel
     ],
@@ -26,9 +27,9 @@ async function bootstrap() {
 
   // Puerto configurable
   const port = process.env.PORT || 3001;
-  await app.listen(port);
+  await app.listen(port, '0.0.0.0');
 
-  console.log(`🚀 Backend API running on http://localhost:${port}`);
+  console.log(`🚀 Backend API running on http://127.0.0.1:${port}`);
   console.log(`📚 AI endpoints available at http://localhost:${port}/ai`);
 }
 bootstrap();

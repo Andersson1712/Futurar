@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: futurar_frontend
+    ports:
+      - "4000:4000"
+    volumes:
+      - .:/app
+      - /app/node_modules # Evita sobreescribir dependencias con las carpetas locales de Windows
+    env_file:
+      - .env
+    environment:
+      # Para que hot-reload funcione correctamente en Docker (sobre todo en Windows)
+      - CHOKIDAR_USEPOLLING=true
+      - WATCHPACK_POLLING=true
+      # Para que la configuración proxy de Vite apunte al contenedor backend
+      - BACKEND_URL=http://backend:3001
+    depends_on:
+      - backend
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    container_name: futurar_backend
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./backend:/app
+      - /app/node_modules # Evita sobreescribir dependencias con las carpetas locales de Windows
+    env_file:
+      - .env
+    environment:
+      # Para hot-reload de NestJS
+      - CHOKIDAR_USEPOLLING=true
+      - WATCHPACK_POLLING=true
+      - PORT=3001

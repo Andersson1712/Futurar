@@ -258,10 +258,10 @@ const StudentEditor: React.FC<StudentEditorProps> = ({
         }
     }, [activeTab, student?.id]);
 
-    const loadElements = async () => {
+    const loadElements = async (showSpinner = true) => {
         if (!student?.id) return;
 
-        setIsLoadingElements(true);
+        if (showSpinner) setIsLoadingElements(true);
         try {
             const [protRes, scenRes, missRes, styleRes] = await Promise.all([
                 supabase.from('student_protagonists').select('*').eq('student_id', student.id),
@@ -277,7 +277,7 @@ const StudentEditor: React.FC<StudentEditorProps> = ({
         } catch (err) {
             console.error('Error loading elements:', err);
         } finally {
-            setIsLoadingElements(false);
+            if (showSpinner) setIsLoadingElements(false);
         }
     };
 
@@ -287,7 +287,7 @@ const StudentEditor: React.FC<StudentEditorProps> = ({
     const handleToggleElement = async (table: ElementTable, id: string, enabled: boolean) => {
         try {
             await supabase.from(table).update({ is_enabled: enabled }).eq('id', id);
-            loadElements(); // Reload to sync state
+            loadElements(false); // Reload to sync state without spinner
         } catch (err) {
             console.error('Error toggling element:', err);
         }
@@ -296,7 +296,7 @@ const StudentEditor: React.FC<StudentEditorProps> = ({
     const handleDeleteElement = async (table: ElementTable, id: string) => {
         try {
             await supabase.from(table).delete().eq('id', id);
-            loadElements();
+            loadElements(false);
         } catch (err) {
             console.error('Error deleting element:', err);
         }
@@ -311,9 +311,9 @@ const StudentEditor: React.FC<StudentEditorProps> = ({
                 student_id: student.id,
                 label,
                 icon,
-                is_enabled: true
+                is_enabled: false
             });
-            loadElements();
+            loadElements(false);
         } catch (err) {
             console.error('Error adding element:', err);
         }

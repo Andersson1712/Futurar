@@ -82,10 +82,9 @@ export class AIService {
     }
 
     private getFallbackImage(style: string): string {
-        // Return a reliable placeholder or local asset based on style/context if possible
-        // For now, returning a generic story placeholder from Unsplash or similar
-        const keywords = style.split(' ').join(',');
-        return `https://source.unsplash.com/1024x1024/?illustration,${keywords},cartoon`;
+        // picsum.photos is CORS-friendly and reliable (source.unsplash.com was deprecated)
+        const seed = encodeURIComponent(style.split(' ')[0] || 'story');
+        return `https://picsum.photos/seed/${seed}/800/800`;
     }
 
     /**

@@ -500,9 +500,8 @@ export const generateStoryImage = async (
 
     // Default image provider logic:
     // 1. Explicitly selected image provider
-    // 2. If 'freepik' key exists -> default to freepik (legacy behavior)
-    // 3. Fallback to active text provider
-    const imageProviderPreference = config?.activeImageProvider || (config?.apiKeys?.freepik ? 'freepik' : provider);
+    // 2. Fallback to active text provider
+    const imageProviderPreference = config?.activeImageProvider || provider;
 
     const preferredModel = config?.preferredModel;
 
@@ -523,6 +522,15 @@ export const generateStoryImage = async (
     } else if (imageProvider === 'openai') {
         console.log('🎨 Usando OpenAI para generar imagen');
         imageModel = 'dall-e-3';
+    } else if (imageProvider === 'gemini') {
+        // Usar el modelo de imagen configurado, validando que sea de la familia imagen-4
+        const storedConfig = getStoredAIConfig();
+        let configuredModel = (storedConfig as any)?.preferredImageModel;
+        if (!configuredModel || configuredModel.includes('gemini-3.1') || configuredModel.includes('gemini-2.0')) {
+            configuredModel = 'imagen-4.0-fast-generate-001';
+        }
+        imageModel = configuredModel;
+        console.log(`🎨 Usando Gemini para generar imagen, modelo: ${imageModel}`);
     } else {
         // Fallback or other providers
     }

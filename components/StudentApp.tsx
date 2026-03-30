@@ -11,6 +11,7 @@ import { generateStoryContent, generateStoryImage } from '../services/ai';
 import { ScanSettingsProvider, useScanSettings } from '../contexts/ScanSettingsContext';
 import { speak, stopSpeaking } from '../utils/speech';
 import { getRandomImage } from '../utils/images';
+import { useInputDevice } from '../hooks/useInputDevice';
 import type { Student, StudentSettings, Story } from '../types/database';
 import type { ScanOption } from '../types';
 
@@ -37,7 +38,8 @@ type AppStep =
     | 'SELECT_STYLE'
     | 'GENERATING'
     | 'RESULT_VIEW'
-    | 'STORY_DETAILS';
+    | 'STORY_DETAILS'
+    | 'HELP_MENU';
 
 interface StudentWithSettings extends Student {
     student_settings: StudentSettings | null;
@@ -47,9 +49,74 @@ interface StudentAppProps {
     onSwitchToTeacher: () => void;
 }
 
+// Helper para convertir errores de la API de IA en mensajes amigables
+const parseAIError = (error: any): string => {
+    const raw = error?.message || String(error);
+    try {
+        // Intentar extraer JSON del mensaje (ej: ApiError: {...})
+        const jsonMatch = raw.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+            const parsed = JSON.parse(jsonMatch[0]);
+            const code = parsed?.error?.code || parsed?.code;
+            const status = parsed?.error?.status || parsed?.status;
+
+            if (code === 503 || status === 'UNAVAILABLE') {
+                return '⏳ El servicio de IA está con mucha demanda ahora. Esperá un momento e intentá de nuevo.';
+            }
+            if (code === 429 || status === 'RESOURCE_EXHAUSTED') {
+                return '🚫 Se alcanzó el límite de uso de la IA. Esperá unos minutos e intentá de nuevo.';
+            }
+            if (code === 401 || status === 'UNAUTHENTICATED') {
+                return '🔑 La clave API de IA es incorrecta. Verificá la configuración en el Panel Docente.';
+            }
+            if (code === 403 || status === 'PERMISSION_DENIED') {
+                return '🔒 La clave API no tiene permiso para usar este modelo. Verificá la configuración.';
+            }
+            if (code === 404 || status === 'NOT_FOUND') {
+                return '❓ El modelo de IA seleccionado no está disponible. Cambiá el modelo en el Panel Docente.';
+            }
+        }
+    } catch {
+        // No era JSON, seguir con el mensaje original
+    }
+    // Mensaje genérico si no se pudo parsear
+    if (raw.includes('API Key') || raw.includes('api_key') || raw.includes('apiKey')) {
+        return '🔑 No se encontró la clave API. Configurala en el Panel Docente.';
+    }
+    return '❌ Hubo un error al generar el cuento. Intentá de nuevo en unos segundos.';
+};
+
+const PauseOverlay: React.FC<{ onResume: () => void }> = ({ onResume }) => {
+    useInputDevice({
+        onActivate: onResume,
+        enabled: true
+    });
+
+    return (
+        <div 
+            className="fixed inset-0 bg-black/80 backdrop-blur-md z-[100] flex flex-col items-center justify-center print:hidden cursor-pointer transition-all animate-in fade-in duration-300"
+            onClick={onResume}
+            data-no-scan="true"
+        >
+            <span className="material-symbols-outlined text-9xl text-amber-400 animate-pulse mb-6 drop-shadow-[0_0_15px_rgba(251,191,36,0.5)]">
+                play_circle
+            </span>
+            <h2 className="text-4xl md:text-6xl font-black mt-4 text-white tracking-tight">EN PAUSA</h2>
+            <p className="text-gray-300 text-xl mt-4 font-medium">Toma un descanso</p>
+            <div className="mt-12 bg-white/10 px-6 py-4 rounded-full border border-white/20 animate-bounce shadow-xl">
+                <p className="text-white font-bold flex items-center gap-3 text-lg">
+                    <span className="material-symbols-outlined">touch_app</span>
+                    Presiona tu pulsador, Espacio, o haz clic para continuar
+                </p>
+            </div>
+        </div>
+    );
+};
+
 // Inner component that uses the context
 const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
     const [step, setStep] = useState<AppStep>('PROFILE');
+    const [previousStep, setPreviousStep] = useState<AppStep | null>(null);
     const [students, setStudents] = useState<StudentWithSettings[]>([]);
     const [currentStudent, setCurrentStudent] = useState<StudentWithSettings | null>(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -67,7 +134,7 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
 
     // Get ONLY pause state from context (for FloatingControls)
     // DO NOT sync student settings to context - this causes infinite render loops
-    const { isPaused } = useScanSettings();
+    const { isPaused, togglePause } = useScanSettings();
 
     // Compute effective settings directly from student (no context sync needed)
     const scanInterval = currentStudent?.student_settings?.scan_interval || 3000;
@@ -115,6 +182,7 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
                 if (aiConfig) {
                     localStorage.setItem('futurar_ai_config', JSON.stringify({
                         activeProvider: aiConfig.active_provider,
+                        activeImageProvider: aiConfig.active_image_provider,
                         apiKeys: {
                             gemini: aiConfig.gemini_api_key,
                             openai: aiConfig.openai_api_key,
@@ -126,6 +194,7 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
                             freepik: aiConfig.freepik_api_key,
                         },
                         preferredModel: aiConfig.preferred_model,
+                        preferredImageModel: aiConfig.preferred_image_model,
                         storySize: aiConfig.story_size,
                         customStructure: aiConfig.custom_story_structure,
                     }));
@@ -156,19 +225,31 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
     // Opciones de selección mejoradas
     const profileOptions: ScanOption[] = useMemo(() => {
         if (students.length > 0) {
-            return students.map(s => ({
+            const studentOpts = students.map(s => ({
                 id: s.id,
                 label: s.name,
                 icon: s.avatar_icon || 'face'
             }));
+            return [
+                ...studentOpts,
+                { id: 'pause', label: isPaused ? 'Reanudar' : 'Pausa', icon: isPaused ? 'play_circle' : 'pause_circle' }
+            ];
         }
         return [];
-    }, [students]);
+    }, [students, isPaused]);
 
     const menuOptions: ScanOption[] = [
         { id: 'story', label: 'Crear Cuento', icon: 'auto_stories' },
         { id: 'library', label: 'Mi Biblioteca', icon: 'collections_bookmark' },
-        { id: 'design', label: 'Diseñar', icon: 'brush' }
+        { id: 'design', label: 'Diseñar', icon: 'brush' },
+        { id: 'help', label: 'Ayuda', icon: 'help_outline' }
+    ];
+
+    const helpOptions: ScanOption[] = [
+        { id: 'pause', label: isPaused ? 'Reanudar' : 'Pausa', icon: isPaused ? 'play_circle' : 'pause_circle' },
+        ...(previousStep ? [{ id: 'back', label: 'Volver', icon: 'undo' }] : []),
+        { id: 'menu', label: 'Menú principal', icon: 'home' },
+        { id: 'exit', label: 'Salir', icon: 'logout' }
     ];
 
     // State for student-specific elements (loaded from database)
@@ -233,13 +314,19 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
         loadStudentElements();
     }, [currentStudent?.id]);
 
-    const protagonistOptions: ScanOption[] = studentProtagonists;
-    const sceneryOptions: ScanOption[] = studentScenarios;
-    const missionOptions: ScanOption[] = studentMissions;
-    const styleOptions: ScanOption[] = studentStyles;
+    const protagonistOptions: ScanOption[] = [...studentProtagonists, { id: 'help', label: 'Ayuda', icon: 'help_outline' }];
+    const sceneryOptions: ScanOption[] = [...studentScenarios, { id: 'help', label: 'Ayuda', icon: 'help_outline' }];
+    const missionOptions: ScanOption[] = [...studentMissions, { id: 'help', label: 'Ayuda', icon: 'help_outline' }];
+    const styleOptions: ScanOption[] = [...studentStyles, { id: 'help', label: 'Ayuda', icon: 'help_outline' }];
 
     // Handlers
     const handleProfileSelect = (opt: ScanOption) => {
+        if (opt.id === 'pause') {
+            togglePause();
+            speakWithState(isPaused ? "Continuado" : "Pausa");
+            return;
+        }
+        
         const selectedStudent = students.find(s => s.id === opt.id);
         if (selectedStudent) {
             setCurrentStudent(selectedStudent);
@@ -249,6 +336,12 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
     };
 
     const handleMenuSelect = (opt: ScanOption) => {
+        if (opt.id === 'help') {
+            setPreviousStep('MENU');
+            speakWithState("Opciones de Ayuda");
+            setStep('HELP_MENU');
+            return;
+        }
         if (opt.id === 'library') {
             speakWithState("Tu biblioteca de cuentos");
             setStep('LIBRARY');
@@ -261,25 +354,63 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
         }
     };
 
+    const handleHelpSelect = (opt: ScanOption) => {
+        if (opt.id === 'pause') {
+            togglePause();
+            speakWithState(isPaused ? "Continuado" : "Pausa");
+        } else if (opt.id === 'back' && previousStep) {
+            setStep(previousStep);
+            speakWithState("Regresando");
+        } else if (opt.id === 'menu') {
+            handleBackToMenu();
+        } else if (opt.id === 'exit') {
+            handleBackToProfile();
+        }
+    };
+
     const handleProtagonistSelect = (opt: ScanOption) => {
+        if (opt.id === 'help') {
+            setPreviousStep('SELECT_PROTAGONIST');
+            speakWithState("Opciones de Ayuda");
+            setStep('HELP_MENU');
+            return;
+        }
         setConfig(prev => ({ ...prev, protagonist: opt.label }));
         speakWithState("Elige el escenario");
         setStep('SELECT_SCENERY');
     };
 
     const handleScenerySelect = (opt: ScanOption) => {
+        if (opt.id === 'help') {
+            setPreviousStep('SELECT_SCENERY');
+            speakWithState("Opciones de Ayuda");
+            setStep('HELP_MENU');
+            return;
+        }
         setConfig(prev => ({ ...prev, scenery: opt.label }));
         speakWithState("Elige la misión");
         setStep('SELECT_MISSION');
     };
 
     const handleMissionSelect = (opt: ScanOption) => {
+        if (opt.id === 'help') {
+            setPreviousStep('SELECT_MISSION');
+            speakWithState("Opciones de Ayuda");
+            setStep('HELP_MENU');
+            return;
+        }
         setConfig(prev => ({ ...prev, mission: opt.label }));
         speakWithState("Elige el estilo");
         setStep('SELECT_STYLE');
     };
 
     const handleStyleSelect = (opt: ScanOption) => {
+        if (opt.id === 'help') {
+            setPreviousStep('SELECT_STYLE');
+            speakWithState("Opciones de Ayuda");
+            setStep('HELP_MENU');
+            return;
+        }
         setConfig(prev => ({ ...prev, style: opt.label }));
         setStep('GENERATING');
     };
@@ -410,7 +541,7 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
 
                 } catch (e: any) {
                     console.error("❌ Error generando historia:", e);
-                    setError(`Error al generar: ${e.message}`);
+                    setError(parseAIError(e));
                     setGenerationProgress({ status: 'Error...', progress: 0 });
                 }
             };
@@ -561,20 +692,14 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
                     />
                 </main>
 
-                <FloatingControls onGoToMenu={handleBackToMenu} />
+
 
                 {/* Pause Overlay */}
                 {isPaused && (
-                    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-40 flex flex-col items-center justify-center print:hidden">
-                        <span className="material-symbols-outlined text-9xl text-amber-400 animate-pulse">
-                            pause_circle
-                        </span>
-                        <h2 className="text-3xl font-bold mt-6 text-white">En Pausa</h2>
-                        <p className="text-gray-400 mt-2">Toma un descanso</p>
-                        <p className="text-gray-500 text-sm mt-6">
-                            Presiona el botón flotante para continuar
-                        </p>
-                    </div>
+                    <PauseOverlay onResume={() => {
+                        togglePause();
+                        speakWithState("Continuado");
+                    }} />
                 )}
             </div>
         );
@@ -672,7 +797,7 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
                 )}
 
                 {/* Menu and Selection Steps */}
-                {['MENU', 'SELECT_PROTAGONIST', 'SELECT_SCENERY', 'SELECT_MISSION', 'SELECT_STYLE'].includes(step) && (
+                {['MENU', 'SELECT_PROTAGONIST', 'SELECT_SCENERY', 'SELECT_MISSION', 'SELECT_STYLE', 'HELP_MENU'].includes(step) && (
                     <div className="w-full max-w-5xl text-center">
                         {/* Progress Indicator */}
                         {step !== 'MENU' && (
@@ -707,6 +832,7 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
 
                         <h2 className="text-2xl md:text-4xl font-black mb-8 animate-fade-in">
                             {step === 'MENU' && "¿Qué quieres hacer hoy?"}
+                            {step === 'HELP_MENU' && "Opciones de Ayuda"}
                             {step === 'SELECT_PROTAGONIST' && "Elige tu Protagonista"}
                             {step === 'SELECT_SCENERY' && "Elige el Escenario"}
                             {step === 'SELECT_MISSION' && "Elige la Misión"}
@@ -717,19 +843,21 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
                             key={`grid-${step}`}
                             options={
                                 step === 'MENU' ? menuOptions :
-                                    step === 'SELECT_PROTAGONIST' ? protagonistOptions :
+                                    step === 'HELP_MENU' ? helpOptions :
+                                        step === 'SELECT_PROTAGONIST' ? protagonistOptions :
                                         step === 'SELECT_SCENERY' ? sceneryOptions :
                                             step === 'SELECT_MISSION' ? missionOptions :
                                                 styleOptions
                             }
                             onSelect={
                                 step === 'MENU' ? handleMenuSelect :
-                                    step === 'SELECT_PROTAGONIST' ? handleProtagonistSelect :
+                                    step === 'HELP_MENU' ? handleHelpSelect :
+                                        step === 'SELECT_PROTAGONIST' ? handleProtagonistSelect :
                                         step === 'SELECT_SCENERY' ? handleScenerySelect :
                                             step === 'SELECT_MISSION' ? handleMissionSelect :
                                                 handleStyleSelect
                             }
-                            columns={step === 'MENU' ? 2 : Math.min(3, scanColumns + 1)}
+                            columns={step === 'MENU' ? 2 : step === 'HELP_MENU' ? 4 : Math.min(3, scanColumns + 1)}
                             scanInterval={scanInterval}
                             soundEnabled={currentStudent?.student_settings?.sound_enabled ?? true}
                             voiceEnabled={voiceEnabled}
@@ -786,22 +914,13 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
 
             {/* Pause Overlay - blocks all interaction when paused */}
             {isPaused && (
-                <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-40 flex flex-col items-center justify-center print:hidden">
-                    <span className="material-symbols-outlined text-9xl text-amber-400 animate-pulse">
-                        pause_circle
-                    </span>
-                    <h2 className="text-3xl font-bold mt-6 text-white">En Pausa</h2>
-                    <p className="text-gray-400 mt-2">Toma un descanso</p>
-                    <p className="text-gray-500 text-sm mt-6">
-                        Presiona el botón flotante para continuar
-                    </p>
-                </div>
+                <PauseOverlay onResume={() => {
+                    togglePause();
+                    speakWithState("Continuado");
+                }} />
             )}
 
-            {/* Floating Controls - visible when student is selected */}
-            {currentStudent && step !== 'GENERATING' && (
-                <FloatingControls onGoToMenu={handleBackToMenu} />
-            )}
+
         </div>
     );
 };

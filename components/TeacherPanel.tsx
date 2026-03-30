@@ -360,7 +360,7 @@ const TeacherPanel: React.FC<TeacherPanelProps> = ({ onSwitchToStudent }) => {
                                 {students.map(student => (
                                     <div
                                         key={student.id}
-                                        className="bg-surface-dark rounded-2xl p-6 border border-border-accent hover:border-primary/50 transition-all cursor-pointer"
+                                        className="bg-surface-dark rounded-2xl p-6 border border-border-accent hover:border-primary/50 transition-all"
                                         onClick={() => setSelectedStudent(selectedStudent?.id === student.id ? null : student)}
                                     >
                                         <div className="flex justify-between items-start mb-4">
