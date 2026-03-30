@@ -21,7 +21,7 @@ const PROVIDERS: ProviderInfo[] = [
     {
         id: 'gemini',
         name: 'Google Gemini',
-        description: 'IA de Google, gratis con límites generosos',
+        description: 'IA de Google, con límites generosos',
         isFree: true,
         requiredFields: ['apiKey'],
         models: [
@@ -42,7 +42,7 @@ const PROVIDERS: ProviderInfo[] = [
     {
         id: 'groq',
         name: 'Groq (Llama 3.1)',
-        description: 'Ultra rápido, gratuito, usa Llama 3.1',
+        description: 'Ultra rápido, usa Llama 3.1',
         isFree: true,
         requiredFields: ['apiKey'],
         models: ['llama-3.1-70b-versatile', 'llama-3.1-8b-instant', 'mixtral-8x7b-32768'],
@@ -51,7 +51,7 @@ const PROVIDERS: ProviderInfo[] = [
     {
         id: 'cloudflare',
         name: 'Cloudflare AI',
-        description: 'Gratis, 10,000 tokens/día',
+        description: '10,000 tokens/día',
         isFree: true,
         requiredFields: ['accountId', 'apiKey'],
         models: ['@cf/meta/llama-3.1-8b-instruct', '@cf/mistral/mistral-7b-instruct-v0.1'],
@@ -60,7 +60,7 @@ const PROVIDERS: ProviderInfo[] = [
     {
         id: 'together',
         name: 'Together AI',
-        description: 'Tier gratuito, modelos open source',
+        description: 'Modelos open source',
         isFree: true,
         requiredFields: ['apiKey'],
         models: ['meta-llama/Llama-3.2-11B-Vision-Instruct-Turbo', 'mistralai/Mixtral-8x7B-Instruct-v0.1'],
@@ -69,7 +69,7 @@ const PROVIDERS: ProviderInfo[] = [
     {
         id: 'openai',
         name: 'OpenAI (GPT-4)',
-        description: 'Modelos GPT de OpenAI, de pago',
+        description: 'Modelos GPT de OpenAI',
         isFree: false,
         requiredFields: ['apiKey'],
         models: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo'],
@@ -78,7 +78,7 @@ const PROVIDERS: ProviderInfo[] = [
     {
         id: 'claude',
         name: 'Anthropic Claude',
-        description: 'Claude 3.5, alta calidad, de pago',
+        description: 'Claude 3.5, alta calidad',
         isFree: false,
         requiredFields: ['apiKey'],
         models: ['claude-3-5-sonnet-latest', 'claude-3-5-haiku-latest'],
@@ -117,6 +117,7 @@ const GlobalConfigModal: React.FC<GlobalConfigModalProps> = ({ onClose }) => {
         freepik: '',
     });
     const [preferredModel, setPreferredModel] = useState('');
+    const [preferredImageModel, setPreferredImageModel] = useState('imagen-4.0-fast-generate-preview-06-06');
 
     useEffect(() => {
         loadConfig();
@@ -130,6 +131,12 @@ const GlobalConfigModal: React.FC<GlobalConfigModalProps> = ({ onClose }) => {
                 setActiveProvider(config.active_provider || 'gemini');
                 setActiveImageProvider(config.active_image_provider || (config.freepik_api_key ? 'freepik' : config.active_provider) || 'freepik');
                 setPreferredModel(config.preferred_model || '');
+                const legacyImageModel = config.preferred_image_model;
+                if (!legacyImageModel || legacyImageModel.includes('gemini-3.1') || legacyImageModel.includes('gemini-2.0')) {
+                    setPreferredImageModel('imagen-4.0-fast-generate-001');
+                } else {
+                    setPreferredImageModel(legacyImageModel);
+                }
                 setApiKeys({
                     gemini: config.gemini_api_key || '',
                     openai: config.openai_api_key || '',
@@ -163,6 +170,7 @@ const GlobalConfigModal: React.FC<GlobalConfigModalProps> = ({ onClose }) => {
                 together_api_key: apiKeys.together || null,
                 freepik_api_key: apiKeys.freepik || null,
                 preferred_model: preferredModel || null,
+                preferred_image_model: preferredImageModel || null,
             });
 
             // También guardar en localStorage para acceso rápido del frontend
@@ -171,6 +179,7 @@ const GlobalConfigModal: React.FC<GlobalConfigModalProps> = ({ onClose }) => {
                 activeImageProvider,
                 apiKeys,
                 preferredModel,
+                preferredImageModel,
             }));
 
             // Mostrar mensaje de éxito
@@ -263,12 +272,6 @@ const GlobalConfigModal: React.FC<GlobalConfigModalProps> = ({ onClose }) => {
                         >
                             <div className="flex items-center justify-between mb-1">
                                 <span className="font-medium text-white">{provider.name}</span>
-                                <span className={`text-xs px-2 py-0.5 rounded-full ${provider.isFree
-                                    ? 'bg-green-500/20 text-green-400'
-                                    : 'bg-yellow-500/20 text-yellow-400'
-                                    }`}>
-                                    {provider.isFree ? 'Gratis' : 'Pago'}
-                                </span>
                             </div>
                             <p className="text-xs text-gray-400 line-clamp-1">{provider.description}</p>
                         </button>
@@ -335,12 +338,6 @@ const GlobalConfigModal: React.FC<GlobalConfigModalProps> = ({ onClose }) => {
                         >
                             <div className="flex items-center justify-between mb-1">
                                 <span className="font-medium text-white">{provider.name}</span>
-                                <span className={`text-xs px-2 py-0.5 rounded-full ${provider.isFree && provider.id !== 'freepik' // Freepik is paid usually or limited
-                                    ? 'bg-green-500/20 text-green-400'
-                                    : 'bg-yellow-500/20 text-yellow-400'
-                                    }`}>
-                                    {provider.id === 'freepik' ? 'Pago' : (provider.isFree ? 'Gratis' : 'Pago')}
-                                </span>
                             </div>
                             <p className="text-xs text-gray-400 line-clamp-1">{provider.description}</p>
                         </button>
@@ -357,6 +354,22 @@ const GlobalConfigModal: React.FC<GlobalConfigModalProps> = ({ onClose }) => {
 
                         <div className="space-y-4">
                             {renderApiKeyField(selectedImageProvider.id, selectedImageProvider.requiredFields)}
+
+                            {selectedImageProvider.id === 'gemini' && (
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-gray-300">Modelo de Imagen</label>
+                                    <select
+                                        value={preferredImageModel || 'imagen-4.0-fast-generate-001'}
+                                        onChange={(e) => setPreferredImageModel(e.target.value)}
+                                        className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-primary focus:border-transparent"
+                                    >
+                                        <option value="imagen-4.0-fast-generate-001">Imagen 4 Fast (Balance costo/velocidad)</option>
+                                        <option value="imagen-4.0-generate-001">Imagen 4 Standard (Alta Calidad)</option>
+                                        <option value="imagen-4.0-ultra-generate-001">Imagen 4 Ultra (Máxima Fidelidad)</option>
+                                    </select>
+                                    <p className="text-xs text-gray-400 mt-1">Usando la cuota gratuita de AI Studio para Imagen 4 (25 img/día)</p>
+                                </div>
+                            )}
 
                             <a
                                 href={selectedImageProvider.getKeyUrl}

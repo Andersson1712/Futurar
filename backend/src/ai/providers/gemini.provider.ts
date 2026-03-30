@@ -1,4 +1,4 @@
-import { GoogleGenAI } from '@google/genai';
+import { GoogleGenAI, Type, Schema } from '@google/genai';
 import { AIProvider, StoryGenerationConfig, StoryResult, STORY_SIZE_PAGES, StoryPage } from './ai-provider.interface';
 
 export class GeminiProvider implements AIProvider {
@@ -120,44 +120,58 @@ REGLAS:
     }
     async generateImage(prompt: string, style: string = 'vivid'): Promise<string> {
         try {
-            console.log(`🎨 Generando imagen con Gemini (Imagen 3)... Style: ${style}`);
+            // El modelo de imagen preferido viene configurado desde el frontend a través de this.model
+            let imageModel = this.model || 'imagen-4.0-fast-generate-001';
 
-            // Usamos la API REST directa para Imagen 3 ya que el SDK puede variar en soporte
-            // Model: imagen-3.0-generate-001
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-001:predict?key=${this.apiKey}`;
+            // Forzar actualización de modelos legados si el frontend en caché los envía
+            if (imageModel.includes('gemini-3.1-flash-image') || imageModel.includes('gemini-2.0-flash-preview-image')) {
+                imageModel = 'imagen-4.0-fast-generate-001';
+            }
 
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    instances: [
-                        { prompt: `${style} style. ${prompt}` }
-                    ],
-                    parameters: {
-                        sampleCount: 1,
-                        aspectRatio: "1:1"
+            console.log(`🎨 Generando imagen con Gemini/Imagen (${imageModel})... Style: ${style}`);
+
+            const fullPrompt = `Generate an illustration for a children's story. Style: ${style}. Scene: ${prompt}. Colorful, friendly, appropriate for children. No text in the image.`;
+
+            if (imageModel.startsWith('imagen-')) {
+                // Para la familia Imagen 4, usamos generateImages
+                const response = await this.client.models.generateImages({
+                    model: imageModel,
+                    prompt: fullPrompt,
+                    config: {
+                        numberOfImages: 1,
+                        aspectRatio: '1:1',
+                        personGeneration: 'ALLOW_ADULT' as any, // As string or enum
                     }
-                })
-            });
+                });
 
-            if (!response.ok) {
-                const errorText = await response.text();
-                throw new Error(`Gemini Imagen API Error: ${response.status} - ${errorText}`);
+                const generated = response.generatedImages?.[0];
+                if (!generated?.image?.imageBytes) {
+                    throw new Error('No image bytes returned from Imagen API');
+                }
+                // imageBytes es en base64 en la respuesta JSON o en buffer. El SDK de TS lo expone como string codificado en base64 en algunos contextos, o buffer. 
+                // En el doc de Node dice: const buffer = Buffer.from(generated.image.imageBytes, "base64");
+                // Así que devolveremos ese string directamente
+                return `data:image/png;base64,${generated.image.imageBytes}`;
+            } else {
+                // Para las variantes experimentales de Gemini Flash (como gemini-3.1-flash-image-preview)
+                const response = await this.client.models.generateContent({
+                    model: imageModel,
+                    contents: fullPrompt,
+                });
+
+                const parts = response.candidates?.[0]?.content?.parts || [];
+                const imagePart = (parts as any[]).find((p: any) => p.inlineData?.data);
+
+                if (!imagePart?.inlineData?.data) {
+                    throw new Error('No image data returned from Gemini');
+                }
+
+                const mimeType = imagePart.inlineData.mimeType || 'image/png';
+                return `data:${mimeType};base64,${imagePart.inlineData.data}`;
             }
 
-            const data = await response.json();
-            const b64 = data.predictions?.[0]?.bytesBase64Encoded;
-
-            if (!b64) {
-                throw new Error('No image data returned from Gemini Imagen');
-            }
-
-            return `data:image/png;base64,${b64}`;
         } catch (error) {
-            console.error('Error generating image with Gemini:', error);
-            // Fallback: throw error to let upper layer handle it or return undefined
+            console.error(`Error generating image with ${this.model}:`, error);
             throw error;
         }
     }

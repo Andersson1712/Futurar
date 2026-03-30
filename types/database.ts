@@ -22,6 +22,7 @@ export type Database = {
                     cloudflare_api_token: string | null
                     together_api_key: string | null
                     preferred_model: string | null
+                    preferred_image_model: string | null
                     story_size: 'small' | 'medium' | 'large'
                     custom_story_structure: string | null
                     created_at: string | null
@@ -41,6 +42,7 @@ export type Database = {
                     together_api_key?: string | null
                     freepik_api_key?: string | null
                     preferred_model?: string | null
+                    preferred_image_model?: string | null
                     story_size?: 'small' | 'medium' | 'large'
                     custom_story_structure?: string | null
                     created_at?: string | null
@@ -59,6 +61,7 @@ export type Database = {
                     together_api_key?: string | null
                     freepik_api_key?: string | null
                     preferred_model?: string | null
+                    preferred_image_model?: string | null
                     story_size?: 'small' | 'medium' | 'large'
                     custom_story_structure?: string | null
                     created_at?: string | null
