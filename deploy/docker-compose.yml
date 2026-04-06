@@ -1,0 +1,37 @@
+services:
+  # ---- FRONTEND + NGINX PROXY ----
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_SUPABASE_URL: ${VITE_SUPABASE_URL}
+        VITE_SUPABASE_ANON_KEY: ${VITE_SUPABASE_ANON_KEY}
+    container_name: futurar_prod_frontend
+    networks:
+      - ema-public
+      - default
+    restart: always
+    depends_on:
+      - backend
+
+  # ---- BACKEND (API REST EN NESTJS) ----
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: futurar_prod_backend
+    restart: always
+    env_file:
+      - .env
+    environment:
+      - PORT=3001
+      - NODE_ENV=production
+    # Volumen opcional para logs persistentes, o para base de datos SQLite (si usaras alguna)
+    # volumes:
+    #   - ./data:/app/data
+
+networks:
+  default:
+  ema-public:       
+    external: true
