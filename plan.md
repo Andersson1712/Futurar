@@ -281,14 +281,15 @@ Leyenda:
 - Si aparece un bloqueo: marcar [!] y describir en "Estado actual".
 - SPEC-001 hallazgo: `.env` estaba trackeado en git; ya está ignorado y destrackeado
   (sin keys Gemini reales en el historial). Deuda preexistente: backend `npm run lint`
-  en rojo por formato Prettier (código a 4 espacios); requiere tarea `chore` aparte.
+  en rojo por formato Prettier (código a 4 espacios); resuelta junto a SPEC-002.
 - SPEC-001: `npm run build` OK; grep de keys/prompts en `dist/` = 0; test del guard pasa.
 - SPEC-002: upgrade Nest 11→12 + TS 6 (paquetes ESM; app CJS vía require(esm),
   Node ≥ 20.19), `@google/genai` 2.x, eliminados `openai`, `@anthropic-ai/sdk`,
   `groq-sdk` y los providers/DTOs que aceptaban `apiKey` del cliente.
   Jest requiere `NODE_OPTIONS=--experimental-vm-modules` (scripts actualizados).
   Frontend: React 19.2.4→19.3 + `@types/react(-dom)` (faltaban).
-  Métricas: backend build OK, 26 unit + 1 e2e verdes, ESLint dirigido limpio;
-  boot falla si `AI_ENDPOINTS_ENABLED=true` sin `GEMINI_API_KEY`.
-  Pendiente como chore aparte: Vite 6→8 + TS frontend 5.8→6/7; deuda Prettier
-  global del backend; evaluar Zod para env cuando se apruebe la dependencia.
+  Métricas: backend build OK, 26 unit + 1 e2e verdes, `npm run lint` en verde,
+  `prettier --check` limpio; boot falla si `AI_ENDPOINTS_ENABLED=true` sin
+  `GEMINI_API_KEY`.
+  Pendiente como chore aparte: Vite 6→8 + TS frontend 5.8→6/7; evaluar Zod para
+  env cuando se apruebe la dependencia.

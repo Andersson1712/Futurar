@@ -36,7 +36,7 @@
   gemini-3.8-flash-tts; @google/genai 2.x (v2 breaks only Interactions API).
 - Click-on-release: read target on pointerdown, cancel scan timer, act at once.
 - es-AR voice fallback, scan speed per profile, copy in utils/messages.ts until SPEC-018.
-- .env untracked; no real Gemini key in history. Backend lint still red (Prettier debt).
+- .env untracked; no real Gemini key in history. Backend `npm run lint` is green.
 
 ## Next Steps
 - [ ] Owner: rotate Gemini key, purge ai_config keys, store new key server-side.
