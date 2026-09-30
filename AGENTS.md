@@ -8,7 +8,7 @@ of the product, not an optional feature.
 
 ## Stack & Commands
 Frontend: React 19 + TypeScript + Vite 6 (./), dev server on :3000.
-Backend:  NestJS 11 + TypeScript (./backend), API on :3001.
+Backend:  NestJS 12 + TypeScript 6 (./backend, Node >= 20.19), API on :3001.
 Data/Auth: Supabase. AI: Gemini, reached only through the backend.
 
 Frontend:

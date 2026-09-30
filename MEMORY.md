@@ -5,46 +5,46 @@
 ## Current State
 - MVP in progress: accessible story creation for people with severe motor
   disabilities, operated by a single switch (scanning) or direct input.
-- Frontend AI is REMOVED (SPEC-001): no SDK, keys or prompts in the browser.
-  Story generation is temporarily disabled until SPEC-002/003/009 land.
-- Wizard, library, reader, TTS, dedications and teacher panel still work;
-  known gaps: backend generation pipeline, job queue/SSE, frontend test runner,
-  backend Prettier debt (lint red), Git flow enforcement.
+- Frontend AI is REMOVED (SPEC-001). Generation is disabled until SPEC-003+
+  re-enables backend endpoints with server-owned contracts.
+- SPEC-002 done: Nest 12 hexagonal AiModule (Text/Image/Tts ports + Gemini
+  adapters), server-owned key via SecretProvider, env validation at boot;
+  legacy client-key controller/providers deleted. Frontend React 19.3 with
+  React types added.
+- Wizard, library, reader, TTS, dedications, teacher panel work; gaps: generation contracts, queue/SSE, frontend test runner, Prettier/Git flow.
 
 ## Architecture Decisions
-- Nest backend is the single source of truth for AI. Frontend never calls AI
-  providers or holds keys. Providers are pluggable adapters (Gemini now;
-  OpenAI/Claude later) behind Text/Image/Tts interfaces.
-- Backend is the only owner of Supabase data. Frontend uses Supabase Auth
-  only; JWT is validated server-side. Realtime and Storage go through backend.
-- POST /ai/* is disabled by default (AiEndpointsEnabledGuard /
-  AI_ENDPOINTS_ENABLED) until keys and DTOs are server-owned (SPEC-002/003).
-- Hexagonal + SOLID inside Nest; versioned REST under /api/v1; queue (BullMQ)
-  + SSE for long generations; idempotency keys; @nestjs/throttler.
-- UI in es-AR with i18n; code and docs in English; Conventional Commits.
-- Accessibility baseline: WCAG 2.2 AA, ISO/IEC 17549-3, EN 301 549.
-- Workflow is Spec-Driven (SDD): spec + approval before code. Context7 MCP
-  (remote, context7.com) validates LTS versions; key file outside repo.
+- Nest backend is the single source of truth for AI; frontend holds no keys.
+  Ports `src/ai/domain/ports`, adapters `src/ai/infrastructure/gemini`; prompts SPEC-004.
+- Backend owns Supabase data; frontend uses Supabase Auth only; JWT validated
+  server-side; Realtime/Storage go through backend.
+- POST /ai/* disabled (AiEndpointsEnabledGuard / AI_ENDPOINTS_ENABLED) until
+  SPEC-003 lands DTOs/OpenAPI/idempotency.
+- NestJS 12 + TS 6: packages ESM-only, consumed from CJS via require(esm) on
+  Node >= 20.19; Jest scripts use NODE_OPTIONS=--experimental-vm-modules.
+- Versioned REST /api/v1; BullMQ + SSE for long jobs; throttler; hexagonal.
+- UI es-AR with i18n; code/docs English; Conventional Commits; a11y WCAG 2.2
+  AA / ISO-IEC 17549-3 / EN 301 549; SDD specs before code (Context7 versions).
 
 ## Learnings / Edge Cases
-- Click-on-release bug: clicking B while scan focuses A selects A. Fix: read
-  the real target on pointerdown, cancel the scan timer, act immediately.
-- Scroll blocked on mobile/desktop: avoid global overflow:hidden and global
-  preventDefault; use min-height:100dvh and passive listeners.
-- es-AR voice is not available with current TTS: ship voice selector +
-  es-US fallback, document the limitation, evaluate cloud TTS later.
-- Scan speed is per profile (slow 3.0s / normal 1.5s / fast 0.8s / custom).
-- .env was tracked in git (now ignored/untracked); no real Gemini key in
-  history. Backend lint is red from pre-existing Prettier formatting debt.
-- Disabled-generation UI copy lives in utils/messages.ts until SPEC-018 i18n.
+- TS 6: explicit `rootDir` (`.`, build `./src`), `types:["node","jest"]`, no
+  `baseUrl`, `import type` in decorated signatures, strictPropertyInit on.
+- @nestjs/config 12 uses Standard Schema; env validated with class-validator
+  `validate()` (adding Zod needs approval).
+- Gemini TTS lacks es-AR: default es-419 (preview), documented.
+- Gemini models: text gemini-3.8-flash, image gemini-3.1-flash-image, TTS
+  gemini-3.8-flash-tts; @google/genai 2.x (v2 breaks only Interactions API).
+- Click-on-release: read target on pointerdown, cancel scan timer, act at once.
+- es-AR voice fallback, scan speed per profile, copy in utils/messages.ts until SPEC-018.
+- .env untracked; no real Gemini key in history. Backend lint still red (Prettier debt).
 
 ## Next Steps
 - [ ] Owner: rotate Gemini key, purge ai_config keys, store new key server-side.
-- [ ] SPEC-002/003: AiModule, provider interfaces, DTOs, env validation.
+- [ ] SPEC-003: DTOs, OpenAPI /api/v1, idempotency; then re-enable endpoints.
 - [ ] SPEC-004/005: prompts in backend + server-side output validation.
 - [ ] SPEC-009: frontend generation via backend only.
-- [ ] Add Vitest + RTL (3 critical tests: click wins, focus trap, autosave).
+- [ ] Chore: Vite 6→8 + frontend TS 5.8→7; backend global Prettier debt.
+- [ ] Add Vitest + RTL (click wins, focus trap, autosave).
 
 ## Housekeeping
-- Keep this file under ~50 lines. Before finishing a task, compact: move
-  resolved items out and delete obsolete notes instead of appending.
+- Keep under ~50 lines: before finishing, compact and remove resolved items.

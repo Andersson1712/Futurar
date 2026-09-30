@@ -16,10 +16,11 @@ Leyenda:
 
 ## Estado actual
 
-- Fase activa: **Fase 0 — Contención y seguridad inmediata**
-- Última tarea cerrada: SPEC-001 (código implementado; rotación manual pendiente)
-- Próxima tarea: SPEC-002
-- Bloqueos: ninguno (acciones manuales de rotación/purga a cargo del owner)
+- Fase activa: **Fase 1 — Backend Nest como fuente de verdad de la IA**
+- Última tarea cerrada: SPEC-002 (implementado; build, tests y lint dirigido verdes)
+- Próxima tarea: SPEC-003
+- Bloqueos: ninguno. SPEC-001 rotación/purga de key sigue pendiente del owner
+  (bloquea pruebas con Gemini real, no el desarrollo).
 
 ---
 
@@ -38,10 +39,10 @@ Leyenda:
 ## Fase 1 — Backend Nest como fuente de verdad de la IA
 
 ### EPIC 1.1 — Estructura del AiModule
-- [ ] SPEC-002: Crear AiModule con interfaces Text/Image/Tts
-- [ ] SPEC-002: GeminiTextAdapter, GeminiImageAdapter, GeminiTtsAdapter
-- [ ] SPEC-002: ConfigModule con validación de env (Joi/Zod)
-- [ ] SPEC-002: Secret handling (env dev, KMS prod)
+- [x] SPEC-002: Crear AiModule con interfaces Text/Image/Tts
+- [x] SPEC-002: GeminiTextAdapter, GeminiImageAdapter, GeminiTtsAdapter
+- [x] SPEC-002: ConfigModule con validación de env (class-validator; Zod opcional)
+- [x] SPEC-002: Secret handling (env dev; KMS/tenant = SPEC-020)
 
 ### EPIC 1.2 — Contratos y DTOs
 - [ ] SPEC-003: DTOs GenerateBookRequest / Response / JobStatus / AiError
@@ -269,7 +270,7 @@ Leyenda:
 | SPEC | Título | Estado | Aprobado por | Fecha |
 |------|--------|--------|--------------|-------|
 | SPEC-001 | Rotar key y eliminar IA del frontend | implementado (rotación manual pendiente) | owner | 2026-09-30 |
-| SPEC-002 | AiModule en Nest | pendiente | — | — |
+| SPEC-002 | AiModule Nest 12 + adapters Gemini + env/secrets | implementado | owner | 2026-09-30 |
 | … | … | … | … | … |
 
 ## Notas
@@ -282,3 +283,12 @@ Leyenda:
   (sin keys Gemini reales en el historial). Deuda preexistente: backend `npm run lint`
   en rojo por formato Prettier (código a 4 espacios); requiere tarea `chore` aparte.
 - SPEC-001: `npm run build` OK; grep de keys/prompts en `dist/` = 0; test del guard pasa.
+- SPEC-002: upgrade Nest 11→12 + TS 6 (paquetes ESM; app CJS vía require(esm),
+  Node ≥ 20.19), `@google/genai` 2.x, eliminados `openai`, `@anthropic-ai/sdk`,
+  `groq-sdk` y los providers/DTOs que aceptaban `apiKey` del cliente.
+  Jest requiere `NODE_OPTIONS=--experimental-vm-modules` (scripts actualizados).
+  Frontend: React 19.2.4→19.3 + `@types/react(-dom)` (faltaban).
+  Métricas: backend build OK, 26 unit + 1 e2e verdes, ESLint dirigido limpio;
+  boot falla si `AI_ENDPOINTS_ENABLED=true` sin `GEMINI_API_KEY`.
+  Pendiente como chore aparte: Vite 6→8 + TS frontend 5.8→6/7; deuda Prettier
+  global del backend; evaluar Zod para env cuando se apruebe la dependencia.
