@@ -1,6 +1,7 @@
 export type AiErrorCode =
   | 'PROVIDER_UNAVAILABLE'
   | 'INVALID_REQUEST'
+  | 'INVALID_OUTPUT'
   | 'CONTENT_BLOCKED'
   | 'RATE_LIMITED'
   | 'TIMEOUT'

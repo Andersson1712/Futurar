@@ -13,6 +13,7 @@ import {
 } from '@nestjs/common';
 import {
   ApiAcceptedResponse,
+  ApiBadGatewayResponse,
   ApiBadRequestResponse,
   ApiBearerAuth,
   ApiConflictResponse,
@@ -23,6 +24,7 @@ import {
   ApiServiceUnavailableResponse,
   ApiTags,
   ApiTooManyRequestsResponse,
+  ApiUnprocessableEntityResponse,
 } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { AiErrorDto } from '../common/dto/ai-error.dto';
@@ -66,6 +68,8 @@ export class AiController {
   @ApiAcceptedResponse({ type: GenerateBookResponseDto })
   @ApiBadRequestResponse({ type: AiErrorDto })
   @ApiConflictResponse({ type: AiErrorDto })
+  @ApiUnprocessableEntityResponse({ type: AiErrorDto })
+  @ApiBadGatewayResponse({ type: AiErrorDto })
   @ApiTooManyRequestsResponse({ type: AiErrorDto })
   @ApiServiceUnavailableResponse({ type: AiErrorDto })
   async generate(

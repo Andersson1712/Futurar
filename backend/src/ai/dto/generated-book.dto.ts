@@ -15,6 +15,9 @@ export class GeneratedBookDto {
   @ApiProperty()
   title!: string;
 
+  @ApiPropertyOptional({ maxLength: 200 })
+  dedication?: string;
+
   @ApiProperty()
   totalPages!: number;
 

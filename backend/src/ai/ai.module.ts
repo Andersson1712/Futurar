@@ -1,9 +1,11 @@
 import { Module } from '@nestjs/common';
 import { AiController } from './ai.controller';
-import {
-  BOOK_GENERATION_USE_CASE,
-  PendingBookGenerationUseCase,
-} from './application/book-generation.use-case';
+import { BookGenerationService } from './application/book-generation.service';
+import { BookOutputParser } from './application/book-output.parser';
+import { BookOutputValidator } from './application/book-output.validator';
+import { BOOK_GENERATION_USE_CASE } from './application/book-generation.use-case';
+import { InMemoryJobRegistry } from './application/in-memory-job.registry';
+import { PromptBuilderService } from './application/prompt-builder.service';
 import { IDEMPOTENCY_STORE } from '../common/idempotency/idempotency-store';
 import { InMemoryIdempotencyStore } from '../common/idempotency/in-memory-idempotency.store';
 import { SupabaseModule } from '../supabase/supabase.module';
@@ -35,9 +37,13 @@ import {
     { provide: IMAGE_GENERATOR, useClass: GeminiImageAdapter },
     { provide: TTS_GENERATOR, useClass: GeminiTtsAdapter },
     { provide: IDEMPOTENCY_STORE, useClass: InMemoryIdempotencyStore },
+    PromptBuilderService,
+    BookOutputParser,
+    BookOutputValidator,
+    InMemoryJobRegistry,
     {
       provide: BOOK_GENERATION_USE_CASE,
-      useClass: PendingBookGenerationUseCase,
+      useClass: BookGenerationService,
     },
   ],
   exports: [TEXT_GENERATOR, IMAGE_GENERATOR, TTS_GENERATOR],

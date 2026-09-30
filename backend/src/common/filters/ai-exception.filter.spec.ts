@@ -58,6 +58,18 @@ describe('AiExceptionFilter', () => {
     });
   });
 
+  it('maps invalid provider output to 502', () => {
+    const { host, status, json } = buildHost();
+
+    filter.catch(new AiProviderError('INVALID_OUTPUT', 'bad output'), host);
+
+    expect(status).toHaveBeenCalledWith(502);
+    expect(firstBody(json)).toMatchObject({
+      statusCode: 502,
+      code: 'INVALID_OUTPUT',
+    });
+  });
+
   it('maps validation pipe errors to VALIDATION_FAILED with details', () => {
     const { host, status, json } = buildHost();
 
