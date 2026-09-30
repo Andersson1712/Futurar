@@ -10,6 +10,9 @@
 - Approved with decisions D1–D5 as recommended (staging 501, Supabase
   `auth.getUser`, swagger + throttler deps, in-memory idempotency, Swagger off
   in production).
+- Superseded by SPEC-005 D2: the generation use case is now real
+  (synchronous in-memory jobs), so the endpoint no longer returns 501 when
+  enabled; the async queue arrives in SPEC-006.
 - `setupSwagger` must run **before** `app.listen`; routes registered after
   listen are not served by the Nest 12 / Express 5 adapter.
 - TS 6 rejects type-only imports used in decorated signatures (TS1272): DTO

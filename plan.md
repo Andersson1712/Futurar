@@ -17,8 +17,8 @@ Leyenda:
 ## Estado actual
 
 - Fase activa: **Fase 1 — Backend Nest como fuente de verdad de la IA**
-- Última tarea cerrada: SPEC-003 (implementado; build, tests, lint y OpenAPI verdes)
-- Próxima tarea: SPEC-004 (prompts y mapeo opción→prompt en backend)
+- Última tarea cerrada: SPEC-005 (implementado; generación síncrona operativa con flag)
+- Próxima tarea: SPEC-006 (BullMQ + jobs persistentes)
 - Bloqueos: ninguno. SPEC-001 rotación/purga de key sigue pendiente del owner
   (bloquea pruebas con Gemini real, no el desarrollo).
 
@@ -51,17 +51,17 @@ Leyenda:
 - [x] SPEC-003: Idempotency-Key en POST /ai/books/generate
 
 ### EPIC 1.3 — Prompts y mapeo de opciones
-- [ ] SPEC-004: Mover plantillas y mapeo opción→prompt al backend
-- [ ] SPEC-004: Versionar prompts (prompts/book/v1/…)
-- [ ] SPEC-004: PromptBuilder + tests unitarios
-- [ ] SPEC-004: Soporte de dedicatoria en prompt
-- [ ] SPEC-004: Soporte de audiencia (niño/adolescente/adulto)
+- [x] SPEC-004: Mover plantillas y mapeo opción→prompt al backend
+- [x] SPEC-004: Versionar prompts (prompts/book/v1/…)
+- [x] SPEC-004: PromptBuilder + tests unitarios
+- [x] SPEC-004: Soporte de dedicatoria en prompt
+- [x] SPEC-004: Soporte de audiencia (niño/adolescente/adulto)
 
 ### EPIC 1.4 — Validación de salida IA
-- [ ] SPEC-005: JSON Schema del libro
-- [ ] SPEC-005: Validación server-side antes de persistir
-- [ ] SPEC-005: Moderación por audiencia
-- [ ] SPEC-005: Límites (capítulos, tokens, páginas)
+- [x] SPEC-005: JSON Schema del libro
+- [x] SPEC-005: Validación server-side antes de persistir
+- [x] SPEC-005: Moderación por audiencia
+- [x] SPEC-005: Límites (capítulos, tokens, páginas)
 
 ---
 
@@ -272,6 +272,8 @@ Leyenda:
 | SPEC-001 | Rotar key y eliminar IA del frontend | implementado (rotación manual pendiente) | owner | 2026-09-30 |
 | SPEC-002 | AiModule Nest 12 + adapters Gemini + env/secrets | implementado | owner | 2026-09-30 |
 | SPEC-003 | Contratos HTTP IA: DTOs, OpenAPI /api/v1, idempotencia, auth | implementado | owner | 2026-09-30 |
+| SPEC-004 | Prompts versionados book/v1 + PromptBuilder | implementado | owner | 2026-09-30 |
+| SPEC-005 | Validación de salida, moderación, límites y job in-memory | implementado | owner | 2026-09-30 |
 | … | … | … | … | … |
 
 ## Notas
@@ -303,3 +305,11 @@ Leyenda:
   Swagger en `/api/v1/docs` (off en producción); `setupSwagger` debe correr
   antes de `app.listen` (Express 5 no sirve rutas registradas después).
   Métricas: 60 unit + 1 e2e verdes, lint y prettier limpios, OpenAPI verificado.
+- SPEC-004/005: prompts versionados `book/v1` (5/10/15 páginas, audiencia,
+  dedicatoria, JSON schema para structured output) + parser tolerante,
+  validador class-validator, moderación whole-word por audiencia y límites
+  (`BOOK_LIMITS`). `BookGenerationService` genera de forma síncrona con
+  registry in-memory (TTL 24h) cuando `AI_ENDPOINTS_ENABLED=true`; SPEC-006 lo
+  reemplaza por BullMQ/Redis sin cambiar contratos. Códigos nuevos:
+  `INVALID_OUTPUT` (502) y `CONTENT_BLOCKED` (422). Métricas: 91 unit + 1 e2e
+  verdes, lint/prettier limpios.
