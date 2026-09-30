@@ -1,7 +1,8 @@
-import { Controller, Post, Get, Body, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Post, Get, Body, HttpCode, HttpStatus, UseGuards } from '@nestjs/common';
 import { AIService } from './ai.service';
 import { GenerateStoryDto, ValidateApiKeyDto } from './dto/generate-story.dto';
 import { GenerateImageDto } from './dto/generate-image.dto';
+import { AiEndpointsEnabledGuard } from './guards/ai-endpoints-enabled.guard';
 
 @Controller('ai')
 export class AIController {
@@ -11,6 +12,7 @@ export class AIController {
      * Genera un cuento usando el proveedor de IA especificado
      */
     @Post('story')
+    @UseGuards(AiEndpointsEnabledGuard)
     @HttpCode(HttpStatus.OK)
     async generateStory(@Body() dto: GenerateStoryDto) {
         const providerConfig = {
@@ -41,6 +43,7 @@ export class AIController {
      * Genera una imagen usando el proveedor especificado
      */
     @Post('image')
+    @UseGuards(AiEndpointsEnabledGuard)
     @HttpCode(HttpStatus.OK)
     async generateImage(@Body() dto: GenerateImageDto) {
         const providerConfig = {
@@ -62,6 +65,7 @@ export class AIController {
      * Valida una API key para un proveedor específico
      */
     @Post('validate-key')
+    @UseGuards(AiEndpointsEnabledGuard)
     @HttpCode(HttpStatus.OK)
     async validateApiKey(@Body() dto: ValidateApiKeyDto) {
         const isValid = await this.aiService.validateApiKey({

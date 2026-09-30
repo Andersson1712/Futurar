@@ -1,0 +1,13 @@
+# CODEOWNERS
+
+# Default owner
+* @Andersson1712
+
+# AI must NEVER run in the frontend (SPEC-001 freeze).
+# Any change that adds an AI SDK, provider key or provider call here requires
+# explicit review and violates AGENTS.md.
+/services/ @Andersson1712
+/vite.config.ts @Andersson1712
+/package.json @Andersson1712
+/docs/security/ @Andersson1712
+/backend/src/ai/ @Andersson1712

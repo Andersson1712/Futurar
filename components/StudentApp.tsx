@@ -5,9 +5,9 @@ import StoryReader from './StoryReader';
 import StoryDetails from './StoryDetails';
 import StudentLibrary from './StudentLibrary';
 import FloatingControls from './FloatingControls';
-import { generateStoryContent, generateStoryImage } from '../services/ai';
 import { ScanSettingsProvider, useScanSettings } from '../contexts/ScanSettingsContext';
 import { speak, stopSpeaking } from '../utils/speech';
+import { MESSAGES } from '../utils/messages';
 import { getRandomImage } from '../utils/images';
 import type { Student, StudentSettings, Story } from '../types/database';
 import type { ScanOption } from '../types';
@@ -271,72 +271,21 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
         setConfig(prev => ({ ...prev, protagonist: '', scenery: '', mission: '', style: '', content: '', title: '' }));
     };
 
-    // Generar historia con IA
+    // AI generation runs only in the Nest backend (SPEC-001).
+    // The frontend keeps the wizard state and returns to the previous step.
     useEffect(() => {
-        if (step === 'GENERATING') {
-            const doGenerate = async () => {
-                setGenerationProgress({ status: 'Iniciando...', progress: 10 });
+        if (step !== 'GENERATING') return;
 
-                try {
-                    console.log('🚀 Iniciando generación de cuento con IA...');
-                    setGenerationProgress({ status: 'Conectando con la IA...', progress: 20 });
+        setError(MESSAGES.errors.aiUnavailable);
+        setGenerationProgress({ status: MESSAGES.generation.unavailable, progress: 0 });
+        speakWithState(MESSAGES.errors.aiUnavailable);
 
-                    const [genContent, genImageUrl] = await Promise.all([
-                        generateStoryContent(
-                            config.protagonist,
-                            config.scenery,
-                            config.mission,
-                            config.style
-                        ),
-                        generateStoryImage(
-                            `Portada de cuento infantil. Protagonista: ${config.protagonist}. Escenario: ${config.scenery}. Estilo: ${config.style}. Sin texto.`,
-                            config.style
-                        )
-                    ]);
+        const timer = setTimeout(() => {
+            setStep('SELECT_STYLE');
+            setError(null);
+        }, 3000);
 
-                    setGenerationProgress({ status: 'Procesando el cuento...', progress: 80 });
-
-                    if (genContent && genContent.length > 100) {
-                        // Extract title from first line
-                        const lines = genContent.split('\n');
-                        let title = lines[0].trim();
-                        let contentBody = genContent;
-
-                        // Basic validation to ensure first line is actually a title
-                        if (title.length < 100 && !title.includes('CAPÍTULO')) {
-                            contentBody = lines.slice(1).join('\n').trim();
-                        } else {
-                            title = `Las Aventuras de ${config.protagonist}`;
-                        }
-
-                        // Remove quotes if present
-                        title = title.replace(/^["']|["']$/g, '');
-
-                        setConfig(prev => ({ ...prev, title, content: contentBody, imageUrl: genImageUrl }));
-                        setGenerationProgress({ status: '¡Cuento listo!', progress: 100 });
-
-                        setTimeout(() => {
-                            setStep('STORY_DETAILS');
-                            speakWithState("¡Tu cuento está listo! Mira los detalles antes de leerlo.");
-                        }, 500);
-                    } else {
-                        throw new Error('El contenido generado es muy corto');
-                    }
-
-                } catch (e: any) {
-                    console.error("❌ Error generando historia:", e);
-                    setError(`Error al generar: ${e.message}`);
-                    setGenerationProgress({ status: 'Error...', progress: 0 });
-
-                    setTimeout(() => {
-                        setStep('MENU');
-                        setError(null);
-                    }, 3000);
-                }
-            };
-
-            doGenerate();
-        }
+        return () => clearTimeout(timer);
     }, [step]);
 
     // Loading state
