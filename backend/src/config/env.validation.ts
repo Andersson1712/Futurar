@@ -38,6 +38,23 @@ export class EnvironmentVariables {
   AI_ENDPOINTS_ENABLED?: boolean;
 
   @IsOptional()
+  @Transform(toBoolean)
+  @IsBoolean()
+  SWAGGER_ENABLED?: boolean;
+
+  @IsOptional()
+  @Transform(toNumber)
+  @IsInt()
+  @Min(1000)
+  THROTTLE_TTL_MS?: number;
+
+  @IsOptional()
+  @Transform(toNumber)
+  @IsInt()
+  @Min(1)
+  THROTTLE_LIMIT?: number;
+
+  @IsOptional()
   @IsIn([...AI_PROVIDERS])
   AI_PROVIDER?: AiProvider;
 
@@ -77,6 +94,16 @@ export class EnvironmentVariables {
   @IsString()
   @IsNotEmpty()
   GEMINI_API_KEY?: string;
+
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  SUPABASE_URL?: string;
+
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  SUPABASE_SERVICE_KEY?: string;
 }
 
 export function validateEnv(
@@ -90,13 +117,16 @@ export function validateEnv(
     throw new Error(`Invalid environment configuration: ${errors.toString()}`);
   }
 
-  if (
-    validated.AI_ENDPOINTS_ENABLED === true &&
-    !validated.GEMINI_API_KEY?.trim()
-  ) {
-    throw new Error(
-      'GEMINI_API_KEY is required when AI_ENDPOINTS_ENABLED=true',
-    );
+  if (validated.AI_ENDPOINTS_ENABLED === true) {
+    const missing = (
+      ['GEMINI_API_KEY', 'SUPABASE_URL', 'SUPABASE_SERVICE_KEY'] as const
+    ).filter((name) => !validated[name]?.trim());
+
+    if (missing.length > 0) {
+      throw new Error(
+        `AI_ENDPOINTS_ENABLED=true requires: ${missing.join(', ')}`,
+      );
+    }
   }
 
   return validated;

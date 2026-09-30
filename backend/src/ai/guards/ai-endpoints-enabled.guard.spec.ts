@@ -1,35 +1,34 @@
-import { ServiceUnavailableException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { AiErrorException } from '../../common/errors/ai-error.exception';
 import { AiEndpointsEnabledGuard } from './ai-endpoints-enabled.guard';
 
-describe('AiEndpointsEnabledGuard', () => {
-  const original = process.env.AI_ENDPOINTS_ENABLED;
+function buildGuard(enabled?: boolean): AiEndpointsEnabledGuard {
+  const config = enabled === undefined ? {} : { AI_ENDPOINTS_ENABLED: enabled };
 
-  afterEach(() => {
-    if (original === undefined) {
-      delete process.env.AI_ENDPOINTS_ENABLED;
-    } else {
-      process.env.AI_ENDPOINTS_ENABLED = original;
+  return new AiEndpointsEnabledGuard(new ConfigService(config));
+}
+
+describe('AiEndpointsEnabledGuard', () => {
+  it('blocks the request when AI_ENDPOINTS_ENABLED is not configured', () => {
+    expect(() => buildGuard().canActivate()).toThrow(AiErrorException);
+  });
+
+  it('blocks the request when AI_ENDPOINTS_ENABLED is false', () => {
+    expect(() => buildGuard(false).canActivate()).toThrow(AiErrorException);
+  });
+
+  it('returns 503 with AI_ENDPOINTS_DISABLED when blocked', () => {
+    try {
+      buildGuard(false).canActivate();
+      fail('Expected guard to throw');
+    } catch (error) {
+      expect(error).toBeInstanceOf(AiErrorException);
+      expect((error as AiErrorException).getStatus()).toBe(503);
+      expect((error as AiErrorException).code).toBe('AI_ENDPOINTS_DISABLED');
     }
   });
 
-  it('blocks the request when AI_ENDPOINTS_ENABLED is not "true"', () => {
-    delete process.env.AI_ENDPOINTS_ENABLED;
-    const guard = new AiEndpointsEnabledGuard();
-
-    expect(() => guard.canActivate()).toThrow(ServiceUnavailableException);
-  });
-
-  it('blocks the request when AI_ENDPOINTS_ENABLED is any other value', () => {
-    process.env.AI_ENDPOINTS_ENABLED = 'false';
-    const guard = new AiEndpointsEnabledGuard();
-
-    expect(() => guard.canActivate()).toThrow(ServiceUnavailableException);
-  });
-
-  it('allows the request when AI_ENDPOINTS_ENABLED is "true"', () => {
-    process.env.AI_ENDPOINTS_ENABLED = 'true';
-    const guard = new AiEndpointsEnabledGuard();
-
-    expect(guard.canActivate()).toBe(true);
+  it('allows the request when AI_ENDPOINTS_ENABLED is true', () => {
+    expect(buildGuard(true).canActivate()).toBe(true);
   });
 });

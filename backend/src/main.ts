@@ -1,9 +1,12 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
+import { configureApp } from './app.setup';
+import { setupSwagger } from './config/swagger';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
+  configureApp(app);
 
   // Enable CORS for the frontend.
   app.enableCors({
@@ -17,20 +20,14 @@ async function bootstrap() {
     credentials: true,
   });
 
-  // Global DTO validation.
-  app.useGlobalPipes(
-    new ValidationPipe({
-      whitelist: true,
-      transform: true,
-      forbidNonWhitelisted: true,
-    }),
-  );
-
   // Configurable port.
   const port = process.env.PORT || 3001;
+
+  setupSwagger(app);
+
   await app.listen(port);
 
-  console.log(`🚀 Backend API running on http://localhost:${port}`);
+  console.log(`🚀 Backend API running on http://localhost:${port}/api/v1`);
 }
 
 void bootstrap();
