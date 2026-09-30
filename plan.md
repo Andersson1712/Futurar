@@ -17,8 +17,8 @@ Leyenda:
 ## Estado actual
 
 - Fase activa: **Fase 1 — Backend Nest como fuente de verdad de la IA**
-- Última tarea cerrada: SPEC-002 (implementado; build, tests y lint dirigido verdes)
-- Próxima tarea: SPEC-003
+- Última tarea cerrada: SPEC-003 (implementado; build, tests, lint y OpenAPI verdes)
+- Próxima tarea: SPEC-004 (prompts y mapeo opción→prompt en backend)
 - Bloqueos: ninguno. SPEC-001 rotación/purga de key sigue pendiente del owner
   (bloquea pruebas con Gemini real, no el desarrollo).
 
@@ -45,10 +45,10 @@ Leyenda:
 - [x] SPEC-002: Secret handling (env dev; KMS/tenant = SPEC-020)
 
 ### EPIC 1.2 — Contratos y DTOs
-- [ ] SPEC-003: DTOs GenerateBookRequest / Response / JobStatus / AiError
-- [ ] SPEC-003: Validación con class-validator
-- [ ] SPEC-003: OpenAPI/Swagger en /api/v1
-- [ ] SPEC-003: Idempotency-Key en POST /ai/books/generate
+- [x] SPEC-003: DTOs GenerateBookRequest / Response / JobStatus / AiError
+- [x] SPEC-003: Validación con class-validator
+- [x] SPEC-003: OpenAPI/Swagger en /api/v1
+- [x] SPEC-003: Idempotency-Key en POST /ai/books/generate
 
 ### EPIC 1.3 — Prompts y mapeo de opciones
 - [ ] SPEC-004: Mover plantillas y mapeo opción→prompt al backend
@@ -271,6 +271,7 @@ Leyenda:
 |------|--------|--------|--------------|-------|
 | SPEC-001 | Rotar key y eliminar IA del frontend | implementado (rotación manual pendiente) | owner | 2026-09-30 |
 | SPEC-002 | AiModule Nest 12 + adapters Gemini + env/secrets | implementado | owner | 2026-09-30 |
+| SPEC-003 | Contratos HTTP IA: DTOs, OpenAPI /api/v1, idempotencia, auth | implementado | owner | 2026-09-30 |
 | … | … | … | … | … |
 
 ## Notas
@@ -293,3 +294,12 @@ Leyenda:
   `GEMINI_API_KEY`.
   Pendiente como chore aparte: Vite 6→8 + TS frontend 5.8→6/7; evaluar Zod para
   env cuando se apruebe la dependencia.
+- SPEC-003: contratos HTTP en `/api/v1` con class-validator, envelope `AiError`
+  (filtro global), `Idempotency-Key` (store in-memory TTL 24h + interceptor),
+  auth Supabase (`auth.getUser`) y throttler (`@nestjs/throttler`).
+  Endpoint POST `/ai/books/generate` devuelve 202 con el contrato y hoy responde
+  501 `NOT_IMPLEMENTED` (pipeline real = SPEC-004/005/006); `AI_ENDPOINTS_ENABLED`
+  sigue en false por defecto y el boot exige Supabase + Gemini si se habilita.
+  Swagger en `/api/v1/docs` (off en producción); `setupSwagger` debe correr
+  antes de `app.listen` (Express 5 no sirve rutas registradas después).
+  Métricas: 60 unit + 1 e2e verdes, lint y prettier limpios, OpenAPI verificado.

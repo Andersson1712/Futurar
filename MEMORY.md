@@ -5,45 +5,45 @@
 ## Current State
 - MVP in progress: accessible story creation for people with severe motor
   disabilities, operated by a single switch (scanning) or direct input.
-- Frontend AI is REMOVED (SPEC-001). Generation is disabled until SPEC-003+
-  re-enables backend endpoints with server-owned contracts.
-- SPEC-002 done: Nest 12 hexagonal AiModule (Text/Image/Tts ports + Gemini
-  adapters), server-owned key via SecretProvider, env validation at boot;
-  legacy client-key controller/providers deleted. Frontend React 19.3 with
-  React types added.
-- Wizard, library, reader, TTS, dedications, teacher panel work; gaps: generation contracts, queue/SSE, frontend test runner, Prettier/Git flow.
+- Frontend AI is REMOVED (SPEC-001). Generation stays disabled until the backend
+  pipeline is wired (SPEC-004/005/006); endpoints exist but remain gated.
+- SPEC-002/003 done: Nest 12 hexagonal AiModule (Text/Image/Tts ports + Gemini
+  adapters), server-owned key, env validation, and HTTP contracts under /api/v1
+  (DTOs, AiError, OpenAPI, Idempotency-Key, Supabase auth, throttler).
+  Frontend React 19.3 with React types added.
+- Wizard, library, reader, TTS, dedications, teacher panel work; gaps: prompt
+  pipeline, queue/SSE, frontend test runner, Git flow.
 
 ## Architecture Decisions
 - Nest backend is the single source of truth for AI; frontend holds no keys.
   Ports `src/ai/domain/ports`, adapters `src/ai/infrastructure/gemini`; prompts SPEC-004.
 - Backend owns Supabase data; frontend uses Supabase Auth only; JWT validated
-  server-side; Realtime/Storage go through backend.
-- POST /ai/* disabled (AiEndpointsEnabledGuard / AI_ENDPOINTS_ENABLED) until
-  SPEC-003 lands DTOs/OpenAPI/idempotency.
+  server-side via SupabaseAuthGuard; Realtime/Storage go through backend.
+- /api/v1 + Swagger (off in prod); AiError envelope; Idempotency-Key required on
+  POST /ai/books/generate; in-memory store replaced by Redis/Postgres in SPEC-006.
 - NestJS 12 + TS 6: packages ESM-only, consumed from CJS via require(esm) on
-  Node >= 20.19; Jest scripts use NODE_OPTIONS=--experimental-vm-modules.
-- Versioned REST /api/v1; BullMQ + SSE for long jobs; throttler; hexagonal.
+  Node >= 20.19; Jest uses NODE_OPTIONS=--experimental-vm-modules.
+- BullMQ + SSE for long jobs; throttler active; versioned REST; hexagonal.
 - UI es-AR with i18n; code/docs English; Conventional Commits; a11y WCAG 2.2
   AA / ISO-IEC 17549-3 / EN 301 549; SDD specs before code (Context7 versions).
 
 ## Learnings / Edge Cases
 - TS 6: explicit `rootDir` (`.`, build `./src`), `types:["node","jest"]`, no
-  `baseUrl`, `import type` in decorated signatures, strictPropertyInit on.
-- @nestjs/config 12 uses Standard Schema; env validated with class-validator
-  `validate()` (adding Zod needs approval).
-- Gemini TTS lacks es-AR: default es-419 (preview), documented.
-- Gemini models: text gemini-3.8-flash, image gemini-3.1-flash-image, TTS
-  gemini-3.8-flash-tts; @google/genai 2.x (v2 breaks only Interactions API).
+  `baseUrl`, `import type` in decorated signatures (TS1272), strictPropertyInit.
+- Swagger setup must run before app.listen (Express 5 ignores later routes).
+- Gemini TTS lacks es-AR: default es-419. Models: text gemini-3.8-flash, image
+  gemini-3.1-flash-image, TTS gemini-3.8-flash-tts; @google/genai 2.x.
 - Click-on-release: read target on pointerdown, cancel scan timer, act at once.
 - es-AR voice fallback, scan speed per profile, copy in utils/messages.ts until SPEC-018.
-- .env untracked; no real Gemini key in history. Backend `npm run lint` is green.
+- .env untracked; backend `npm run lint` green.
 
 ## Next Steps
 - [ ] Owner: rotate Gemini key, purge ai_config keys, store new key server-side.
-- [ ] SPEC-003: DTOs, OpenAPI /api/v1, idempotency; then re-enable endpoints.
-- [ ] SPEC-004/005: prompts in backend + server-side output validation.
+- [ ] SPEC-004/005: prompts in backend + server-side output validation; then wire
+      the real pipeline and enable AI_ENDPOINTS_ENABLED.
+- [ ] SPEC-006/007: BullMQ jobs + SSE + idempotency store in Redis/Supabase.
 - [ ] SPEC-009: frontend generation via backend only.
-- [ ] Chore: Vite 6→8 + frontend TS 5.8→7; backend global Prettier debt.
+- [ ] Chore: Vite 6→8 + frontend TS 5.8→7.
 - [ ] Add Vitest + RTL (click wins, focus trap, autosave).
 
 ## Housekeeping
