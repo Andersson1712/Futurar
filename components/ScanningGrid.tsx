@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { ScanOption } from '../types';
 import { useInputDevice } from '../hooks/useInputDevice';
+import { useScanSettingsOptional } from '../contexts/ScanSettingsContext';
 import { playSelectionSound } from '../utils/audio';
 import { speakOption, stopSpeaking } from '../utils/speech';
 
@@ -29,6 +30,13 @@ const ScanningGrid: React.FC<ScanningGridProps> = ({
   const [isSelecting, setIsSelecting] = useState(false);
   const selectionTimeoutRef = useRef<number | null>(null);
 
+  // Per-profile scanning: sweep on/off + input mode (SPEC-015)
+  const scanSettings = useScanSettingsOptional();
+  const scanningAllowed = scanSettings
+    ? scanSettings.sweepEnabled &&
+      (scanSettings.inputMode === 'scan' || scanSettings.inputMode === 'switch')
+    : true;
+
   // Resetear índice cuando cambian las opciones
   useEffect(() => {
     setIndex(0);
@@ -51,13 +59,13 @@ const ScanningGrid: React.FC<ScanningGridProps> = ({
 
   // Avanzar al siguiente elemento automáticamente (respeta pausa y selección)
   useEffect(() => {
-    if (isPaused || isSelecting) return; // Cancelar el timer durante la selección
+    if (isPaused || isSelecting || !scanningAllowed) return; // Cancelar el timer durante la selección
 
     const timer = setInterval(() => {
       setIndex((prev) => (prev + 1) % options.length);
     }, scanInterval);
     return () => clearInterval(timer);
-  }, [options.length, scanInterval, isPaused, isSelecting]);
+  }, [options.length, scanInterval, isPaused, isSelecting, scanningAllowed]);
 
   // Leer en voz alta la opción actual durante el barrido (respeta pausa)
   useEffect(() => {

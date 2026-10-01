@@ -13,6 +13,8 @@ vi.mock('../utils/speech', () => ({
   stopSpeaking: vi.fn(),
   announceBreak: vi.fn(),
   announceResume: vi.fn(),
+  configureSpeechVoice: vi.fn(),
+  pickSpanishVoice: vi.fn(),
 }));
 
 vi.mock('../utils/audio', () => ({

@@ -2,6 +2,7 @@ import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import ScanningGrid from './ScanningGrid';
+import { ScanSettingsProvider } from '../contexts/ScanSettingsContext';
 import type { ScanOption } from '../types';
 
 vi.mock('../utils/speech', () => ({
@@ -118,5 +119,36 @@ describe('ScanningGrid (SPEC-011)', () => {
     fireEvent.keyDown(window, { code: 'Space' });
 
     expect(onSelect).not.toHaveBeenCalled();
+  });
+
+  it('does not auto-advance when sweeping is disabled', () => {
+    const onSelect = vi.fn();
+    render(
+      <ScanSettingsProvider initialSettings={{ sweepEnabled: false }}>
+        <ScanningGrid options={OPTIONS} onSelect={onSelect} scanInterval={1000} />
+      </ScanSettingsProvider>,
+    );
+
+    vi.advanceTimersByTime(3000);
+    fireEvent.keyDown(window, { code: 'Space' });
+
+    expect(onSelect).toHaveBeenCalledWith(OPTIONS[0]);
+  });
+
+  it('does not auto-advance in mouse or touch modes', () => {
+    const mouseSelect = vi.fn();
+    render(
+      <ScanSettingsProvider initialSettings={{ inputMode: 'mouse' }}>
+        <ScanningGrid
+          options={OPTIONS}
+          onSelect={mouseSelect}
+          scanInterval={1000}
+        />
+      </ScanSettingsProvider>,
+    );
+
+    vi.advanceTimersByTime(3000);
+    fireEvent.keyDown(window, { code: 'Space' });
+    expect(mouseSelect).toHaveBeenCalledWith(OPTIONS[0]);
   });
 });
