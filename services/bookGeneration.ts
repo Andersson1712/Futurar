@@ -51,6 +51,10 @@ export async function followJob(
   jobId: string,
   handlers: FollowJobHandlers = {},
 ): Promise<JobStatusPayload> {
+  if (handlers.signal?.aborted) {
+    throw new DOMException('Aborted', 'AbortError');
+  }
+
   try {
     return await streamJob(jobId, handlers);
   } catch (error) {
@@ -177,6 +181,10 @@ function parseSseFrame(
 }
 
 function delay(ms: number, signal?: AbortSignal): Promise<void> {
+  if (signal?.aborted) {
+    return Promise.reject(new DOMException('Aborted', 'AbortError'));
+  }
+
   return new Promise((resolve, reject) => {
     const timer = setTimeout(resolve, ms);
 

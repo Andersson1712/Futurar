@@ -5,10 +5,10 @@
 ## Current State
 - MVP: accessible story creation for severe motor disabilities, switch or direct input.
 - Frontend AI REMOVED (SPEC-001); generation gated by `AI_ENDPOINTS_ENABLED` until the key is rotated.
-- SPEC-002→016 done: server-owned Nest 12 AI module, /api/v1 contracts,
-  prompts/validation, BullMQ/Redis jobs, SSE, book persistence with audit/soft
-  delete/images, frontend via backend, click-wins, runners, scroll, dialogs,
-  autosave, per-profile a11y and the WCAG audit/declaration. Phase 4 closed.
+- SPEC-002→017 done: server-owned Nest 12 AI module, /api/v1 contracts,
+  prompts/validation, BullMQ/Redis jobs, SSE, book persistence, frontend via
+  backend, a11y (click-wins, scroll, dialogs, autosave, settings, WCAG) and the
+  MSW/coverage test infra.
 - Wizard, library, reader, TTS, dedications, teacher panel work; legacy Supabase data pending SPEC-021/023/027.
 
 ## Architecture Decisions
@@ -40,11 +40,11 @@
 - Autosave: `futurar_progress_v1` per student (whitelisted steps, empty config valid); clears on profile switch/new story/logout.
 - A11y per profile: `student_settings` (migration 0003) seeds ScanSettings; `<html>` gets font/line/uppercase/bold; voice es-AR→es-US; reduced-motion/contrast CSS.
 - A11y audit: axe-core in Vitest (color-contrast off in jsdom) + `utils/contrast` ratios; `useDialogA11y` for dialogs; declaration in `docs/accessibility/`.
+- Test infra: MSW 2.x (v3 needs TS >=5.9); `test:coverage` floor 35/34/32/36; abort checks `signal.aborted`.
 
 ## Next Steps
 - [ ] Owner: rotate Gemini key; apply migrations 0001/0002/0003; create `book-images` bucket.
-- [ ] SPEC-017→019: MSW + E2E extras + CI (Vitest/axe/Playwright exist); chore Vite/TS.
-- [ ] SPEC-021/023: profiles/options API; SPEC-027 analytics.
+- [ ] SPEC-018/019: critical tests + CI floor; SPEC-021/023: profiles API; chore Vite/TS.
 
 ## Housekeeping
 - Keep under ~50 lines: before finishing, compact and remove resolved items.

@@ -17,9 +17,9 @@ Leyenda:
 ## Estado actual
 
 - Fase activa: **Fase 5 — Frontend: test runner y calidad**
-- Última tarea cerrada: SPEC-016 (implementado; WCAG 2.2 AA, ISO 17549-3, declaración)
-- Próxima tarea: SPEC-017 (MSW + Playwright extras y cobertura de tests)
-- Rama de integración: `dev` (todo SPEC-001→016); `main` se actualiza al cerrar fase.
+- Última tarea cerrada: SPEC-017 (implementado; MSW + cobertura con umbral)
+- Próxima tarea: SPEC-018 (tests críticos de accesibilidad y flujo)
+- Rama de integración: `dev` (todo SPEC-001→017); `main` se actualiza al cerrar fase.
 
 ---
 
@@ -144,10 +144,10 @@ Leyenda:
 ## Fase 5 — Frontend: test runner y calidad
 
 ### EPIC 5.1 — Infraestructura de tests
-- [ ] SPEC-017: Vitest + RTL + user-event + vitest-axe
-- [ ] SPEC-017: Scripts test / test:watch / test:coverage
-- [ ] SPEC-017: MSW para mock de API
-- [ ] SPEC-017: Playwright para E2E
+- [x] SPEC-017: Vitest + RTL + user-event + axe-core (vitest-axe directo)
+- [x] SPEC-017: Scripts test / test:watch / test:coverage
+- [x] SPEC-017: MSW para mock de API
+- [x] SPEC-017: Playwright para E2E
 
 ### EPIC 5.2 — Tests críticos
 - [ ] SPEC-018: Test click wins over focus
@@ -284,6 +284,7 @@ Leyenda:
 | SPEC-014 | Autoguardado y continuar (wizard + visor) | implementado | owner | 2026-09-30 |
 | SPEC-015 | Accesibilidad por perfil (barrido/modos/texto/voz) | implementado | owner | 2026-09-30 |
 | SPEC-016 | Auditoría WCAG 2.2 AA, ISO 17549-3 y declaración | implementado | owner | 2026-09-30 |
+| SPEC-017 | Infra de tests: MSW + cobertura + E2E | implementado | owner | 2026-09-30 |
 | … | … | … | … | … |
 
 ## Notas
@@ -387,3 +388,8 @@ Leyenda:
   modales restantes. Declaración es-AR + auditoría + alineación ISO 17549-3 y
   aplicabilidad EN 301 549 en `docs/accessibility/`. 54 tests frontend.
   Fase 4 cerrada.
+- SPEC-017: MSW 2.15 (v3 pide TS ≥5.9) con handlers de la API Nest; tests de
+  `backendApi`/`bookGeneration` (SSE, fallback, abort, errores) y
+  `backendBooks`; `test:coverage` con umbral no decreciente
+  (35/34/32/36 sobre 36.7/36.1/33.8/38.1 medido). Bug de abort ya-señalado
+  corregido en `followJob`/`delay`. 66 tests frontend.

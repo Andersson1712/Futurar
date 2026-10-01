@@ -13,7 +13,8 @@ Data/Auth: Supabase. AI: Gemini, reached only through the backend.
 
 Frontend:
 `npm install` · `npm run dev` · `npm run build` · `npm run test`
-`npm run test:e2e` · `npm run typecheck` · `npm run check:supabase`
+`npm run test:coverage` · `npm run test:e2e` · `npm run typecheck`
+`npm run check:supabase`
 
 Backend (run inside ./backend):
 `npm run start:dev` · `npm run build` · `npm run lint`
