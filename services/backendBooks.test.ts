@@ -6,7 +6,7 @@ import {
   SAMPLE_DETAIL,
   SAMPLE_SUMMARY,
 } from '../test/msw/handlers';
-import { getStudentBook, listStudentBooks } from './backendBooks';
+import { getStudentBook, listStudentBooks, saveBookDedication, clearBookDedication, setBookFavorite } from './backendBooks';
 
 vi.mock('./supabase', () => ({
   supabase: {
@@ -46,5 +46,29 @@ describe('backendBooks (SPEC-017)', () => {
 
     expect(book).toEqual(SAMPLE_DETAIL);
     expect(book.protagonist).toBe('Un dragón curioso');
+  });
+
+  it('saves a dedication with structured fields', async () => {
+    const book = await saveBookDedication('book-1', {
+      to: 'Beto',
+      reason: 'su cumpleaños',
+      position: 'end',
+    });
+
+    expect(book.dedicationTo).toBe('Beto');
+    expect(book.dedicationReason).toBe('su cumpleaños');
+    expect(book.dedicationPosition).toBe('end');
+  });
+
+  it('clears a dedication', async () => {
+    const book = await clearBookDedication('book-1');
+
+    expect(book.dedicationTo).toBeUndefined();
+  });
+
+  it('sets the favorite flag', async () => {
+    const summary = await setBookFavorite('book-1', true);
+
+    expect(summary.isFavorite).toBe(true);
   });
 });

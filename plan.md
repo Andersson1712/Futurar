@@ -17,9 +17,9 @@ Leyenda:
 ## Estado actual
 
 - Fase activa: **Fase 6 — Panel de administración**
-- Última tarea cerrada: SPEC-021 (implementado; perfiles/settings/opciones por backend)
-- Próxima tarea: SPEC-022 (dedicaciones: contactos por perfil)
-- Rama de integración: `dev` (todo SPEC-001→021, protegida con CI); `main` congelada.
+- Última tarea cerrada: SPEC-022 (implementado; contactos, dedicatorias y favoritos por backend)
+- Próxima tarea: SPEC-023 (acciones y opciones dinámicas)
+- Rama de integración: `dev` (todo SPEC-001→022, protegida con CI); `main` congelada.
 
 ---
 
@@ -182,9 +182,9 @@ Leyenda:
 - [x] SPEC-021: Complejidad del libro (tamaño, audiencia) usada al generar
 
 ### EPIC 6.3 — Dedicaciones
-- [ ] SPEC-022: Contactos por perfil
-- [ ] SPEC-022: Asignación perfil ↔ contactos
-- [ ] SPEC-022: UI de dedicatoria en visor
+- [x] SPEC-022: Contactos por perfil (tabla `profile_contacts`, CRUD docente)
+- [x] SPEC-022: Asignación perfil ↔ contactos (1:N con cascada)
+- [x] SPEC-022: UI de dedicatoria en visor (+ favoritos de libros backend)
 
 ### EPIC 6.4 — Acciones y opciones dinámicas (norte)
 - [ ] SPEC-023: Modelo Acción → Opciones → Niveles → Tipos
@@ -424,3 +424,13 @@ Leyenda:
   `check:supabase` reducida (queda StudentEditor/TeacherPanel para options y
   `stories`/`usage_sessions` legacy). 204 tests backend + 88 frontend; E2E con
   mock Nest de perfiles. Owner: aplicar 0005.
+- SPEC-022: migración 0006 con `profile_contacts` (cascada por perfil) y
+  dedicatoria/favorito a nivel libro (`dedication_to/reason/position`,
+  `is_favorite`); `ContactsModule` dentro de `ProfilesModule` (CRUD scoped por
+  docente) y `PUT/DELETE /books/:id/dedication` + `PUT /books/:id/favorite`;
+  la generación persiste la dedicatoria pedida. Frontend:
+  `services/backendContacts.ts`, modal de dedicatoria en el visor (contactos +
+  texto libre + posición + quitar), favorito en visor y filtro en biblioteca,
+  PDF prellenado, pestaña Contactos en el editor y limpieza del código muerto
+  de `stories`. 222 tests backend + 101 frontend; cobertura 47.8/46.5/44.7/50.1.
+  Owner: aplicar 0006.

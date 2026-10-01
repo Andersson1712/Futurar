@@ -37,11 +37,21 @@ export function bookToStory(
   };
 }
 
+export function formatDedication(book: BookDetailPayload): string | null {
+  if (book.dedicationTo) {
+    return book.dedicationReason
+      ? `Para ${book.dedicationTo}: ${book.dedicationReason}`
+      : `Para ${book.dedicationTo}`;
+  }
+
+  return book.dedication ?? null;
+}
+
 export function bookDetailToStory(
   book: BookDetailPayload,
   studentId: string,
 ): Story {
-  return bookToStory(book, {
+  const story = bookToStory(book, {
     protagonist: book.protagonist,
     scenery: book.scenery,
     mission: book.mission,
@@ -49,6 +59,14 @@ export function bookDetailToStory(
     studentId,
     createdAt: book.createdAt,
   });
+
+  return {
+    ...story,
+    is_favorite: book.isFavorite ?? false,
+    dedication_to: formatDedication(book),
+    dedication_reason: book.dedicationReason ?? null,
+    dedication_position: book.dedicationPosition ?? null,
+  };
 }
 
 export function bookSummaryToStory(
@@ -67,7 +85,7 @@ export function bookSummaryToStory(
     student_id: studentId,
     type: 'story',
     created_at: summary.createdAt,
-    is_favorite: false,
+    is_favorite: summary.isFavorite ?? false,
     dedication_to: null,
     dedication_reason: null,
     dedication_position: null,

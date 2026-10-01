@@ -1,5 +1,14 @@
 export const BOOK_REPOSITORY = Symbol('BOOK_REPOSITORY');
 
+export const DEDICATION_POSITIONS = ['start', 'end'] as const;
+export type DedicationPosition = (typeof DEDICATION_POSITIONS)[number];
+
+export interface BookDedication {
+  to: string;
+  reason?: string;
+  position: DedicationPosition;
+}
+
 export interface StoredPage {
   pageNumber: number;
   content: string;
@@ -46,6 +55,7 @@ export interface StoredBookSummary {
   title: string;
   pageCount: number;
   currentVersion: number;
+  isFavorite: boolean;
   deletedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
@@ -53,6 +63,7 @@ export interface StoredBookSummary {
 
 export interface StoredBook extends StoredBookSummary {
   version: StoredBookVersion;
+  dedication?: BookDedication;
 }
 
 export interface SaveBookInput {
@@ -60,6 +71,7 @@ export interface SaveBookInput {
   profileId?: string;
   snapshot: BookSnapshot;
   audit: BookAudit;
+  dedication?: BookDedication;
 }
 
 export interface BookRepository {
@@ -67,4 +79,14 @@ export interface BookRepository {
   findById(bookId: string, userId: string): Promise<StoredBook | undefined>;
   listByUser(userId: string, profileId?: string): Promise<StoredBookSummary[]>;
   softDelete(bookId: string, userId: string): Promise<boolean>;
+  saveDedication(
+    bookId: string,
+    userId: string,
+    dedication: BookDedication | null,
+  ): Promise<StoredBook | undefined>;
+  setFavorite(
+    bookId: string,
+    userId: string,
+    isFavorite: boolean,
+  ): Promise<StoredBookSummary | undefined>;
 }

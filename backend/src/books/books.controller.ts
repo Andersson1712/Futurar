@@ -1,10 +1,12 @@
 import {
+  Body,
   Controller,
   Delete,
   Get,
   HttpCode,
   HttpStatus,
   Param,
+  Put,
   Query,
   Req,
   UseGuards,
@@ -25,7 +27,12 @@ import {
   type AuthenticatedRequest,
 } from '../common/guards/supabase-auth.guard';
 import { BooksService } from './books.service';
-import { BookDetailDto, BookSummaryDto } from './dto/book.dto';
+import {
+  BookDetailDto,
+  BookSummaryDto,
+  SaveDedicationDto,
+  SaveFavoriteDto,
+} from './dto/book.dto';
 import { ListBooksQueryDto } from './dto/list-books.query.dto';
 
 @ApiTags('books')
@@ -57,6 +64,52 @@ export class BooksController {
     @Req() request: AuthenticatedRequest,
   ): Promise<BookDetailDto> {
     return this.booksService.get(bookId, request.user?.id ?? '');
+  }
+
+  @Put(':id/dedication')
+  @UseGuards(SupabaseAuthGuard)
+  @ApiOperation({ summary: 'Set the dedication of a book' })
+  @ApiOkResponse({ type: BookDetailDto })
+  @ApiNotFoundResponse({ type: AiErrorDto })
+  async saveDedication(
+    @Param('id') bookId: string,
+    @Body() dto: SaveDedicationDto,
+    @Req() request: AuthenticatedRequest,
+  ): Promise<BookDetailDto> {
+    return this.booksService.saveDedication(
+      bookId,
+      request.user?.id ?? '',
+      dto,
+    );
+  }
+
+  @Delete(':id/dedication')
+  @UseGuards(SupabaseAuthGuard)
+  @ApiOperation({ summary: 'Clear the dedication of a book' })
+  @ApiOkResponse({ type: BookDetailDto })
+  @ApiNotFoundResponse({ type: AiErrorDto })
+  async clearDedication(
+    @Param('id') bookId: string,
+    @Req() request: AuthenticatedRequest,
+  ): Promise<BookDetailDto> {
+    return this.booksService.clearDedication(bookId, request.user?.id ?? '');
+  }
+
+  @Put(':id/favorite')
+  @UseGuards(SupabaseAuthGuard)
+  @ApiOperation({ summary: 'Favorite or unfavorite a book' })
+  @ApiOkResponse({ type: BookSummaryDto })
+  @ApiNotFoundResponse({ type: AiErrorDto })
+  async setFavorite(
+    @Param('id') bookId: string,
+    @Body() dto: SaveFavoriteDto,
+    @Req() request: AuthenticatedRequest,
+  ): Promise<BookSummaryDto> {
+    return this.booksService.setFavorite(
+      bookId,
+      request.user?.id ?? '',
+      dto.isFavorite,
+    );
   }
 
   @Delete(':id')

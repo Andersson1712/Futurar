@@ -1,5 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../services/supabase';
+import {
+    createProfileContact,
+    deleteProfileContact,
+    listProfileContacts,
+    updateProfileContact,
+    type ProfileContactPayload,
+} from '../services/backendContacts';
 import type { Student, StudentSettings, StudentElement } from '../types/database';
 import { t } from '../utils/messages';
 
@@ -224,7 +231,7 @@ const StudentEditor: React.FC<StudentEditorProps> = ({
     onCancel,
     iconOptions
 }) => {
-    const [activeTab, setActiveTab] = useState<'profile' | 'config' | 'elements'>('profile');
+    const [activeTab, setActiveTab] = useState<'profile' | 'config' | 'elements' | 'contacts'>('profile');
     const [isLoadingElements, setIsLoadingElements] = useState(false);
 
     const initialModules =
@@ -272,12 +279,104 @@ const StudentEditor: React.FC<StudentEditorProps> = ({
     const [missions, setMissions] = useState<StudentElement[]>([]);
     const [styles, setStyles] = useState<StudentElement[]>([]);
 
+    // Contacts Data (SPEC-022)
+    const [contacts, setContacts] = useState<ProfileContactPayload[]>([]);
+    const [isLoadingContacts, setIsLoadingContacts] = useState(false);
+    const [editingContactId, setEditingContactId] = useState<string | null>(null);
+    const [contactMessage, setContactMessage] = useState<string | null>(null);
+    const [contactForm, setContactForm] = useState({
+        name: '',
+        relationship: '',
+        reason: ''
+    });
+
     // Load elements when tab is selected and student exists
     useEffect(() => {
         if (activeTab === 'elements' && student?.id) {
             loadElements();
         }
     }, [activeTab, student?.id]);
+
+    // Load contacts when tab is selected and student exists
+    useEffect(() => {
+        if (activeTab === 'contacts' && student?.id) {
+            void loadContacts();
+        }
+    }, [activeTab, student?.id]);
+
+    const loadContacts = async () => {
+        if (!student?.id) return;
+
+        setIsLoadingContacts(true);
+        try {
+            setContacts(await listProfileContacts(student.id));
+        } catch (err) {
+            console.error('Error loading contacts:', err);
+        } finally {
+            setIsLoadingContacts(false);
+        }
+    };
+
+    const resetContactForm = () => {
+        setContactForm({ name: '', relationship: '', reason: '' });
+        setEditingContactId(null);
+    };
+
+    const showContactMessage = (message: string) => {
+        setContactMessage(message);
+        setTimeout(() => setContactMessage(null), 3000);
+    };
+
+    const handleSaveContact = async () => {
+        if (
+            !student?.id ||
+            !contactForm.name.trim() ||
+            !contactForm.relationship.trim()
+        ) {
+            return;
+        }
+
+        const input = {
+            name: contactForm.name.trim(),
+            relationship: contactForm.relationship.trim(),
+            dedicationReason: contactForm.reason.trim() || undefined
+        };
+
+        try {
+            if (editingContactId) {
+                await updateProfileContact(editingContactId, input);
+            } else {
+                await createProfileContact(student.id, input);
+            }
+
+            resetContactForm();
+            showContactMessage(t('editor.contactSaved'));
+            await loadContacts();
+        } catch (err) {
+            console.error('Error saving contact:', err);
+            showContactMessage(t('editor.contactError'));
+        }
+    };
+
+    const handleEditContact = (contact: ProfileContactPayload) => {
+        setEditingContactId(contact.id);
+        setContactForm({
+            name: contact.name,
+            relationship: contact.relationship,
+            reason: contact.dedicationReason ?? ''
+        });
+    };
+
+    const handleDeleteContact = async (contactId: string) => {
+        try {
+            await deleteProfileContact(contactId);
+            if (editingContactId === contactId) resetContactForm();
+            await loadContacts();
+        } catch (err) {
+            console.error('Error deleting contact:', err);
+            showContactMessage(t('editor.contactRemoveError'));
+        }
+    };
 
     const loadElements = async () => {
         if (!student?.id) return;
@@ -422,6 +521,18 @@ const StudentEditor: React.FC<StudentEditorProps> = ({
                         >
                             <span className="material-symbols-outlined text-sm">auto_stories</span>
                             Elementos de Creación
+                        </button>
+                    )}
+                    {student && (
+                        <button
+                            onClick={() => setActiveTab('contacts')}
+                            className={`px-4 py-3 font-bold border-b-2 transition-colors whitespace-nowrap flex items-center gap-2 ${activeTab === 'contacts'
+                                ? 'border-primary text-primary'
+                                : 'border-transparent text-gray-400 hover:text-white'
+                                }`}
+                        >
+                            <span className="material-symbols-outlined text-sm">contacts</span>
+                            {t('editor.contacts')}
                         </button>
                     )}
                 </div>
@@ -911,8 +1022,133 @@ const StudentEditor: React.FC<StudentEditorProps> = ({
                         </div>
                     )}
 
-                    {/* Footer Actions */}
-                    <div className="flex gap-4 mt-8 pt-6 border-t border-border-accent">
+                    {activeTab === 'contacts' && student && (
+                        <div className="animate-fade-in flex-1 overflow-y-auto">
+                            <div className="p-4 bg-background-dark rounded-xl border border-border-accent mb-6">
+                                <h3 className="font-bold text-lg flex items-center gap-2 mb-4">
+                                    <span className="material-symbols-outlined text-primary">person_add</span>
+                                    {editingContactId
+                                        ? t('editor.contacts')
+                                        : t('editor.contactAdd')}
+                                </h3>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-400 mb-2">
+                                            {t('editor.contactName')} *
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={contactForm.name}
+                                            onChange={(e) => setContactForm(prev => ({ ...prev, name: e.target.value }))}
+                                            maxLength={80}
+                                            className="w-full min-h-11 bg-surface-dark border border-border-accent rounded-xl px-4 py-3 text-white focus:border-primary focus:outline-none"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-400 mb-2">
+                                            {t('editor.contactRelationship')} *
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={contactForm.relationship}
+                                            onChange={(e) => setContactForm(prev => ({ ...prev, relationship: e.target.value }))}
+                                            maxLength={40}
+                                            className="w-full min-h-11 bg-surface-dark border border-border-accent rounded-xl px-4 py-3 text-white focus:border-primary focus:outline-none"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-400 mb-2">
+                                            {t('editor.contactReason')}
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={contactForm.reason}
+                                            onChange={(e) => setContactForm(prev => ({ ...prev, reason: e.target.value }))}
+                                            maxLength={200}
+                                            className="w-full min-h-11 bg-surface-dark border border-border-accent rounded-xl px-4 py-3 text-white focus:border-primary focus:outline-none"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="flex gap-3 mt-4">
+                                    <button
+                                        type="button"
+                                        onClick={() => void handleSaveContact()}
+                                        disabled={!contactForm.name.trim() || !contactForm.relationship.trim()}
+                                        className="min-h-11 px-6 py-3 bg-primary hover:bg-primary/80 rounded-xl font-bold disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                    >
+                                        {t('editor.contactAdd')}
+                                    </button>
+                                    {editingContactId && (
+                                        <button
+                                            type="button"
+                                            onClick={resetContactForm}
+                                            className="min-h-11 px-6 py-3 bg-white/10 hover:bg-white/20 rounded-xl font-bold transition-colors"
+                                        >
+                                            Cancelar
+                                        </button>
+                                    )}
+                                </div>
+                                {contactMessage && (
+                                    <p className="mt-3 text-sm text-primary font-bold" role="status">
+                                        {contactMessage}
+                                    </p>
+                                )}
+                            </div>
+
+                            {isLoadingContacts ? (
+                                <div className="flex items-center justify-center py-12">
+                                    <span className="material-symbols-outlined text-4xl text-primary animate-spin">progress_activity</span>
+                                </div>
+                            ) : contacts.length === 0 ? (
+                                <p className="text-center text-gray-400 py-8">
+                                    {t('editor.contactsEmpty')}
+                                </p>
+                            ) : (
+                                <ul className="space-y-3">
+                                    {contacts.map((contact) => (
+                                        <li
+                                            key={contact.id}
+                                            className="flex items-center justify-between gap-4 p-4 bg-background-dark rounded-xl border border-border-accent"
+                                        >
+                                            <div>
+                                                <p className="font-bold">
+                                                    {contact.name}
+                                                    <span className="ml-2 text-sm text-gray-400">
+                                                        {contact.relationship}
+                                                    </span>
+                                                </p>
+                                                {contact.dedicationReason && (
+                                                    <p className="text-sm text-gray-400">
+                                                        {contact.dedicationReason}
+                                                    </p>
+                                                )}
+                                            </div>
+                                            <div className="flex gap-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleEditContact(contact)}
+                                                    aria-label={`${t('editor.contacts')}: ${contact.name}`}
+                                                    className="min-w-11 min-h-11 flex items-center justify-center bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
+                                                >
+                                                    <span className="material-symbols-outlined">edit</span>
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => void handleDeleteContact(contact.id)}
+                                                    aria-label={`${t('editor.contactDelete')}: ${contact.name}`}
+                                                    className="min-w-11 min-h-11 flex items-center justify-center bg-red-500/20 hover:bg-red-500/30 text-red-300 rounded-lg transition-colors"
+                                                >
+                                                    <span className="material-symbols-outlined">delete</span>
+                                                </button>
+                                            </div>
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Footer Actions */}                    <div className="flex gap-4 mt-8 pt-6 border-t border-border-accent">
                         <button
                             type="button"
                             onClick={onCancel}

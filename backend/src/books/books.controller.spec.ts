@@ -18,6 +18,9 @@ describe('BooksController', () => {
   const list = jest.fn();
   const get = jest.fn();
   const remove = jest.fn();
+  const saveDedication = jest.fn();
+  const clearDedication = jest.fn();
+  const setFavorite = jest.fn();
 
   beforeEach(async () => {
     jest.clearAllMocks();
@@ -27,7 +30,17 @@ describe('BooksController', () => {
       providers: [
         ConfigService,
         SupabaseService,
-        { provide: BooksService, useValue: { list, get, remove } },
+        {
+          provide: BooksService,
+          useValue: {
+            list,
+            get,
+            remove,
+            saveDedication,
+            clearDedication,
+            setFavorite,
+          },
+        },
       ],
     })
       .overrideGuard(SupabaseAuthGuard)
@@ -97,5 +110,48 @@ describe('BooksController', () => {
       .expect(204);
 
     expect(remove).toHaveBeenCalledWith('book-1', 'user-1');
+  });
+
+  it('saves and clears a dedication', async () => {
+    saveDedication.mockResolvedValue({ id: 'book-1', dedicationTo: 'Ana' });
+    clearDedication.mockResolvedValue({ id: 'book-1' });
+
+    const saved = await request(app.getHttpServer())
+      .put('/api/v1/books/book-1/dedication')
+      .send({ to: 'Ana', reason: 'su cumple', position: 'start' })
+      .expect(200);
+
+    expect(saved.body).toMatchObject({ dedicationTo: 'Ana' });
+    expect(saveDedication).toHaveBeenCalledWith('book-1', 'user-1', {
+      to: 'Ana',
+      reason: 'su cumple',
+      position: 'start',
+    });
+
+    await request(app.getHttpServer())
+      .delete('/api/v1/books/book-1/dedication')
+      .expect(200);
+    expect(clearDedication).toHaveBeenCalledWith('book-1', 'user-1');
+  });
+
+  it('validates the dedication payload', async () => {
+    const response = await request(app.getHttpServer())
+      .put('/api/v1/books/book-1/dedication')
+      .send({ to: '', position: 'middle' })
+      .expect(400);
+
+    expect(response.body).toMatchObject({ code: 'VALIDATION_FAILED' });
+  });
+
+  it('toggles the favorite flag', async () => {
+    setFavorite.mockResolvedValue({ id: 'book-1', isFavorite: true });
+
+    const response = await request(app.getHttpServer())
+      .put('/api/v1/books/book-1/favorite')
+      .send({ isFavorite: true })
+      .expect(200);
+
+    expect(response.body).toMatchObject({ isFavorite: true });
+    expect(setFavorite).toHaveBeenCalledWith('book-1', 'user-1', true);
   });
 });

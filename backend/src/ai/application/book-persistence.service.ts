@@ -6,6 +6,7 @@ import type { ImageGeneratorPort } from '../domain/ports/image-generator.port';
 import { IMAGE_GENERATOR } from '../tokens';
 import { BOOK_REPOSITORY } from '../../books/book.repository';
 import type {
+  BookDedication,
   BookRepository,
   BookStoryConfig,
   StoredPage,
@@ -22,6 +23,7 @@ export interface PersistBookInput {
   profileId?: string;
   book: GeneratedBookDto;
   storyConfig: BookStoryConfig;
+  dedication?: BookDedication;
   model: string;
   promptVersion: string;
   usage?: TextGenerationUsage;
@@ -102,6 +104,7 @@ export class BookPersistenceService {
         generationJobId: input.generationJobId,
         createdBy: input.userId,
       },
+      dedication: input.dedication,
     });
 
     const signedPages = await Promise.all(

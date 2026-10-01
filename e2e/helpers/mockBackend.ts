@@ -34,6 +34,16 @@ const PROFILE_OPTIONS = {
   styles: [{ id: 'st1', label: 'Acuarela', icon: 'brush', isEnabled: true }],
 };
 
+const CONTACT = {
+  id: 'contact-1',
+  profileId: 'student-1',
+  name: 'Ana',
+  relationship: 'mamá',
+  dedicationReason: 'su cumpleaños',
+  createdAt: '2026-01-01T00:00:00.000Z',
+  updatedAt: '2026-01-01T00:00:00.000Z',
+};
+
 const COMPLETED_JOB = {
   id: 'job-1',
   bookId: 'book-1',
@@ -76,6 +86,16 @@ export async function mockBackend(page: Page): Promise<void> {
   await page.route('**/api/v1/profiles/student-1/options', (route) =>
     route.fulfill({ json: PROFILE_OPTIONS }),
   );
+  await page.route('**/api/v1/profiles/student-1/contacts', (route) =>
+    route.fulfill({ json: [CONTACT] }),
+  );
+  await page.route('**/api/v1/contacts/**', (route) => {
+    if (route.request().method() === 'DELETE') {
+      return route.fulfill({ status: 204, body: '' });
+    }
+
+    return route.fulfill({ json: CONTACT });
+  });
   await page.route('**/api/v1/profiles/student-1/settings', (route) =>
     route.fulfill({ json: PROFILE.settings }),
   );
@@ -97,5 +117,21 @@ export async function mockBackend(page: Page): Promise<void> {
   );
   await page.route('**/api/v1/books**', (route) =>
     route.fulfill({ json: [] }),
+  );
+  await page.route('**/api/v1/books/*/dedication', (route) =>
+    route.fulfill({
+      json: {
+        id: 'book-1',
+        title: 'La aventura del dragón',
+        dedicationTo: 'Ana',
+        dedicationReason: 'su cumpleaños',
+        dedicationPosition: 'start',
+        totalPages: 1,
+        pages: [],
+      },
+    }),
+  );
+  await page.route('**/api/v1/books/*/favorite', (route) =>
+    route.fulfill({ json: { id: 'book-1', isFavorite: true } }),
   );
 }
