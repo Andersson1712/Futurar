@@ -9,9 +9,20 @@ export class GeneratedPageDto {
 
   @ApiPropertyOptional()
   imagePrompt?: string;
+
+  @ApiPropertyOptional({
+    description: 'Short-lived signed URL (never persisted)',
+  })
+  imageUrl?: string;
 }
 
 export class GeneratedBookDto {
+  @ApiPropertyOptional()
+  id?: string;
+
+  @ApiPropertyOptional()
+  version?: number;
+
   @ApiProperty()
   title!: string;
 

@@ -16,6 +16,9 @@ export class JobStatusDto {
   @ApiProperty()
   id!: string;
 
+  @ApiPropertyOptional()
+  bookId?: string;
+
   @ApiProperty({ enum: BOOK_JOB_STATUSES })
   status!: BookJobStatus;
 

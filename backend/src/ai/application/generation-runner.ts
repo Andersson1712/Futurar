@@ -6,6 +6,7 @@ import type { TextGeneratorPort } from '../domain/ports/text-generator.port';
 import { TEXT_GENERATOR } from '../tokens';
 import { BookOutputParser } from './book-output.parser';
 import { BookOutputValidator } from './book-output.validator';
+import { BookPersistenceService } from './book-persistence.service';
 import { CircuitBreaker } from './circuit-breaker';
 import {
   BOOK_MAX_OUTPUT_TOKENS,
@@ -21,6 +22,7 @@ export class GenerationRunner {
     private readonly parser: BookOutputParser,
     private readonly validator: BookOutputValidator,
     private readonly breaker: CircuitBreaker,
+    private readonly persistence: BookPersistenceService,
     @Inject(TEXT_GENERATOR) private readonly textGenerator: TextGeneratorPort,
   ) {}
 
@@ -49,7 +51,15 @@ export class GenerationRunner {
     );
     const payload = this.parser.parse(result.text);
     const book = this.validator.validate(payload, audience);
+    const storedBook = await this.persistence.persist({
+      userId: job.userId,
+      book,
+      model: result.model,
+      promptVersion: bookPrompt.version,
+      usage: result.usage,
+      generationJobId: jobId,
+    });
 
-    await this.jobs.complete(jobId, book);
+    await this.jobs.complete(jobId, storedBook);
   }
 }

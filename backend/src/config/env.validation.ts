@@ -67,6 +67,22 @@ export class EnvironmentVariables {
   REDIS_URL?: string;
 
   @IsOptional()
+  @Transform(toBoolean)
+  @IsBoolean()
+  BOOK_IMAGES_ENABLED?: boolean;
+
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  BOOK_IMAGE_BUCKET?: string;
+
+  @IsOptional()
+  @Transform(toNumber)
+  @IsInt()
+  @Min(60)
+  BOOK_IMAGE_SIGNED_URL_TTL_SECONDS?: number;
+
+  @IsOptional()
   @IsIn([...AI_PROVIDERS])
   AI_PROVIDER?: AiProvider;
 
@@ -143,6 +159,15 @@ export function validateEnv(
 
   if (validated.QUEUE_DRIVER === 'bullmq' && !validated.REDIS_URL?.trim()) {
     throw new Error('QUEUE_DRIVER=bullmq requires: REDIS_URL');
+  }
+
+  if (
+    validated.BOOK_IMAGES_ENABLED === true &&
+    (!validated.SUPABASE_URL?.trim() || !validated.SUPABASE_SERVICE_KEY?.trim())
+  ) {
+    throw new Error(
+      'BOOK_IMAGES_ENABLED=true requires: SUPABASE_URL, SUPABASE_SERVICE_KEY',
+    );
   }
 
   return validated;

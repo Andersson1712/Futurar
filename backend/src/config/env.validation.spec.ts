@@ -98,4 +98,23 @@ describe('validateEnv', () => {
     });
     expect(result.QUEUE_DRIVER).toBe('bullmq');
   });
+
+  it('requires Supabase when book images are enabled', () => {
+    expect(() => validateEnv({ BOOK_IMAGES_ENABLED: 'true' })).toThrow(
+      /SUPABASE_URL/,
+    );
+
+    const result = validateEnv({
+      BOOK_IMAGES_ENABLED: 'true',
+      SUPABASE_URL: 'https://example.supabase.co',
+      SUPABASE_SERVICE_KEY: 'service-key',
+    });
+    expect(result.BOOK_IMAGES_ENABLED).toBe(true);
+  });
+
+  it('rejects a too-short signed URL TTL', () => {
+    expect(() =>
+      validateEnv({ BOOK_IMAGE_SIGNED_URL_TTL_SECONDS: '10' }),
+    ).toThrow(/Invalid environment configuration/);
+  });
 });

@@ -5,10 +5,12 @@ import { BookGenerationService } from './application/book-generation.service';
 import { BookOutputParser } from './application/book-output.parser';
 import { BookOutputValidator } from './application/book-output.validator';
 import { BOOK_GENERATION_USE_CASE } from './application/book-generation.use-case';
+import { BookPersistenceService } from './application/book-persistence.service';
 import { CircuitBreaker } from './application/circuit-breaker';
 import { GenerationRunner } from './application/generation-runner';
 import { JobStatusStream } from './application/job-status.stream';
 import { PromptBuilderService } from './application/prompt-builder.service';
+import { BooksModule } from '../books/books.module';
 import { IDEMPOTENCY_STORE } from '../common/idempotency/idempotency-store';
 import { InMemoryIdempotencyStore } from '../common/idempotency/in-memory-idempotency.store';
 import { RedisIdempotencyStore } from '../common/idempotency/redis-idempotency.store';
@@ -41,7 +43,7 @@ import {
 } from './tokens';
 
 @Module({
-  imports: [SupabaseModule, RedisModule],
+  imports: [SupabaseModule, RedisModule, BooksModule],
   controllers: [AiController],
   providers: [
     { provide: SECRET_PROVIDER, useClass: EnvSecretProvider },
@@ -63,6 +65,7 @@ import {
     PromptBuilderService,
     BookOutputParser,
     BookOutputValidator,
+    BookPersistenceService,
     CircuitBreaker,
     InMemoryJobRepository,
     {

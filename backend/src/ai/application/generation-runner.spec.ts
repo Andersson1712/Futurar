@@ -4,6 +4,7 @@ import type { TextGeneratorPort } from '../domain/ports/text-generator.port';
 import type { JobRecord, JobRepository } from '../../jobs/job.repository';
 import { BookOutputParser } from './book-output.parser';
 import { BookOutputValidator } from './book-output.validator';
+import type { BookPersistenceService } from './book-persistence.service';
 import { CircuitBreaker } from './circuit-breaker';
 import { GenerationRunner } from './generation-runner';
 import { PromptBuilderService } from './prompt-builder.service';
@@ -41,29 +42,52 @@ function buildRunner(job: JobRecord | null = JOB) {
   } as unknown as JobRepository;
   const generate = jest.fn();
   const textGenerator = { generate } as unknown as TextGeneratorPort;
+  const persist = jest.fn().mockImplementation((input: { book: unknown }) =>
+    Promise.resolve({
+      id: 'book-1',
+      version: 1,
+      ...(input.book as object),
+    }),
+  );
+  const persistence = { persist } as unknown as BookPersistenceService;
   const runner = new GenerationRunner(
     jobs,
     new PromptBuilderService(),
     new BookOutputParser(),
     new BookOutputValidator(),
     new CircuitBreaker(),
+    persistence,
     textGenerator,
   );
 
-  return { runner, findById, markProcessing, complete, generate };
+  return { runner, findById, markProcessing, complete, generate, persist };
 }
 
 describe('GenerationRunner', () => {
-  it('runs the pipeline and completes the job with a validated book', async () => {
-    const { runner, markProcessing, complete, generate } = buildRunner();
-    generate.mockResolvedValue({ text: VALID_BOOK_TEXT, model: 'gemini-test' });
+  it('runs the pipeline, persists and completes the job with the stored book', async () => {
+    const { runner, markProcessing, complete, generate, persist } =
+      buildRunner();
+    generate.mockResolvedValue({
+      text: VALID_BOOK_TEXT,
+      model: 'gemini-test',
+      usage: { inputTokens: 10, outputTokens: 20 },
+    });
 
     await runner.run('job-1');
 
     expect(markProcessing).toHaveBeenCalledWith('job-1');
+    expect(persist).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: 'user-1',
+        model: 'gemini-test',
+        promptVersion: 'book/v1',
+        generationJobId: 'job-1',
+      }),
+    );
     expect(complete).toHaveBeenCalledWith(
       'job-1',
       expect.objectContaining({
+        id: 'book-1',
         title: 'La aventura del dragón',
         totalPages: 1,
       }),
