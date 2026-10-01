@@ -15,6 +15,8 @@ type StoryReaderProps = {
     onClose: () => void;
     studentId?: string;
     persisted?: boolean;
+    initialScrollTop?: number;
+    onScrollProgress?: (scrollTop: number) => void;
     onRead: (text: string) => void;
     voiceEnabled?: boolean;
     onCreateAnother?: () => void;
@@ -82,6 +84,8 @@ const StoryReader: React.FC<StoryReaderProps> = ({
     onClose,
     studentId,
     persisted = false,
+    initialScrollTop = 0,
+    onScrollProgress,
     onRead,
     voiceEnabled = true,
     onCreateAnother,
@@ -96,6 +100,36 @@ const StoryReader: React.FC<StoryReaderProps> = ({
     const [isSpeaking, setIsSpeaking] = useState(false);
     const hasSelectedRef = useRef(false);
     const [pdfProgress, setPdfProgress] = useState<string>('');
+    const previewRef = useRef<HTMLDivElement>(null);
+    const scrollSaveTimeoutRef = useRef<number | null>(null);
+
+    // Restore the preview scroll position (SPEC-014)
+    useEffect(() => {
+        if (!initialScrollTop || !previewRef.current) return;
+
+        const frame = requestAnimationFrame(() => {
+            if (previewRef.current) {
+                previewRef.current.scrollTop = initialScrollTop;
+            }
+        });
+
+        return () => cancelAnimationFrame(frame);
+    }, [initialScrollTop, chapters.length]);
+
+    const handlePreviewScroll = useCallback(() => {
+        const node = previewRef.current;
+
+        if (!node || !onScrollProgress) return;
+
+        if (scrollSaveTimeoutRef.current !== null) {
+            window.clearTimeout(scrollSaveTimeoutRef.current);
+        }
+
+        scrollSaveTimeoutRef.current = window.setTimeout(() => {
+            onScrollProgress(node.scrollTop);
+            scrollSaveTimeoutRef.current = null;
+        }, 400);
+    }, [onScrollProgress]);
 
     // Parse chapters logic
     useEffect(() => {
@@ -324,7 +358,11 @@ const StoryReader: React.FC<StoryReaderProps> = ({
                     </div>
 
                     {/* Extracto */}
-                    <div className="flex-1 p-4 md:p-6 overflow-y-auto custom-scrollbar">
+                    <div
+                        ref={previewRef}
+                        onScroll={handlePreviewScroll}
+                        className="flex-1 p-4 md:p-6 overflow-y-auto custom-scrollbar"
+                    >
                         <h2 className="text-xl font-black text-primary mb-3">Vista Previa</h2>
                         <p className="text-gray-300 leading-relaxed text-sm md:text-base font-serif">
                             {excerpt}
