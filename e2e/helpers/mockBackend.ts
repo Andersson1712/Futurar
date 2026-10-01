@@ -89,6 +89,102 @@ export async function mockBackend(page: Page): Promise<void> {
   await page.route('**/api/v1/profiles/student-1/contacts', (route) =>
     route.fulfill({ json: [CONTACT] }),
   );
+  await page.route('**/api/v1/profiles/student-1/actions', (route) =>
+    route.fulfill({
+      json: [
+        {
+          actionId: 'action-1',
+          code: 'create',
+          label: 'Crear Cuento',
+          icon: 'auto_stories',
+          sortOrder: 1,
+          isEnabled: true,
+        },
+      ],
+    }),
+  );
+  await page.route('**/api/v1/profiles/student-1/items', (route) =>
+    route.fulfill({
+      json: [
+        {
+          itemId: 'item-1',
+          optionId: 'option-1',
+          optionCode: 'protagonist',
+          actionCode: 'create',
+          label: 'Un dragón',
+          icon: 'pets',
+          level: 1,
+          sortOrder: 1,
+          isEnabled: true,
+        },
+      ],
+    }),
+  );
+  await page.route('**/api/v1/actions**', (route) => {
+    if (route.request().url().includes('/options')) {
+      return route.fulfill({
+        json: [
+          {
+            id: 'option-1',
+            actionId: 'action-1',
+            code: 'protagonist',
+            label: 'Protagonista',
+            icon: 'face',
+            optionType: 'list',
+            maxEnabled: 4,
+            sortOrder: 1,
+            isActive: true,
+            createdAt: '2026-01-01T00:00:00.000Z',
+            updatedAt: '2026-01-01T00:00:00.000Z',
+            items: [
+              {
+                id: 'item-1',
+                optionId: 'option-1',
+                label: 'Un dragón',
+                icon: 'pets',
+                level: 1,
+                sortOrder: 1,
+                isActive: true,
+                createdAt: '2026-01-01T00:00:00.000Z',
+                updatedAt: '2026-01-01T00:00:00.000Z',
+              },
+            ],
+          },
+        ],
+      });
+    }
+
+    return route.fulfill({
+      json: [
+        {
+          id: 'action-1',
+          teacherId: 'teacher-1',
+          code: 'create',
+          label: 'Crear Cuento',
+          icon: 'auto_stories',
+          sortOrder: 1,
+          isActive: true,
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+    });
+  });
+  await page.route('**/api/v1/options/**', (route) =>
+    route.fulfill({
+      json: {
+        id: 'item-2',
+        optionId: 'option-1',
+        label: 'Nueva opción',
+        icon: 'star',
+        level: 1,
+        sortOrder: 2,
+        isActive: true,
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+      },
+    }),
+  );
   await page.route('**/api/v1/contacts/**', (route) => {
     if (route.request().method() === 'DELETE') {
       return route.fulfill({ status: 204, body: '' });

@@ -4,7 +4,6 @@ import {
   CreateProfileInput,
   DEFAULT_PROFILE_SETTINGS,
   Profile,
-  ProfileOptions,
   ProfileRepository,
   ProfileSettings,
   UpdateProfileInput,
@@ -14,7 +13,6 @@ import {
 export class InMemoryProfileRepository implements ProfileRepository {
   private readonly profiles = new Map<string, Profile>();
   private readonly settings = new Map<string, ProfileSettings>();
-  private readonly options = new Map<string, ProfileOptions>();
 
   list(teacherId: string, activeOnly: boolean): Promise<Profile[]> {
     const list = [...this.profiles.values()]
@@ -100,22 +98,6 @@ export class InMemoryProfileRepository implements ProfileRepository {
     this.settings.set(profileId, settings);
 
     return Promise.resolve(settings);
-  }
-
-  listOptions(profileId: string): Promise<ProfileOptions> {
-    return Promise.resolve(
-      this.options.get(profileId) ?? {
-        protagonists: [],
-        scenarios: [],
-        missions: [],
-        styles: [],
-      },
-    );
-  }
-
-  /** Test helper: seed the option lists for a profile. */
-  seedOptions(profileId: string, options: ProfileOptions): void {
-    this.options.set(profileId, options);
   }
 
   private withSettings(profile: Profile): Profile {

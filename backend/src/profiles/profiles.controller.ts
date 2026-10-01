@@ -35,6 +35,14 @@ import {
   SaveProfileSettingsDto,
   UpdateProfileDto,
 } from './dto/profile.dto';
+import {
+  SaveProfileActionsDto,
+  SaveProfileItemsDto,
+} from '../actions/dto/action.dto';
+import type {
+  ProfileActionEntry,
+  ProfileItemEntry,
+} from '../actions/action.repository';
 import type {
   Profile,
   ProfileOptions,
@@ -126,5 +134,59 @@ export class ProfilesController {
     @Req() request: AuthenticatedRequest,
   ): Promise<ProfileOptions> {
     return this.profiles.listOptions(profileId, request.user?.id ?? '');
+  }
+
+  @Get(':id/actions')
+  @UseGuards(SupabaseAuthGuard)
+  @ApiOkResponse()
+  @ApiNotFoundResponse({ type: AiErrorDto })
+  async listActions(
+    @Param('id') profileId: string,
+    @Req() request: AuthenticatedRequest,
+  ): Promise<ProfileActionEntry[]> {
+    return this.profiles.listProfileActions(profileId, request.user?.id ?? '');
+  }
+
+  @Put(':id/actions')
+  @UseGuards(SupabaseAuthGuard)
+  @ApiOkResponse()
+  @ApiNotFoundResponse({ type: AiErrorDto })
+  async saveActions(
+    @Param('id') profileId: string,
+    @Body() dto: SaveProfileActionsDto,
+    @Req() request: AuthenticatedRequest,
+  ): Promise<ProfileActionEntry[]> {
+    return this.profiles.saveProfileActions(
+      profileId,
+      request.user?.id ?? '',
+      dto,
+    );
+  }
+
+  @Get(':id/items')
+  @UseGuards(SupabaseAuthGuard)
+  @ApiOkResponse()
+  @ApiNotFoundResponse({ type: AiErrorDto })
+  async listItems(
+    @Param('id') profileId: string,
+    @Req() request: AuthenticatedRequest,
+  ): Promise<ProfileItemEntry[]> {
+    return this.profiles.listProfileItems(profileId, request.user?.id ?? '');
+  }
+
+  @Put(':id/items')
+  @UseGuards(SupabaseAuthGuard)
+  @ApiOkResponse()
+  @ApiNotFoundResponse({ type: AiErrorDto })
+  async saveItems(
+    @Param('id') profileId: string,
+    @Body() dto: SaveProfileItemsDto,
+    @Req() request: AuthenticatedRequest,
+  ): Promise<ProfileItemEntry[]> {
+    return this.profiles.saveProfileItems(
+      profileId,
+      request.user?.id ?? '',
+      dto,
+    );
   }
 }

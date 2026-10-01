@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ActionsModule } from '../actions/actions.module';
 import { SupabaseModule } from '../supabase/supabase.module';
 import { SupabaseService } from '../supabase/supabase.service';
 import { CONTACT_REPOSITORY } from './contacts.repository';
@@ -16,7 +17,7 @@ import { SupabaseContactRepository } from './supabase-contacts.repository';
 import { SupabaseProfileRepository } from './supabase-profile.repository';
 
 @Module({
-  imports: [SupabaseModule],
+  imports: [SupabaseModule, ActionsModule],
   controllers: [ProfilesController, ContactsController],
   providers: [
     InMemoryProfileRepository,

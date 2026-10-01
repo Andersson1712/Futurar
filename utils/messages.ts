@@ -92,6 +92,11 @@ export const TRANSLATIONS = {
   'editor.audienceAdult': 'Adultos',
 
   'editor.contacts': 'Contactos',
+  'editor.catalogHint':
+    'Las opciones se comparten entre perfiles. Habilitá las que use este estudiante; el icono se genera automáticamente según el nombre.',
+  'editor.catalogEmpty': 'Todavía no hay opciones en el catálogo.',
+  'editor.enable': 'habilitar',
+  'editor.disable': 'deshabilitar',
   'editor.contactName': 'Nombre',
   'editor.contactRelationship': 'Relación',
   'editor.contactReason': 'Motivo de dedicatoria (opcional)',

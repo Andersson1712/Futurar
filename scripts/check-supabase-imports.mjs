@@ -9,9 +9,7 @@ const IMPORT_PATTERN =
 const ALLOWED = new Set([
   'components/StoryDetails.tsx',
   'components/StoryReader.tsx',
-  'components/StudentEditor.tsx',
   'components/StudentLibrary.tsx',
-  'components/TeacherPanel.tsx',
   'contexts/AuthContext.tsx',
 ]);
 

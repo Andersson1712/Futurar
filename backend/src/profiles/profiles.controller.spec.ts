@@ -3,6 +3,8 @@ import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { configureApp } from '../app.setup';
+import { ACTION_REPOSITORY } from '../actions/action.repository';
+import { InMemoryActionRepository } from '../actions/in-memory-action.repository';
 import { SupabaseAuthGuard } from '../common/guards/supabase-auth.guard';
 import { InMemoryProfileRepository } from './in-memory-profile.repository';
 import { PROFILE_REPOSITORY } from './profile.repository';
@@ -15,6 +17,7 @@ interface TestRequest {
 
 describe('ProfilesController (SPEC-021)', () => {
   let app: INestApplication<App>;
+  let actions: InMemoryActionRepository;
 
   beforeEach(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -22,6 +25,7 @@ describe('ProfilesController (SPEC-021)', () => {
       providers: [
         ProfilesService,
         { provide: PROFILE_REPOSITORY, useClass: InMemoryProfileRepository },
+        { provide: ACTION_REPOSITORY, useClass: InMemoryActionRepository },
       ],
     })
       .overrideGuard(SupabaseAuthGuard)
@@ -38,6 +42,7 @@ describe('ProfilesController (SPEC-021)', () => {
     app = moduleRef.createNestApplication();
     configureApp(app);
     await app.init();
+    actions = moduleRef.get(ACTION_REPOSITORY);
   });
 
   afterEach(async () => {
@@ -117,5 +122,78 @@ describe('ProfilesController (SPEC-021)', () => {
     await request(app.getHttpServer())
       .get('/api/v1/profiles/missing')
       .expect(404);
+  });
+
+  it('lists and saves per-profile actions and items', async () => {
+    const created = await request(app.getHttpServer())
+      .post('/api/v1/profiles')
+      .send({ name: 'Ana' })
+      .expect(201);
+    const profileId = (created.body as { id: string }).id;
+
+    const action = await actions.createAction('teacher-1', {
+      code: 'create',
+      label: 'Crear Cuento',
+    });
+    const option = await actions.createOption(action.id, 'teacher-1', {
+      code: 'protagonist',
+      label: 'Protagonista',
+    });
+    const item = await actions.createItem(option.id, 'teacher-1', {
+      label: 'Un dragón',
+      icon: 'pets',
+    });
+
+    const listedActions = await request(app.getHttpServer())
+      .get(`/api/v1/profiles/${profileId}/actions`)
+      .expect(200);
+    expect(listedActions.body).toEqual([
+      expect.objectContaining({ code: 'create', isEnabled: true }),
+    ]);
+
+    const savedActions = await request(app.getHttpServer())
+      .put(`/api/v1/profiles/${profileId}/actions`)
+      .send({ actions: [{ actionId: action.id, isEnabled: false }] })
+      .expect(200);
+    expect(savedActions.body).toEqual([
+      expect.objectContaining({ code: 'create', isEnabled: false }),
+    ]);
+
+    const listedItems = await request(app.getHttpServer())
+      .get(`/api/v1/profiles/${profileId}/items`)
+      .expect(200);
+    expect(listedItems.body).toEqual([
+      expect.objectContaining({ itemId: item.id, isEnabled: true }),
+    ]);
+
+    const savedItems = await request(app.getHttpServer())
+      .put(`/api/v1/profiles/${profileId}/items`)
+      .send({ items: [{ itemId: item.id, isEnabled: false }] })
+      .expect(200);
+    expect(savedItems.body).toEqual([
+      expect.objectContaining({ itemId: item.id, isEnabled: false }),
+    ]);
+  });
+
+  it('rejects unknown catalog ids for a profile', async () => {
+    const created = await request(app.getHttpServer())
+      .post('/api/v1/profiles')
+      .send({ name: 'Ana' })
+      .expect(201);
+    const profileId = (created.body as { id: string }).id;
+
+    const response = await request(app.getHttpServer())
+      .put(`/api/v1/profiles/${profileId}/items`)
+      .send({
+        items: [
+          {
+            itemId: '123e4567-e89b-42d3-a456-426614174000',
+            isEnabled: true,
+          },
+        ],
+      })
+      .expect(404);
+
+    expect(response.body).toMatchObject({ code: 'NOT_FOUND' });
   });
 });

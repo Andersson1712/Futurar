@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../services/supabase';
 import {
     createProfile,
     deactivateProfile,
@@ -99,7 +98,6 @@ const TeacherPanel: React.FC<TeacherPanelProps> = ({ onSwitchToStudent }) => {
     const handleSaveStudent = async (studentData: Partial<Student>, settingsData: Partial<StudentSettings>) => {
         try {
             let studentId = editingStudent?.id;
-            const isNewStudent = !studentId;
 
             if (studentId) {
                 await updateProfile(studentId, {
@@ -127,66 +125,11 @@ const TeacherPanel: React.FC<TeacherPanelProps> = ({ onSwitchToStudent }) => {
 
             await saveProfileSettings(studentId, settingsData);
 
-            // Si es nuevo estudiante, crear elementos predeterminados
-            if (isNewStudent && studentId) {
-                await seedDefaultElements(studentId);
-            }
-
             setShowEditor(false);
             loadStudents();
         } catch (err) {
             console.error('Error guardando estudiante:', err);
             alert('Error al guardar estudiante');
-        }
-    };
-
-    // Función para insertar elementos predeterminados para un nuevo estudiante
-    const seedDefaultElements = async (studentId: string) => {
-        const defaultProtagonists = [
-            { label: 'Animales', icon: 'pets' },
-            { label: 'Personas', icon: 'face_6' },
-            { label: 'Robots', icon: 'smart_toy' },
-            { label: 'Fantasía', icon: 'auto_fix' }
-        ];
-
-        const defaultScenarios = [
-            { label: 'Selva', icon: 'forest' },
-            { label: 'Espacio', icon: 'rocket_launch' },
-            { label: 'Castillo', icon: 'castle' },
-            { label: 'Bajo el Mar', icon: 'water' }
-        ];
-
-        const defaultMissions = [
-            { label: 'Explorar', icon: 'explore' },
-            { label: 'Rescatar', icon: 'volunteer_activism' },
-            { label: 'Descubrir', icon: 'search' },
-            { label: 'Proteger', icon: 'shield' }
-        ];
-
-        const defaultStyles = [
-            { label: 'Acuarela', icon: 'water_drop' },
-            { label: 'Cartoon', icon: 'animation' },
-            { label: 'Realista', icon: 'camera' },
-            { label: 'Pixel Art', icon: 'grid_on' }
-        ];
-
-        try {
-            await Promise.all([
-                supabase.from('student_protagonists').insert(
-                    defaultProtagonists.map(p => ({ student_id: studentId, ...p, is_enabled: true }))
-                ),
-                supabase.from('student_scenarios').insert(
-                    defaultScenarios.map(s => ({ student_id: studentId, ...s, is_enabled: true }))
-                ),
-                supabase.from('student_missions').insert(
-                    defaultMissions.map(m => ({ student_id: studentId, ...m, is_enabled: true }))
-                ),
-                supabase.from('student_styles').insert(
-                    defaultStyles.map(st => ({ student_id: studentId, ...st, is_enabled: true }))
-                )
-            ]);
-        } catch (err) {
-            console.error('Error seeding default elements:', err);
         }
     };
 

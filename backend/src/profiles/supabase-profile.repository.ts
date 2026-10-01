@@ -12,8 +12,6 @@ import {
   CreateProfileInput,
   DEFAULT_PROFILE_MODULES,
   Profile,
-  ProfileOption,
-  ProfileOptions,
   ProfileRepository,
   ProfileSettings,
   UpdateProfileInput,
@@ -21,13 +19,6 @@ import {
 
 export const STUDENTS_TABLE = 'students';
 export const STUDENT_SETTINGS_TABLE = 'student_settings';
-
-const OPTION_TABLES = {
-  protagonists: 'student_protagonists',
-  scenarios: 'student_scenarios',
-  missions: 'student_missions',
-  styles: 'student_styles',
-} as const;
 
 interface StudentRow {
   id: string;
@@ -58,13 +49,6 @@ interface SettingsRow {
   modules: unknown;
   book_story_size: string | null;
   book_audience: string | null;
-}
-
-interface OptionRow {
-  id: string;
-  label: string;
-  icon: string | null;
-  is_enabled: boolean | null;
 }
 
 interface RowResponse<T> {
@@ -233,32 +217,6 @@ export class SupabaseProfileRepository implements ProfileRepository {
     return mapSettings(response.data);
   }
 
-  async listOptions(profileId: string): Promise<ProfileOptions> {
-    const client = this.requireClient();
-    const [protagonists, scenarios, missions, styles] = await Promise.all(
-      Object.values(OPTION_TABLES).map((table) =>
-        client
-          .from(table)
-          .select()
-          .eq('student_id', profileId)
-          .eq('is_enabled', true),
-      ),
-    );
-
-    return {
-      protagonists: mapOptions(
-        (protagonists as unknown as RowResponse<OptionRow[]>).data,
-      ),
-      scenarios: mapOptions(
-        (scenarios as unknown as RowResponse<OptionRow[]>).data,
-      ),
-      missions: mapOptions(
-        (missions as unknown as RowResponse<OptionRow[]>).data,
-      ),
-      styles: mapOptions((styles as unknown as RowResponse<OptionRow[]>).data),
-    };
-  }
-
   private async mapWithSettings(row: StudentRow): Promise<Profile> {
     const settings = await this.getSettings(row.id);
 
@@ -290,15 +248,6 @@ export class SupabaseProfileRepository implements ProfileRepository {
 
     return client;
   }
-}
-
-function mapOptions(rows: OptionRow[] | null): ProfileOption[] {
-  return (rows ?? []).map((row) => ({
-    id: row.id,
-    label: row.label,
-    icon: row.icon ?? 'star',
-    isEnabled: row.is_enabled ?? true,
-  }));
 }
 
 function mapSettings(row: SettingsRow): ProfileSettings {
