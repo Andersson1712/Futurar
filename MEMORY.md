@@ -44,8 +44,7 @@
 
 ## Next Steps
 - [ ] Owner: rotate Gemini key; apply migrations 0001/0002/0003; create `book-images` bucket.
-- [ ] SPEC-018/019: critical flow tests + CI with coverage floor; chore Vite/TS.
-- [ ] SPEC-021/023: profiles/options API; SPEC-027 analytics.
+- [ ] SPEC-018/019: critical tests + CI floor; SPEC-021/023: profiles API; chore Vite/TS.
 
 ## Housekeeping
 - Keep under ~50 lines: before finishing, compact and remove resolved items.
