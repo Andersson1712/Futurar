@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Story } from '../types/database';
 import { supabase } from '../services/supabase';
 import { generateStoryPDF } from '../utils/pdfGenerator';
 import { speak } from '../utils/speech';
+import { useDialogA11y } from '../hooks/useDialogA11y';
 
 interface StoryDetailsProps {
     story: Story;
@@ -28,6 +29,13 @@ const StoryDetails: React.FC<StoryDetailsProps> = ({
     const [exportStatus, setExportStatus] = useState('');
     const [isSaving, setIsSaving] = useState(false);
     const [hasSaved, setHasSaved] = useState(false);
+    const dedicationDialogRef = useRef<HTMLDivElement>(null);
+
+    useDialogA11y(
+        dedicationDialogRef,
+        showDedicationModal,
+        () => setShowDedicationModal(false)
+    );
 
     const handleSave = async () => {
         if (isSaving || hasSaved) return;
@@ -198,10 +206,10 @@ const StoryDetails: React.FC<StoryDetailsProps> = ({
                     </div>
 
                     <div className="p-6 bg-white/5 rounded-2xl border border-white/10">
-                        <h3 className="text-lg font-bold text-gray-300 mb-2 flex items-center gap-2">
+                        <h2 className="text-lg font-bold text-gray-300 mb-2 flex items-center gap-2">
                             <span className="material-symbols-outlined text-yellow-500">lightbulb</span>
                             Detalles de la Misión
-                        </h3>
+                        </h2>
                         <p className="text-gray-400">
                             {story.mission}
                         </p>
@@ -212,7 +220,13 @@ const StoryDetails: React.FC<StoryDetailsProps> = ({
             {/* Modal de Dedicatoria */}
             {showDedicationModal && (
                 <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                    <div className="bg-slate-900 border border-slate-700 rounded-3xl p-8 max-w-lg w-full shadow-2xl animate-scale-in">
+                    <div
+                        ref={dedicationDialogRef}
+                        role="dialog"
+                        aria-modal="true"
+                        aria-label="Agregar Dedicatoria"
+                        className="bg-slate-900 border border-slate-700 rounded-3xl p-8 max-w-lg w-full shadow-2xl animate-scale-in"
+                    >
                         <div className="flex items-center justify-between mb-6">
                             <h2 className="text-2xl font-bold text-white flex items-center gap-2">
                                 <span className="material-symbols-outlined text-primary">favorite</span>
@@ -220,7 +234,7 @@ const StoryDetails: React.FC<StoryDetailsProps> = ({
                             </h2>
                             <button
                                 onClick={() => setShowDedicationModal(false)}
-                                className="text-gray-400 hover:text-white"
+                                className="p-2 min-w-11 min-h-11 text-gray-400 hover:text-white"
                                 disabled={isExporting}
                             >
                                 <span className="material-symbols-outlined">close</span>

@@ -335,11 +335,11 @@ const FloatingControls: React.FC<FloatingControlsProps> = ({ onGoToMenu }) => {
                                                 : 'hover:bg-white/5 text-gray-300'
                                                 }`}
                                         >
-                                            <span className={`material-symbols-outlined text-sm ${scanInterval === option.value ? 'text-primary' : 'text-gray-500'}`}>
+                                            <span className={`material-symbols-outlined text-sm ${scanInterval === option.value ? 'text-primary' : 'text-gray-400'}`}>
                                                 {scanInterval === option.value ? 'check_circle' : 'radio_button_unchecked'}
                                             </span>
                                             <span className="text-sm">{option.label}</span>
-                                            <span className="text-xs text-gray-500 ml-auto">{option.description}</span>
+                                            <span className="text-xs text-gray-400 ml-auto">{option.description}</span>
                                         </button>
                                     ))}
                                 </div>

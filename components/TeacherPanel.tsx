@@ -280,7 +280,7 @@ const TeacherPanel: React.FC<TeacherPanelProps> = ({ onSwitchToStudent }) => {
                     <div className="flex items-center gap-3">
                         <button
                             onClick={() => setShowConfig(true)}
-                            className="p-2 hover:bg-white/10 rounded-lg text-gray-400 hover:text-white transition-colors"
+                            className="p-2 min-w-11 min-h-11 hover:bg-white/10 rounded-lg text-gray-400 hover:text-white transition-colors"
                             title="Configuración Global"
                         >
                             <span className="material-symbols-outlined">settings</span>

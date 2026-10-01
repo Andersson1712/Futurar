@@ -128,7 +128,7 @@ const ElementSection: React.FC<ElementSectionProps> = ({
                             }`}
                     >
                         <div className="flex items-center gap-3">
-                            <span className={`material-symbols-outlined ${element.is_enabled ? 'text-primary' : 'text-gray-500'}`}>
+                            <span className={`material-symbols-outlined ${element.is_enabled ? 'text-primary' : 'text-gray-400'}`}>
                                 {element.icon}
                             </span>
                             <span className={element.is_enabled ? 'text-white' : 'text-gray-400'}>
@@ -169,7 +169,7 @@ const ElementSection: React.FC<ElementSectionProps> = ({
                 ))}
 
                 {elements.length === 0 && (
-                    <p className="text-gray-500 text-center py-4">No hay elementos. Agrega uno nuevo.</p>
+                    <p className="text-gray-400 text-center py-4">No hay elementos. Agrega uno nuevo.</p>
                 )}
             </div>
 
@@ -363,7 +363,7 @@ const StudentEditor: React.FC<StudentEditorProps> = ({
                 <div className="flex items-center gap-4 mb-4">
                     <button
                         onClick={onCancel}
-                        className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                        className="p-2 min-w-11 min-h-11 hover:bg-white/10 rounded-lg transition-colors"
                     >
                         <span className="material-symbols-outlined">arrow_back</span>
                     </button>
@@ -729,7 +729,7 @@ const StudentEditor: React.FC<StudentEditorProps> = ({
                                         </button>
                                     ))}
                                 </div>
-                                <p className="mt-3 text-xs text-gray-500">
+                                <p className="mt-3 text-xs text-gray-400">
                                     Si el dispositivo no tiene voz es-AR se usa es-US (limitación del sistema).
                                 </p>
                             </div>

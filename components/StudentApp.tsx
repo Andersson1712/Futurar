@@ -589,7 +589,7 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
                         </span>
                         <h2 className="text-3xl font-bold mt-6 text-white">En Pausa</h2>
                         <p className="text-gray-400 mt-2">Toma un descanso</p>
-                        <p className="text-gray-500 text-sm mt-6">
+                        <p className="text-gray-400 text-sm mt-6">
                             Presiona el botón flotante para continuar
                         </p>
                     </div>
@@ -634,7 +634,7 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
                         </div>
                         <button
                             onClick={handleBackToMenu}
-                            className="p-2 hover:bg-white/10 rounded-full transition-colors bg-white/5"
+                            className="p-2 min-w-11 min-h-11 hover:bg-white/10 rounded-full transition-colors bg-white/5"
                             title="Menú Principal"
                         >
                             <span className="material-symbols-outlined">arrow_back</span>
@@ -666,7 +666,7 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
                         </span>
                         <h2 className="text-3xl font-bold mt-6 text-white">En Pausa</h2>
                         <p className="text-gray-400 mt-2">Toma un descanso</p>
-                        <p className="text-gray-500 text-sm mt-6">
+                        <p className="text-gray-400 text-sm mt-6">
                             Presiona el botón flotante para continuar
                         </p>
                     </div>
@@ -698,7 +698,7 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
                             {step !== 'MENU' && step !== 'PROFILE' && (
                                 <button
                                     onClick={handleBackToMenu}
-                                    className="p-2 hover:bg-white/10 rounded-full transition-colors bg-white/5"
+                                    className="p-2 min-w-11 min-h-11 hover:bg-white/10 rounded-full transition-colors bg-white/5"
                                     title="Menú Principal"
                                 >
                                     <span className="material-symbols-outlined">home</span>
@@ -707,7 +707,7 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
 
                             <button
                                 onClick={handleBackToProfile}
-                                className="p-2 hover:bg-white/10 rounded-full transition-colors text-red-400 hover:text-red-300"
+                                className="p-2 min-w-11 min-h-11 hover:bg-white/10 rounded-full transition-colors text-red-400 hover:text-red-300"
                                 title="Salir"
                             >
                                 <span className="material-symbols-outlined">logout</span>
@@ -758,7 +758,7 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
                             <div className="text-center py-16">
                                 <span className="material-symbols-outlined text-6xl text-gray-600 mb-4">person_off</span>
                                 <p className="text-xl text-gray-400">No hay estudiantes registrados</p>
-                                <p className="text-gray-500 mt-2">Agrega estudiantes desde el Panel Docente</p>
+                                <p className="text-gray-400 mt-2">Agrega estudiantes desde el Panel Docente</p>
                             </div>
                         )}
                     </div>
@@ -902,7 +902,7 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
 
             {/* Footer */}
             <footer className="w-full border-t border-white/10 bg-black/30 py-3 px-4 print:hidden">
-                <div className="max-w-5xl mx-auto flex items-center justify-between text-gray-500">
+                <div className="max-w-5xl mx-auto flex items-center justify-between text-gray-400">
                     <div className="flex items-center gap-2">
                         {isSpeaking && <span className="material-symbols-outlined animate-pulse text-green-400">volume_up</span>}
                         <span className="text-xs font-bold uppercase tracking-wider">
@@ -922,7 +922,7 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
                     </span>
                     <h2 className="text-3xl font-bold mt-6 text-white">En Pausa</h2>
                     <p className="text-gray-400 mt-2">Toma un descanso</p>
-                    <p className="text-gray-500 text-sm mt-6">
+                    <p className="text-gray-400 text-sm mt-6">
                         Presiona el botón flotante para continuar
                     </p>
                 </div>
