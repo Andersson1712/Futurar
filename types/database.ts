@@ -289,6 +289,12 @@ export type Database = {
                     theme: string | null
                     updated_at: string | null
                     voice_feedback: boolean | null
+                    sweep_enabled: boolean
+                    input_mode: string
+                    line_height: string
+                    bold_titles: boolean
+                    uppercase: boolean
+                    voice_gender: string
                 }
                 Insert: {
                     content_filter_level?: string | null
@@ -305,6 +311,12 @@ export type Database = {
                     theme?: string | null
                     updated_at?: string | null
                     voice_feedback?: boolean | null
+                    sweep_enabled?: boolean
+                    input_mode?: string
+                    line_height?: string
+                    bold_titles?: boolean
+                    uppercase?: boolean
+                    voice_gender?: string
                 }
                 Update: {
                     content_filter_level?: string | null
@@ -321,6 +333,12 @@ export type Database = {
                     theme?: string | null
                     updated_at?: string | null
                     voice_feedback?: boolean | null
+                    sweep_enabled?: boolean
+                    input_mode?: string
+                    line_height?: string
+                    bold_titles?: boolean
+                    uppercase?: boolean
+                    voice_gender?: string
                 }
                 Relationships: [
                     {

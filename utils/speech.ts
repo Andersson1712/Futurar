@@ -3,6 +3,8 @@
  * Centralizes voice synthesis functionality used across components
  */
 
+import type { VoiceGender } from './accessibility';
+
 export interface SpeakOptions {
     rate?: number;
     volume?: number;
@@ -12,11 +14,98 @@ export interface SpeakOptions {
     onEnd?: () => void;
 }
 
+export interface VoiceLike {
+    name: string;
+    lang: string;
+}
+
 const defaultOptions: SpeakOptions = {
     rate: 0.9,
     volume: 1.0,
     pitch: 1.0,
-    lang: 'es-ES',
+    lang: 'es-AR',
+};
+
+// Spanish fallback order: es-AR is not always available on devices (MEMORY).
+const LANG_PRIORITY = ['es-AR', 'es-419', 'es-US', 'es-MX', 'es-ES'];
+
+const FEMALE_HINTS = [
+    'female', 'mujer', 'monica', 'mónica', 'paulina', 'helena', 'laura',
+    'sabina', 'elvira', 'sofia', 'sofía', 'karen', 'zira', 'carmela',
+];
+
+const MALE_HINTS = [
+    'male', 'hombre', 'jorge', 'juan', 'diego', 'carlos', 'enrique',
+    'pablo', 'raul', 'raúl', 'ricardo', 'alonso',
+];
+
+let voicePreference: { gender: VoiceGender; lang: string } = {
+    gender: 'auto',
+    lang: defaultOptions.lang!,
+};
+
+/**
+ * Picks the best Spanish voice for the requested gender (SPEC-015).
+ * Preference: es-AR → es-419 → es-US → es-MX → es-ES → any `es`.
+ */
+export const pickSpanishVoice = (
+    voices: VoiceLike[],
+    gender: VoiceGender = 'auto',
+): VoiceLike | undefined => {
+    const spanish = voices.filter((voice) =>
+        voice.lang?.toLowerCase().startsWith('es')
+    );
+
+    if (spanish.length === 0) return undefined;
+
+    const rank = (lang: string): number => {
+        const position = LANG_PRIORITY.findIndex(
+            (candidate) => candidate.toLowerCase() === lang.toLowerCase()
+        );
+
+        return position === -1 ? LANG_PRIORITY.length : position;
+    };
+
+    const ordered = [...spanish].sort((a, b) => rank(a.lang) - rank(b.lang));
+
+    if (gender !== 'auto') {
+        const hints = gender === 'female' ? FEMALE_HINTS : MALE_HINTS;
+        const match = ordered.find((voice) =>
+            hints.some((hint) => voice.name.toLowerCase().includes(hint))
+        );
+
+        if (match) return match;
+    }
+
+    return ordered[0];
+};
+
+/**
+ * Stores the profile voice preference used by `speak`.
+ */
+export const configureSpeechVoice = (preference: {
+    gender?: VoiceGender;
+    lang?: string;
+}): void => {
+    voicePreference = { ...voicePreference, ...preference };
+};
+
+const resolveVoice = (): SpeechSynthesisVoice | undefined => {
+    if (typeof window === 'undefined' || !window.speechSynthesis) {
+        return undefined;
+    }
+
+    const voices = window.speechSynthesis.getVoices();
+    const picked = pickSpanishVoice(
+        voices.map((voice) => ({ name: voice.name, lang: voice.lang })),
+        voicePreference.gender
+    );
+
+    if (!picked) return undefined;
+
+    return voices.find(
+        (voice) => voice.name === picked.name && voice.lang === picked.lang
+    );
 };
 
 /**
@@ -33,8 +122,15 @@ export const speak = (text: string, options: SpeakOptions = {}): SpeechSynthesis
 
     const opts = { ...defaultOptions, ...options };
     const utterance = new SpeechSynthesisUtterance(text);
+    const voice = resolveVoice();
 
-    utterance.lang = opts.lang!;
+    if (voice) {
+        utterance.voice = voice;
+        utterance.lang = voice.lang;
+    } else {
+        utterance.lang = voicePreference.lang || opts.lang!;
+    }
+
     utterance.rate = opts.rate!;
     utterance.volume = opts.volume!;
     utterance.pitch = opts.pitch!;
@@ -99,4 +195,6 @@ export default {
     announceBreak,
     announceResume,
     isSpeaking,
+    pickSpanishVoice,
+    configureSpeechVoice,
 };

@@ -6,6 +6,8 @@ import StoryDetails from './StoryDetails';
 import StudentLibrary from './StudentLibrary';
 import FloatingControls from './FloatingControls';
 import { ScanSettingsProvider, useScanSettings } from '../contexts/ScanSettingsContext';
+import { useAccessibility } from '../contexts/AccessibilityContext';
+import { fromStudentSettings } from '../utils/accessibility';
 import { speak, stopSpeaking } from '../utils/speech';
 import { MESSAGES, messageForErrorCode } from '../utils/messages';
 import { getRandomImage } from '../utils/images';
@@ -77,16 +79,39 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
 
     // Get ONLY pause state from context (for FloatingControls)
     // DO NOT sync student settings to context - this causes infinite render loops
-    const { isPaused, isModalOpen } = useScanSettings();
+    const {
+        isPaused,
+        isModalOpen,
+        scanInterval,
+        voiceEnabled,
+        soundEnabled,
+        scanColumns,
+        applyProfileSettings,
+    } = useScanSettings();
 
     // The scan pauses while the controls menu (modal) is open (SPEC-013)
     const scanningPaused = isPaused || isModalOpen;
 
-    // Compute effective settings directly from student (no context sync needed)
-    const scanInterval = currentStudent?.student_settings?.scan_interval || 3000;
-    const voiceEnabled = currentStudent?.student_settings?.voice_feedback ?? true;
-    const soundEnabled = currentStudent?.student_settings?.sound_enabled ?? true;
-    const scanColumns = currentStudent?.student_settings?.scan_columns || 2;
+    // Profile accessibility settings applied app-wide (SPEC-015)
+    const accessibility = useMemo(
+        () => fromStudentSettings(currentStudent?.student_settings),
+        [currentStudent?.student_settings]
+    );
+
+    useAccessibility(currentStudent ? accessibility : null);
+
+    useEffect(() => {
+        if (!currentStudent) return;
+
+        applyProfileSettings({
+            scanInterval: accessibility.scanInterval,
+            scanColumns: accessibility.scanColumns,
+            voiceEnabled: accessibility.voiceFeedback,
+            soundEnabled: accessibility.soundEnabled,
+            sweepEnabled: accessibility.sweepEnabled,
+            inputMode: accessibility.inputMode,
+        });
+    }, [currentStudent, accessibility, applyProfileSettings]);
 
     // Cargar estudiantes
     useEffect(() => {
@@ -798,7 +823,7 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
                             }
                             columns={step === 'MENU' ? 2 : Math.min(3, scanColumns + 1)}
                             scanInterval={scanInterval}
-                            soundEnabled={currentStudent?.student_settings?.sound_enabled ?? true}
+                            soundEnabled={soundEnabled}
                             voiceEnabled={voiceEnabled}
                             isPaused={scanningPaused}
                         />

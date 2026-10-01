@@ -17,9 +17,9 @@ Leyenda:
 ## Estado actual
 
 - Fase activa: **Fase 4 — Accesibilidad: bugs críticos**
-- Última tarea cerrada: SPEC-014 (implementado; autoguardado y continuar)
-- Próxima tarea: SPEC-015 (configuración de accesibilidad por perfil)
-- Rama de integración: `dev` (todo SPEC-001→014); `main` se actualiza al cerrar fase.
+- Última tarea cerrada: SPEC-015 (implementado; accesibilidad por perfil)
+- Próxima tarea: SPEC-016 (auditoría WCAG 2.2 AA y estándares)
+- Rama de integración: `dev` (todo SPEC-001→015); `main` se actualiza al cerrar fase.
 
 ---
 
@@ -124,14 +124,14 @@ Leyenda:
 - [x] SPEC-014: Test: abandonar y volver → continúa
 
 ### EPIC 4.5 — Configuración de accesibilidad por perfil
-- [ ] SPEC-015: Velocidad de barrido persistida por perfil
-- [ ] SPEC-015: Barrido on/off por perfil
-- [ ] SPEC-015: Tamaño de letra 12/16/22 en pantalla y textos
-- [ ] SPEC-015: Interlineado configurable
-- [ ] SPEC-015: Negrita en títulos
-- [ ] SPEC-015: Mayúsculas en toda la plataforma
-- [ ] SPEC-015: Voz masculina/femenina + fallback es-US documentado
-- [ ] SPEC-015: prefers-reduced-motion / contrast
+- [x] SPEC-015: Velocidad de barrido persistida por perfil
+- [x] SPEC-015: Barrido on/off por perfil
+- [x] SPEC-015: Tamaño de letra 16/19/22 en pantalla y textos (decisión D3)
+- [x] SPEC-015: Interlineado configurable
+- [x] SPEC-015: Negrita en títulos
+- [x] SPEC-015: Mayúsculas en toda la plataforma
+- [x] SPEC-015: Voz masculina/femenina + fallback es-US documentado
+- [x] SPEC-015: prefers-reduced-motion / contrast
 
 ### EPIC 4.6 — Estándares
 - [ ] SPEC-016: Auditoría WCAG 2.2 AA
@@ -282,6 +282,7 @@ Leyenda:
 | SPEC-012 | Scroll libre mobile/desktop + E2E Playwright | implementado | owner | 2026-09-30 |
 | SPEC-013 | Focus trap del menú de controles + navegación por switch | implementado | owner | 2026-09-30 |
 | SPEC-014 | Autoguardado y continuar (wizard + visor) | implementado | owner | 2026-09-30 |
+| SPEC-015 | Accesibilidad por perfil (barrido/modos/texto/voz) | implementado | owner | 2026-09-30 |
 | … | … | … | … | … |
 
 ## Notas
@@ -372,3 +373,10 @@ Leyenda:
   descartado si no hay cuota) + restauración/guardado en `StudentApp`
   (debounce 300 ms + `pagehide`) y scroll del visor en `StoryReader`. Se limpia
   en cambio de perfil, cuento nuevo y logout. 23 tests frontend en total.
+- SPEC-015: migración `0003` agrega sweep/input_mode/line_height/bold/uppercase/
+  voice_gender a `student_settings`; `utils/accessibility.ts` + `useAccessibility`
+  aplican fuente 16/19/22, interlineado, mayúsculas y negrita en `<html>`;
+  `ScanSettingsContext` se siembra del perfil (la velocidad del control flotante
+  ahora sí llega a los grids); `ScanningGrid` solo auto-avanza con sweep en
+  scan/switch; voz es-AR→es-419→es-US con género; reduced-motion/contrast por
+  CSS. Editor docente con los nuevos controles. 38 tests frontend.

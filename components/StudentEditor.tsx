@@ -240,7 +240,14 @@ const StudentEditor: React.FC<StudentEditorProps> = ({
         scan_interval: student?.student_settings?.scan_interval || 3000,
         scan_columns: student?.student_settings?.scan_columns || 2,
         voice_feedback: student?.student_settings?.voice_feedback ?? true,
-        sound_enabled: student?.student_settings?.sound_enabled ?? true
+        sound_enabled: student?.student_settings?.sound_enabled ?? true,
+        sweep_enabled: student?.student_settings?.sweep_enabled ?? true,
+        input_mode: (student?.student_settings?.input_mode as string) || 'scan',
+        font_size: (student?.student_settings?.font_size as string) || 'normal',
+        line_height: (student?.student_settings?.line_height as string) || 'normal',
+        bold_titles: student?.student_settings?.bold_titles ?? false,
+        uppercase: student?.student_settings?.uppercase ?? false,
+        voice_gender: (student?.student_settings?.voice_gender as string) || 'auto'
     });
 
     // Elements Data
@@ -337,7 +344,14 @@ const StudentEditor: React.FC<StudentEditorProps> = ({
                 scan_interval: settingsData.scan_interval,
                 scan_columns: settingsData.scan_columns,
                 voice_feedback: settingsData.voice_feedback,
-                sound_enabled: settingsData.sound_enabled
+                sound_enabled: settingsData.sound_enabled,
+                sweep_enabled: settingsData.sweep_enabled,
+                input_mode: settingsData.input_mode,
+                font_size: settingsData.font_size,
+                line_height: settingsData.line_height,
+                bold_titles: settingsData.bold_titles,
+                uppercase: settingsData.uppercase,
+                voice_gender: settingsData.voice_gender
             }
         );
     };
@@ -565,6 +579,159 @@ const StudentEditor: React.FC<StudentEditorProps> = ({
                                         <div className="w-14 h-8 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-6 peer-checked:after:border-white after:content-[''] after:absolute after:top-1 after:left-1 after:bg-white after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-primary"></div>
                                     </div>
                                 </label>
+                            </div>
+
+                            {/* Barrido automático */}
+                            <div className="p-4 bg-background-dark rounded-xl border border-border-accent">
+                                <label className="flex items-center justify-between cursor-pointer">
+                                    <div>
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <span className="material-symbols-outlined text-primary">motion_photos_on</span>
+                                            <span className="font-bold">Barrido automático</span>
+                                        </div>
+                                        <p className="text-sm text-gray-400">
+                                            Avanza solo por las opciones cada {settingsData.scan_interval / 1000} segundos
+                                        </p>
+                                    </div>
+                                    <input
+                                        type="checkbox"
+                                        checked={settingsData.sweep_enabled}
+                                        onChange={(e) => setSettingsData(prev => ({ ...prev, sweep_enabled: e.target.checked }))}
+                                        className="size-6 accent-[#137fec]"
+                                    />
+                                </label>
+                            </div>
+
+                            {/* Modo de entrada */}
+                            <div className="p-4 bg-background-dark rounded-xl border border-border-accent">
+                                <label className="block font-bold mb-4 flex items-center gap-2">
+                                    <span className="material-symbols-outlined text-primary">touch_app</span>
+                                    Modo de entrada
+                                </label>
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                    {[
+                                        { value: 'scan', label: 'Barrido' },
+                                        { value: 'switch', label: 'Pulsador' },
+                                        { value: 'mouse', label: 'Mouse' },
+                                        { value: 'touch', label: 'Táctil' }
+                                    ].map(opt => (
+                                        <button
+                                            key={opt.value}
+                                            type="button"
+                                            onClick={() => setSettingsData(prev => ({ ...prev, input_mode: opt.value }))}
+                                            className={`py-3 px-2 rounded-xl border-2 font-bold transition-all ${settingsData.input_mode === opt.value
+                                                ? 'border-primary bg-primary/20 text-white'
+                                                : 'border-white/10 hover:border-white/30 text-gray-400'
+                                                }`}
+                                        >
+                                            {opt.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Texto */}
+                            <div className="p-4 bg-background-dark rounded-xl border border-border-accent space-y-5">
+                                <label className="block font-bold flex items-center gap-2">
+                                    <span className="material-symbols-outlined text-primary">format_size</span>
+                                    Texto
+                                </label>
+
+                                <div>
+                                    <p className="text-sm text-gray-400 mb-2">Tamaño de letra</p>
+                                    <div className="flex gap-3">
+                                        {[
+                                            { value: 'normal', label: '16' },
+                                            { value: 'large', label: '19' },
+                                            { value: 'xlarge', label: '22' }
+                                        ].map(opt => (
+                                            <button
+                                                key={opt.value}
+                                                type="button"
+                                                onClick={() => setSettingsData(prev => ({ ...prev, font_size: opt.value }))}
+                                                className={`size-12 rounded-xl border-2 flex items-center justify-center text-lg font-bold transition-all ${settingsData.font_size === opt.value
+                                                    ? 'border-primary bg-primary/20 text-white'
+                                                    : 'border-white/10 hover:border-white/30 text-gray-400'
+                                                    }`}
+                                            >
+                                                {opt.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <p className="text-sm text-gray-400 mb-2">Interlineado</p>
+                                    <div className="flex flex-wrap gap-3">
+                                        {[
+                                            { value: 'normal', label: 'Normal' },
+                                            { value: 'relaxed', label: 'Amplio' },
+                                            { value: 'loose', label: 'Muy amplio' }
+                                        ].map(opt => (
+                                            <button
+                                                key={opt.value}
+                                                type="button"
+                                                onClick={() => setSettingsData(prev => ({ ...prev, line_height: opt.value }))}
+                                                className={`py-3 px-4 rounded-xl border-2 text-sm font-bold transition-all ${settingsData.line_height === opt.value
+                                                    ? 'border-primary bg-primary/20 text-white'
+                                                    : 'border-white/10 hover:border-white/30 text-gray-400'
+                                                    }`}
+                                            >
+                                                {opt.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <label className="flex items-center justify-between cursor-pointer">
+                                    <span className="font-bold">Títulos en negrita</span>
+                                    <input
+                                        type="checkbox"
+                                        checked={settingsData.bold_titles}
+                                        onChange={(e) => setSettingsData(prev => ({ ...prev, bold_titles: e.target.checked }))}
+                                        className="size-6 accent-[#137fec]"
+                                    />
+                                </label>
+
+                                <label className="flex items-center justify-between cursor-pointer">
+                                    <span className="font-bold">Mayúsculas en toda la plataforma</span>
+                                    <input
+                                        type="checkbox"
+                                        checked={settingsData.uppercase}
+                                        onChange={(e) => setSettingsData(prev => ({ ...prev, uppercase: e.target.checked }))}
+                                        className="size-6 accent-[#137fec]"
+                                    />
+                                </label>
+                            </div>
+
+                            {/* Voz */}
+                            <div className="p-4 bg-background-dark rounded-xl border border-border-accent">
+                                <label className="block font-bold mb-4 flex items-center gap-2">
+                                    <span className="material-symbols-outlined text-primary">record_voice_over</span>
+                                    Tipo de voz
+                                </label>
+                                <div className="flex flex-wrap gap-3">
+                                    {[
+                                        { value: 'auto', label: 'Automática' },
+                                        { value: 'female', label: 'Femenina' },
+                                        { value: 'male', label: 'Masculina' }
+                                    ].map(opt => (
+                                        <button
+                                            key={opt.value}
+                                            type="button"
+                                            onClick={() => setSettingsData(prev => ({ ...prev, voice_gender: opt.value }))}
+                                            className={`py-3 px-4 rounded-xl border-2 text-sm font-bold transition-all ${settingsData.voice_gender === opt.value
+                                                ? 'border-primary bg-primary/20 text-white'
+                                                : 'border-white/10 hover:border-white/30 text-gray-400'
+                                                }`}
+                                        >
+                                            {opt.label}
+                                        </button>
+                                    ))}
+                                </div>
+                                <p className="mt-3 text-xs text-gray-500">
+                                    Si el dispositivo no tiene voz es-AR se usa es-US (limitación del sistema).
+                                </p>
                             </div>
 
                         </div>
