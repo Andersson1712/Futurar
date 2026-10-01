@@ -7,9 +7,9 @@
   (scanning) or direct input.
 - Frontend AI REMOVED (SPEC-001); generation runs end-to-end via the backend but
   stays gated by `AI_ENDPOINTS_ENABLED` until the Gemini key is rotated.
-- SPEC-002→010 done: server-owned Nest 12 AI module, /api/v1 contracts,
+- SPEC-002→011 done: server-owned Nest 12 AI module, /api/v1 contracts,
   prompts/validation, BullMQ/Redis jobs, SSE, book persistence with audit/soft
-  delete/images, and the frontend generating and reading through the backend.
+  delete/images, frontend via backend, click-wins fix and Vitest runner.
 - Wizard, library, reader, TTS, dedications, teacher panel work; legacy Supabase data pending SPEC-021/023/027.
 
 ## Architecture Decisions
@@ -29,21 +29,21 @@
 - NestJS 12 + TS 6 (ESM via require(esm)); Jest needs
   NODE_OPTIONS=--experimental-vm-modules. UI es-AR + i18n; SDD; a11y WCAG 2.2
   AA / ISO 17549-3.
+- Integration branch `dev`; feature branch from dev + PR to dev; main updated
+  at phase close (legacy dev backed up in `dev-legacy-backup`).
 
 ## Learnings / Edge Cases
 - TS 6: explicit `rootDir`/`types`, no `baseUrl`, `import type` in decorated signatures (TS1272).
 - Swagger before app.listen; BullMQ needs Redis ping + `maxRetriesPerRequest: null`; raw bullmq.
 - Supabase JS is untyped here: cast responses; storage paths use the job id; signed URLs never persisted.
 - Gemini TTS lacks es-AR (default es-419); models gemini-3.8-flash / gemini-3.1-flash-image / gemini-3.8-flash-tts.
-- Click-on-release: read target on pointerdown, cancel scan timer, act at once.
+- Input contract: pointerdown on `[data-option]` wins over scan focus; never act on release.
 
 ## Next Steps
 - [ ] Owner: rotate Gemini key; apply migrations 0001/0002; create `book-images` bucket.
-- [ ] SPEC-011→016: accessibility fixes/standards (click wins, scroll, focus
-      trap, autosave, per-profile settings, WCAG).
-- [ ] SPEC-017/018/019: frontend test runner, critical tests and CI.
-- [ ] SPEC-021/023: profiles/options API; SPEC-027 analytics; then close the
-      SPEC-010 audit.
+- [ ] SPEC-012→016: scroll, focus trap, autosave, per-profile settings, WCAG.
+- [ ] SPEC-017→019: MSW/Playwright, critical tests and CI (Vitest runner exists).
+- [ ] SPEC-021/023: profiles/options API; SPEC-027 analytics; close SPEC-010 audit.
 - [ ] Chore: Vite 6→8 + frontend TS 5.8→7.
 
 ## Housekeeping

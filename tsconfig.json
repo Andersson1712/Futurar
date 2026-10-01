@@ -36,7 +36,8 @@
     "hooks/**/*.ts",
     "services/**/*.ts",
     "utils/**/*.ts",
-    "types/**/*.ts"
+    "types/**/*.ts",
+    "test/**/*.ts"
   ],
   "exclude": ["node_modules", "dist", "backend"]
 }

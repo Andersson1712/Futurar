@@ -12,8 +12,8 @@ Backend:  NestJS 12 + TypeScript 6 (./backend, Node >= 20.19), API on :3001.
 Data/Auth: Supabase. AI: Gemini, reached only through the backend.
 
 Frontend:
-`npm install` · `npm run dev` · `npm run build`
-Tests: Vitest + React Testing Library (runner to be added).
+`npm install` · `npm run dev` · `npm run build` · `npm run test`
+`npm run typecheck` · `npm run check:supabase`
 
 Backend (run inside ./backend):
 `npm run start:dev` · `npm run build` · `npm run lint`
@@ -43,7 +43,8 @@ Backend (run inside ./backend):
 - No business logic in React components; no div/span as button; use aria-label.
 - i18n from day one: no hardcoded UI strings. UI is es-AR; code, comments,
   identifiers and commits are English (Conventional Commits).
-- NEVER commit directly to main: feature branch + PR + green CI + squash merge.
+- NEVER commit directly to `main` or `dev`: feature branch from `dev` + PR to
+  `dev` + green CI + squash merge; `main` is updated from `dev` at phase close.
 - NEVER add a dependency without approval or use `any` without justification.
 - No new logic without a test; keep CI green.
 
