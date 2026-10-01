@@ -16,10 +16,10 @@ Leyenda:
 
 ## Estado actual
 
-- Fase activa: **Fase 4 — Accesibilidad: bugs críticos**
-- Última tarea cerrada: SPEC-015 (implementado; accesibilidad por perfil)
-- Próxima tarea: SPEC-016 (auditoría WCAG 2.2 AA y estándares)
-- Rama de integración: `dev` (todo SPEC-001→015); `main` se actualiza al cerrar fase.
+- Fase activa: **Fase 5 — Frontend: test runner y calidad**
+- Última tarea cerrada: SPEC-016 (implementado; WCAG 2.2 AA, ISO 17549-3, declaración)
+- Próxima tarea: SPEC-017 (MSW + Playwright extras y cobertura de tests)
+- Rama de integración: `dev` (todo SPEC-001→016); `main` se actualiza al cerrar fase.
 
 ---
 
@@ -134,10 +134,10 @@ Leyenda:
 - [x] SPEC-015: prefers-reduced-motion / contrast
 
 ### EPIC 4.6 — Estándares
-- [ ] SPEC-016: Auditoría WCAG 2.2 AA
-- [ ] SPEC-016: Alineación ISO/IEC 17549-3
-- [ ] SPEC-016: EN 301 549 si aplica
-- [ ] SPEC-016: Declaración de accesibilidad publicada
+- [x] SPEC-016: Auditoría WCAG 2.2 AA
+- [x] SPEC-016: Alineación ISO/IEC 17549-3
+- [x] SPEC-016: EN 301 549 si aplica
+- [x] SPEC-016: Declaración de accesibilidad publicada (repo; web en SPEC-025)
 
 ---
 
@@ -283,6 +283,7 @@ Leyenda:
 | SPEC-013 | Focus trap del menú de controles + navegación por switch | implementado | owner | 2026-09-30 |
 | SPEC-014 | Autoguardado y continuar (wizard + visor) | implementado | owner | 2026-09-30 |
 | SPEC-015 | Accesibilidad por perfil (barrido/modos/texto/voz) | implementado | owner | 2026-09-30 |
+| SPEC-016 | Auditoría WCAG 2.2 AA, ISO 17549-3 y declaración | implementado | owner | 2026-09-30 |
 | … | … | … | … | … |
 
 ## Notas
@@ -380,3 +381,9 @@ Leyenda:
   ahora sí llega a los grids); `ScanningGrid` solo auto-avanza con sweep en
   scan/switch; voz es-AR→es-419→es-US con género; reduced-motion/contrast por
   CSS. Editor docente con los nuevos controles. 38 tests frontend.
+- SPEC-016: axe-core en Vitest (0 violaciones en 6 pantallas), contraste
+  verificado por ratios (`primary` oscurecido a `#0b6bd3`), `:focus-visible`
+  global, gray-500→gray-400, targets ≥44px y hook `useDialogA11y` en los
+  modales restantes. Declaración es-AR + auditoría + alineación ISO 17549-3 y
+  aplicabilidad EN 301 549 en `docs/accessibility/`. 54 tests frontend.
+  Fase 4 cerrada.

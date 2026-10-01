@@ -5,10 +5,10 @@
 ## Current State
 - MVP: accessible story creation for severe motor disabilities, switch or direct input.
 - Frontend AI REMOVED (SPEC-001); generation gated by `AI_ENDPOINTS_ENABLED` until the key is rotated.
-- SPEC-002→015 done: server-owned Nest 12 AI module, /api/v1 contracts,
+- SPEC-002→016 done: server-owned Nest 12 AI module, /api/v1 contracts,
   prompts/validation, BullMQ/Redis jobs, SSE, book persistence with audit/soft
-  delete/images, frontend via backend, click-wins, runners, unblocked scroll,
-  trapped controls dialog, autosave/resume and per-profile accessibility.
+  delete/images, frontend via backend, click-wins, runners, scroll, dialogs,
+  autosave, per-profile a11y and the WCAG audit/declaration. Phase 4 closed.
 - Wizard, library, reader, TTS, dedications, teacher panel work; legacy Supabase data pending SPEC-021/023/027.
 
 ## Architecture Decisions
@@ -39,12 +39,12 @@
 - Menus/modals: trapped dialog + backdrop (`isModalOpen` pauses grids); capture-phase keydown.
 - Autosave: `futurar_progress_v1` per student (whitelisted steps, empty config valid); clears on profile switch/new story/logout.
 - A11y per profile: `student_settings` (migration 0003) seeds ScanSettings; `<html>` gets font/line/uppercase/bold; voice es-AR→es-US; reduced-motion/contrast CSS.
+- A11y audit: axe-core in Vitest (color-contrast off in jsdom) + `utils/contrast` ratios; `useDialogA11y` for dialogs; declaration in `docs/accessibility/`.
 
 ## Next Steps
 - [ ] Owner: rotate Gemini key; apply migrations 0001/0002/0003; create `book-images` bucket.
-- [ ] SPEC-016: WCAG 2.2 AA audit + standards; SPEC-017→019: MSW/Playwright + CI.
-- [ ] SPEC-021/023: profiles/options API; SPEC-027 analytics; close SPEC-010 audit.
-- [ ] Chore: Vite 6→8 + frontend TS 5.8→7.
+- [ ] SPEC-017→019: MSW + E2E extras + CI (Vitest/axe/Playwright exist); chore Vite/TS.
+- [ ] SPEC-021/023: profiles/options API; SPEC-027 analytics.
 
 ## Housekeeping
 - Keep under ~50 lines: before finishing, compact and remove resolved items.
