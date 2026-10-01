@@ -5,6 +5,7 @@ import {
   HttpCode,
   HttpStatus,
   Param,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -25,6 +26,7 @@ import {
 } from '../common/guards/supabase-auth.guard';
 import { BooksService } from './books.service';
 import { BookDetailDto, BookSummaryDto } from './dto/book.dto';
+import { ListBooksQueryDto } from './dto/list-books.query.dto';
 
 @ApiTags('books')
 @ApiBearerAuth()
@@ -38,8 +40,11 @@ export class BooksController {
   @UseGuards(SupabaseAuthGuard)
   @ApiOperation({ summary: 'List the authenticated user books' })
   @ApiOkResponse({ type: [BookSummaryDto] })
-  async list(@Req() request: AuthenticatedRequest): Promise<BookSummaryDto[]> {
-    return this.booksService.list(request.user?.id ?? '');
+  async list(
+    @Query() query: ListBooksQueryDto,
+    @Req() request: AuthenticatedRequest,
+  ): Promise<BookSummaryDto[]> {
+    return this.booksService.list(request.user?.id ?? '', query.profileId);
   }
 
   @Get(':id')

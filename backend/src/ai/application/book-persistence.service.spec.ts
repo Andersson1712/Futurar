@@ -22,6 +22,15 @@ const BOOK: GeneratedBookDto = {
   ],
 };
 
+const STORY_CONFIG = {
+  protagonist: 'Un dragón curioso',
+  scenery: 'Un bosque mágico',
+  mission: 'Encontrar la estrella perdida',
+  style: 'Acuarela',
+  storySize: 'small',
+  audience: 'child',
+};
+
 function buildService(
   options: { imagesEnabled?: boolean; imageFails?: boolean } = {},
 ) {
@@ -95,9 +104,11 @@ describe('BookPersistenceService', () => {
 
     const book = await service.persist({
       userId: 'user-1',
+      profileId: 'student-1',
       book: BOOK,
       model: 'gemini-test',
       promptVersion: 'book/v1',
+      storyConfig: STORY_CONFIG,
       generationJobId: 'job-1',
     });
 
@@ -107,6 +118,8 @@ describe('BookPersistenceService', () => {
 
     const input = firstSaveInput(save);
     expect(input.snapshot.pages[0].imagePath).toBeUndefined();
+    expect(input.profileId).toBe('student-1');
+    expect(input.snapshot.config).toEqual(STORY_CONFIG);
     expect(input.audit).toMatchObject({
       promptVersion: 'book/v1',
       model: 'gemini-test',
@@ -125,10 +138,12 @@ describe('BookPersistenceService', () => {
 
     const book = await service.persist({
       userId: 'user-1',
+      profileId: 'student-1',
       book: BOOK,
       model: 'gemini-test',
       promptVersion: 'book/v1',
       usage: { inputTokens: 10, outputTokens: 20 },
+      storyConfig: STORY_CONFIG,
       generationJobId: 'job-1',
     });
 
@@ -155,9 +170,11 @@ describe('BookPersistenceService', () => {
 
     const book = await service.persist({
       userId: 'user-1',
+      profileId: 'student-1',
       book: BOOK,
       model: 'gemini-test',
       promptVersion: 'book/v1',
+      storyConfig: STORY_CONFIG,
       generationJobId: 'job-1',
     });
 
@@ -173,12 +190,14 @@ describe('BookPersistenceService', () => {
 
     await service.persist({
       userId: 'user-1',
+      profileId: 'student-1',
       book: {
         ...BOOK,
         pages: [{ pageNumber: 1, content: 'Sin prompt' }],
       },
       model: 'gemini-test',
       promptVersion: 'book/v1',
+      storyConfig: STORY_CONFIG,
       generationJobId: 'job-1',
     });
 

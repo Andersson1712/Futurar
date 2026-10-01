@@ -32,6 +32,18 @@ export class BookDetailDto {
   dedication?: string;
 
   @ApiProperty()
+  protagonist!: string;
+
+  @ApiProperty()
+  scenery!: string;
+
+  @ApiProperty()
+  mission!: string;
+
+  @ApiProperty()
+  style!: string;
+
+  @ApiProperty()
   version!: number;
 
   @ApiProperty()

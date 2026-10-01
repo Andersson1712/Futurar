@@ -58,7 +58,24 @@ describe('BooksController', () => {
       .expect(200);
 
     expect(response.body).toEqual([{ id: 'book-1', title: 'Cuento' }]);
-    expect(list).toHaveBeenCalledWith('user-1');
+    expect(list).toHaveBeenCalledWith('user-1', undefined);
+  });
+
+  it('filters by profileId and validates it', async () => {
+    list.mockResolvedValue([]);
+
+    await request(app.getHttpServer())
+      .get('/api/v1/books?profileId=123e4567-e89b-42d3-a456-426614174000')
+      .expect(200);
+    expect(list).toHaveBeenCalledWith(
+      'user-1',
+      '123e4567-e89b-42d3-a456-426614174000',
+    );
+
+    const invalid = await request(app.getHttpServer())
+      .get('/api/v1/books?profileId=not-a-uuid')
+      .expect(400);
+    expect(invalid.body).toMatchObject({ code: 'VALIDATION_FAILED' });
   });
 
   it('returns book details', async () => {

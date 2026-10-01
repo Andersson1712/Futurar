@@ -109,10 +109,15 @@ const TeacherPanel: React.FC<TeacherPanelProps> = ({ onSwitchToStudent }) => {
                 if (stuError) throw stuError;
             } else {
                 // Crear nuevo estudiante
+                if (!studentData.name) {
+                    throw new Error('El nombre del estudiante es obligatorio');
+                }
+
                 const { data: newStudent, error: stuError } = await supabase
                     .from('students')
                     .insert({
                         ...studentData,
+                        name: studentData.name,
                         teacher_id: DEFAULT_TEACHER_ID
                     })
                     .select()

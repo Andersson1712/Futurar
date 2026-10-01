@@ -17,8 +17,8 @@ export class BooksService {
     private readonly configService: ConfigService,
   ) {}
 
-  async list(userId: string): Promise<BookSummaryDto[]> {
-    const books = await this.books.listByUser(userId);
+  async list(userId: string, profileId?: string): Promise<BookSummaryDto[]> {
+    const books = await this.books.listByUser(userId, profileId);
 
     return books.map(toSummaryDto);
   }
@@ -61,6 +61,10 @@ export class BooksService {
       id: book.id,
       title: book.title,
       dedication: book.version.dedication,
+      protagonist: book.version.config?.protagonist ?? '',
+      scenery: book.version.config?.scenery ?? '',
+      mission: book.version.config?.mission ?? '',
+      style: book.version.config?.style ?? '',
       version: book.currentVersion,
       totalPages: pages.length,
       pages,

@@ -7,13 +7,18 @@ import StudentLibrary from './StudentLibrary';
 import FloatingControls from './FloatingControls';
 import { ScanSettingsProvider, useScanSettings } from '../contexts/ScanSettingsContext';
 import { speak, stopSpeaking } from '../utils/speech';
-import { MESSAGES } from '../utils/messages';
+import { MESSAGES, messageForErrorCode } from '../utils/messages';
 import { getRandomImage } from '../utils/images';
+import { loadStorySettings } from '../utils/storySettings';
+import { ApiError, NetworkError } from '../services/backendApi';
+import { followJob, requestBookGeneration } from '../services/bookGeneration';
+import { bookToStory } from '../services/bookMappers';
 import type { Student, StudentSettings, Story } from '../types/database';
 import type { ScanOption } from '../types';
 
 // Tipos locales
 interface StoryConfig {
+    id?: string;
     protagonist: string;
     scenery: string;
     mission: string;
@@ -268,25 +273,106 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
     const handleCreateAnother = () => {
         handleStopSpeaking();
         setStep('SELECT_PROTAGONIST');
-        setConfig(prev => ({ ...prev, protagonist: '', scenery: '', mission: '', style: '', content: '', title: '' }));
+        setConfig(prev => ({ ...prev, id: undefined, protagonist: '', scenery: '', mission: '', style: '', content: '', title: '' }));
     };
 
-    // AI generation runs only in the Nest backend (SPEC-001).
-    // The frontend keeps the wizard state and returns to the previous step.
+    // Real generation through the Nest backend (SPEC-009).
     useEffect(() => {
-        if (step !== 'GENERATING') return;
+        if (step !== 'GENERATING' || !currentStudent) return;
 
-        setError(MESSAGES.errors.aiUnavailable);
-        setGenerationProgress({ status: MESSAGES.generation.unavailable, progress: 0 });
-        speakWithState(MESSAGES.errors.aiUnavailable);
+        const controller = new AbortController();
+        setError(null);
+        setGenerationProgress({ status: MESSAGES.generation.queued, progress: 10 });
 
-        const timer = setTimeout(() => {
-            setStep('SELECT_STYLE');
-            setError(null);
-        }, 3000);
+        const run = async () => {
+            const settings = loadStorySettings();
+            const request = {
+                protagonist: config.protagonist,
+                scenery: config.scenery,
+                mission: config.mission,
+                style: config.style,
+                storySize: settings.storySize,
+                customStructure: settings.customStructure || undefined,
+                audience: 'child' as const,
+                profileId: currentStudent.id,
+            };
 
-        return () => clearTimeout(timer);
-    }, [step]);
+            try {
+                const job = await requestBookGeneration(request);
+                const finalStatus = await followJob(job.jobId, {
+                    signal: controller.signal,
+                    onStatus: (status) => {
+                        setGenerationProgress({
+                            status:
+                                status.status === 'completed'
+                                    ? MESSAGES.generation.completed
+                                    : MESSAGES.generation.processing,
+                            progress:
+                                status.progress ??
+                                (status.status === 'queued' ? 15 : 60),
+                        });
+                    },
+                });
+
+                if (finalStatus.status === 'failed' || !finalStatus.book) {
+                    throw new ApiError({
+                        statusCode: 502,
+                        code: finalStatus.error?.code ?? 'INTERNAL',
+                        message:
+                            finalStatus.error?.message ?? 'generation failed',
+                    });
+                }
+
+                const story = bookToStory(finalStatus.book, {
+                    protagonist: request.protagonist,
+                    scenery: request.scenery,
+                    mission: request.mission,
+                    style: request.style,
+                    studentId: currentStudent.id,
+                });
+
+                setConfig({
+                    id: story.id,
+                    protagonist: story.protagonist,
+                    scenery: story.scenery,
+                    mission: story.mission,
+                    style: story.style,
+                    title: story.title,
+                    content: story.content ?? '',
+                    imageUrl: story.image_url ?? undefined,
+                    type: 'story',
+                });
+                setGenerationProgress({
+                    status: MESSAGES.generation.completed,
+                    progress: 100,
+                });
+                speakWithState(`Tu cuento ${story.title} está listo`);
+                setStep('STORY_DETAILS');
+            } catch (err) {
+                if (err instanceof DOMException && err.name === 'AbortError') {
+                    return;
+                }
+
+                const message =
+                    err instanceof ApiError
+                        ? messageForErrorCode(err.code)
+                        : err instanceof NetworkError
+                          ? MESSAGES.errors.network
+                          : MESSAGES.errors.generic;
+
+                setGenerationProgress({
+                    status: MESSAGES.generation.failed,
+                    progress: 0,
+                });
+                setError(message);
+                speakWithState(message);
+            }
+        };
+
+        void run();
+
+        return () => controller.abort();
+    }, [step, currentStudent]);
 
     // Loading state
     if (isLoading) {
@@ -320,6 +406,7 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
             <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-950">
                 <StoryDetails
                     story={currentStory}
+                    persisted={Boolean(config.id)}
                     onBack={() => {
                         setStep('LIBRARY');
                         speakWithState("Volviendo a la biblioteca");
@@ -352,10 +439,10 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
                     mission={config.mission}
                     style={config.style}
                     studentId={currentStudent?.id}
+                    persisted={Boolean(config.id)}
                     onClose={() => setStep('STORY_DETAILS')}
                     onRead={speakWithState}
                     onCreateAnother={handleCreateAnother}
-                    isSpeaking={isSpeaking}
                     scanInterval={scanInterval}
                     voiceEnabled={voiceEnabled}
                 />
@@ -383,6 +470,7 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
         const handleSelectStory = (story: Story) => {
             // Load story into config and show it
             setConfig({
+                id: story.id,
                 protagonist: story.protagonist,
                 scenery: story.scenery,
                 mission: story.mission,
@@ -651,6 +739,21 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
                                 style={{ width: `${generationProgress.progress}%` }}
                             />
                         </div>
+
+                        {error && (
+                            <div
+                                role="alert"
+                                className="mt-6 w-full p-4 bg-red-500/10 border border-red-500/40 rounded-2xl text-left"
+                            >
+                                <p className="text-red-300 font-medium">{error}</p>
+                                <button
+                                    onClick={() => setStep('SELECT_STYLE')}
+                                    className="mt-4 px-6 py-3 min-h-11 bg-primary rounded-xl font-bold hover:bg-primary/80 transition-colors"
+                                >
+                                    Intentar de nuevo
+                                </button>
+                            </div>
+                        )}
 
                         {/* Story Preview */}
                         <div className="mt-8 p-4 bg-slate-800/50 rounded-2xl border border-slate-700">

@@ -53,7 +53,16 @@ export class GenerationRunner {
     const book = this.validator.validate(payload, audience);
     const storedBook = await this.persistence.persist({
       userId: job.userId,
+      profileId: job.request.profileId,
       book,
+      storyConfig: {
+        protagonist: job.request.protagonist,
+        scenery: job.request.scenery,
+        mission: job.request.mission,
+        style: job.request.style,
+        storySize: job.request.storySize,
+        audience,
+      },
       model: result.model,
       promptVersion: bookPrompt.version,
       usage: result.usage,

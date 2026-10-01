@@ -14,6 +14,7 @@ type StoryReaderProps = {
     style: string;
     onClose: () => void;
     studentId?: string;
+    persisted?: boolean;
     onRead: (text: string) => void;
     voiceEnabled?: boolean;
     onCreateAnother?: () => void;
@@ -80,6 +81,7 @@ const StoryReader: React.FC<StoryReaderProps> = ({
     style,
     onClose,
     studentId,
+    persisted = false,
     onRead,
     voiceEnabled = true,
     onCreateAnother,
@@ -136,6 +138,14 @@ const StoryReader: React.FC<StoryReaderProps> = ({
 
     // Guardar historia en biblioteca
     const handleSaveStory = useCallback(async () => {
+        // Books generated through the backend are already persisted (SPEC-008).
+        if (persisted) {
+            setSaveMessage('Tu cuento ya está en tu biblioteca');
+            if (voiceEnabled) speak('Tu cuento ya está en tu biblioteca');
+            setTimeout(() => setSaveMessage(null), 3000);
+            return;
+        }
+
         if (!studentId) {
             setSaveMessage('Error: No se puede guardar sin estudiante');
             setTimeout(() => setSaveMessage(null), 3000);
@@ -168,7 +178,7 @@ const StoryReader: React.FC<StoryReaderProps> = ({
             setIsSaving(false);
             setTimeout(() => setSaveMessage(null), 3000);
         }
-    }, [studentId, title, content, protagonist, scenery, mission, style, chapters, voiceEnabled, onSaveSuccess]);
+    }, [studentId, persisted, title, content, protagonist, scenery, mission, style, chapters, voiceEnabled, onSaveSuccess]);
 
     // Generar PDF usando la utilidad centralizada
     const generatePDF = async () => {

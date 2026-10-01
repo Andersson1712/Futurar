@@ -5,6 +5,7 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
+  IsUUID,
   MaxLength,
   ValidateNested,
 } from 'class-validator';
@@ -77,4 +78,12 @@ export class GenerateBookRequestDto {
   @IsOptional()
   @IsIn([...AUDIENCES])
   audience?: Audience;
+
+  @ApiPropertyOptional({
+    format: 'uuid',
+    description: 'Student/profile the book belongs to',
+  })
+  @IsOptional()
+  @IsUUID()
+  profileId?: string;
 }

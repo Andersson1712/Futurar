@@ -22,6 +22,7 @@ create table if not exists public.book_versions (
   version integer not null,
   title text not null,
   dedication text,
+  story_config jsonb not null default '{}',
   pages jsonb not null,
   prompt_version text not null,
   model text not null,

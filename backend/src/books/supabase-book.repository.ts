@@ -30,6 +30,7 @@ interface BookVersionRow {
   version: number;
   title: string;
   dedication: string | null;
+  story_config: unknown;
   pages: unknown;
   prompt_version: string;
   model: string;
@@ -84,6 +85,7 @@ export class SupabaseBookRepository implements BookRepository {
         version: 1,
         title: input.snapshot.title,
         dedication: input.snapshot.dedication ?? null,
+        story_config: input.snapshot.config ?? {},
         pages: input.snapshot.pages,
         prompt_version: input.audit.promptVersion,
         model: input.audit.model,
@@ -124,13 +126,22 @@ export class SupabaseBookRepository implements BookRepository {
     return assemble(bookResponse.data, version);
   }
 
-  async listByUser(userId: string): Promise<StoredBookSummary[]> {
+  async listByUser(
+    userId: string,
+    profileId?: string,
+  ): Promise<StoredBookSummary[]> {
     const client = this.requireClient();
-    const response = (await client
+    let query = client
       .from(BOOKS_TABLE)
       .select()
       .eq('user_id', userId)
-      .is('deleted_at', null)
+      .is('deleted_at', null);
+
+    if (profileId) {
+      query = query.eq('profile_id', profileId);
+    }
+
+    const response = (await query
       .order('created_at', { ascending: false })
       .limit(100)) as unknown as RowResponse<BookRow[]>;
 
@@ -236,6 +247,7 @@ function toVersion(row: BookVersionRow): StoredBookVersion {
     version: row.version,
     title: row.title,
     dedication: row.dedication ?? undefined,
+    config: (row.story_config as StoredBookVersion['config']) ?? undefined,
     pages: (row.pages as StoredPage[]) ?? [],
     audit: {
       promptVersion: row.prompt_version,

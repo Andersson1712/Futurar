@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { getStudentById, getActiveStudents, startSession, endSession, getStudentStories } from '../services/supabase';
+import { getStudentById, getActiveStudents, startSession, endSession, getStudentStories, supabase } from '../services/supabase';
 import type { Student, StudentSettings, Story } from '../types/database';
 
 // Tipo para estudiante con configuración embebida
@@ -70,6 +70,22 @@ export const StudentProvider: React.FC<StudentProviderProps> = ({ children }) =>
         };
 
         loadStudents();
+    }, []);
+
+    // Clear student state when the session ends (SPEC-010).
+    useEffect(() => {
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+            if (event === 'SIGNED_OUT') {
+                setCurrentStudent(null);
+                setCurrentSessionId(null);
+                setLibrary([]);
+                setActiveStudents([]);
+            }
+        });
+
+        return () => {
+            subscription.unsubscribe();
+        };
     }, []);
 
     // Seleccionar un estudiante

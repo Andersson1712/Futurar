@@ -99,6 +99,27 @@ describe('InMemoryBookRepository', () => {
     await expect(repository.listByUser('user-1')).resolves.toEqual([]);
   });
 
+  it('filters by profile when provided', async () => {
+    const repository = new InMemoryBookRepository();
+    const first = await repository.save({
+      userId: 'user-1',
+      profileId: 'student-1',
+      snapshot: SNAPSHOT,
+      audit: buildAudit({ generationJobId: undefined }),
+    });
+    await repository.save({
+      userId: 'user-1',
+      profileId: 'student-2',
+      snapshot: SNAPSHOT,
+      audit: buildAudit({ generationJobId: undefined }),
+    });
+
+    await expect(repository.listByUser('user-1', 'student-1')).resolves.toEqual(
+      [expect.objectContaining({ id: first.id })],
+    );
+    await expect(repository.listByUser('user-1')).resolves.toHaveLength(2);
+  });
+
   it('rejects soft deletes for foreign, missing or deleted books', async () => {
     const repository = new InMemoryBookRepository();
     const book = await repository.save({

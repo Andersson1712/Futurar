@@ -5,7 +5,11 @@ import type { TextGenerationUsage } from '../domain/ports/text-generator.port';
 import type { ImageGeneratorPort } from '../domain/ports/image-generator.port';
 import { IMAGE_GENERATOR } from '../tokens';
 import { BOOK_REPOSITORY } from '../../books/book.repository';
-import type { BookRepository, StoredPage } from '../../books/book.repository';
+import type {
+  BookRepository,
+  BookStoryConfig,
+  StoredPage,
+} from '../../books/book.repository';
 import { BOOK_STORAGE } from '../../books/book-storage.port';
 import type { BookStorage } from '../../books/book-storage.port';
 
@@ -15,7 +19,9 @@ export const BOOK_IMAGE_SIZE = '1K';
 
 export interface PersistBookInput {
   userId: string;
+  profileId?: string;
   book: GeneratedBookDto;
+  storyConfig: BookStoryConfig;
   model: string;
   promptVersion: string;
   usage?: TextGenerationUsage;
@@ -80,9 +86,11 @@ export class BookPersistenceService {
 
     const stored = await this.books.save({
       userId: input.userId,
+      profileId: input.profileId,
       snapshot: {
         title: input.book.title,
         dedication: input.book.dedication,
+        config: input.storyConfig,
         pages,
       },
       audit: {

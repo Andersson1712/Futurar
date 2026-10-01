@@ -73,10 +73,15 @@ export class InMemoryBookRepository implements BookRepository {
     return Promise.resolve(stored.book);
   }
 
-  listByUser(userId: string): Promise<StoredBookSummary[]> {
+  listByUser(userId: string, profileId?: string): Promise<StoredBookSummary[]> {
     const summaries = [...this.books.values()]
       .map((stored) => stored.summary)
-      .filter((summary) => summary.userId === userId && !summary.deletedAt)
+      .filter(
+        (summary) =>
+          summary.userId === userId &&
+          !summary.deletedAt &&
+          (profileId === undefined || summary.profileId === profileId),
+      )
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
       .slice(0, 100);
 

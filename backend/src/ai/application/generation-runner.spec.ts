@@ -4,7 +4,10 @@ import type { TextGeneratorPort } from '../domain/ports/text-generator.port';
 import type { JobRecord, JobRepository } from '../../jobs/job.repository';
 import { BookOutputParser } from './book-output.parser';
 import { BookOutputValidator } from './book-output.validator';
-import type { BookPersistenceService } from './book-persistence.service';
+import type {
+  BookPersistenceService,
+  PersistBookInput,
+} from './book-persistence.service';
 import { CircuitBreaker } from './circuit-breaker';
 import { GenerationRunner } from './generation-runner';
 import { PromptBuilderService } from './prompt-builder.service';
@@ -84,6 +87,14 @@ describe('GenerationRunner', () => {
         generationJobId: 'job-1',
       }),
     );
+
+    const persistCalls = persist.mock.calls as unknown as Array<
+      [PersistBookInput]
+    >;
+    expect(persistCalls[0][0].storyConfig).toMatchObject({
+      protagonist: 'Un dragón',
+      storySize: 'small',
+    });
     expect(complete).toHaveBeenCalledWith(
       'job-1',
       expect.objectContaining({

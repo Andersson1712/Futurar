@@ -5,6 +5,10 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../services/supabase';
+import { getStudentBook, listStudentBooks } from '../services/backendBooks';
+import { bookDetailToStory, bookSummaryToStory } from '../services/bookMappers';
+import { MESSAGES, messageForErrorCode } from '../utils/messages';
+import { ApiError, NetworkError } from '../services/backendApi';
 import ScanningGrid from './ScanningGrid';
 import { speak, stopSpeaking } from '../utils/speech';
 import type { Story } from '../types/database';
@@ -21,6 +25,11 @@ interface StudentLibraryProps {
     onBack: () => void;
 }
 
+interface LibraryEntry {
+    story: Story;
+    isBackend: boolean;
+}
+
 const StudentLibrary: React.FC<StudentLibraryProps> = ({
     studentId,
     studentName,
@@ -31,15 +40,19 @@ const StudentLibrary: React.FC<StudentLibraryProps> = ({
     onSelectStory,
     onBack,
 }) => {
-    const [stories, setStories] = useState<Story[]>([]);
+    const [entries, setEntries] = useState<LibraryEntry[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [openingId, setOpeningId] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
 
-    // Fetch stories for this student
+    // Backend books (SPEC-008) + legacy Supabase stories, read-only.
     useEffect(() => {
         const fetchStories = async () => {
+            setIsLoading(true);
+            setError(null);
+
+            let legacyStories: Story[] = [];
             try {
-                setIsLoading(true);
                 const { data, error: dbError } = await supabase
                     .from('stories')
                     .select('*')
@@ -47,26 +60,41 @@ const StudentLibrary: React.FC<StudentLibraryProps> = ({
                     .order('created_at', { ascending: false });
 
                 if (dbError) throw dbError;
-                setStories(data || []);
-            } catch (e: any) {
-                console.error('Error loading stories:', e);
-                setError(e.message);
-            } finally {
-                setIsLoading(false);
+                legacyStories = data ?? [];
+            } catch (e) {
+                console.error('Error loading legacy stories:', e);
             }
+
+            let backendStories: Story[] = [];
+            try {
+                const summaries = await listStudentBooks(studentId);
+                backendStories = summaries.map((summary) =>
+                    bookSummaryToStory(summary, studentId),
+                );
+            } catch (e) {
+                console.warn('Backend library unavailable:', e);
+            }
+
+            setEntries([
+                ...backendStories.map((story) => ({ story, isBackend: true })),
+                ...legacyStories.map((story) => ({ story, isBackend: false })),
+            ]);
+            setIsLoading(false);
         };
 
-        fetchStories();
+        void fetchStories();
     }, [studentId]);
 
     // Convert stories to scan options
     const storyOptions: ScanOption[] = useMemo(() => {
-        const options: ScanOption[] = stories.map(story => ({
+        const options: ScanOption[] = entries.map(({ story }) => ({
             id: story.id,
             label: story.title,
             icon: story.type === 'design' ? 'brush' : 'auto_stories',
             image: story.image_url || undefined,
-            description: `${story.protagonist} en ${story.scenery}`,
+            description: story.protagonist
+                ? `${story.protagonist} en ${story.scenery}`
+                : 'Cuento guardado',
         }));
 
         // Add "Back to Menu" option at the end
@@ -77,10 +105,10 @@ const StudentLibrary: React.FC<StudentLibraryProps> = ({
         });
 
         return options;
-    }, [stories]);
+    }, [entries]);
 
-    // Handle story selection
-    const handleSelect = (opt: ScanOption) => {
+    // Handle story selection: backend books need their detail first
+    const handleSelect = async (opt: ScanOption) => {
         stopSpeaking();
 
         if (opt.id === 'back') {
@@ -89,21 +117,43 @@ const StudentLibrary: React.FC<StudentLibraryProps> = ({
             return;
         }
 
-        const selectedStory = stories.find(s => s.id === opt.id);
-        if (selectedStory) {
-            if (voiceEnabled) speak(`Abriendo ${selectedStory.title}`);
-            onSelectStory(selectedStory);
+        const entry = entries.find((item) => item.story.id === opt.id);
+        if (!entry) return;
+
+        if (voiceEnabled) speak(`Abriendo ${entry.story.title}`);
+
+        if (!entry.isBackend) {
+            onSelectStory(entry.story);
+            return;
+        }
+
+        setOpeningId(entry.story.id);
+        try {
+            const book = await getStudentBook(entry.story.id);
+            onSelectStory(bookDetailToStory(book, studentId));
+        } catch (e) {
+            const message =
+                e instanceof ApiError
+                    ? messageForErrorCode(e.code)
+                    : e instanceof NetworkError
+                      ? MESSAGES.errors.network
+                      : MESSAGES.errors.libraryUnavailable;
+            setError(message);
+        } finally {
+            setOpeningId(null);
         }
     };
 
     // Loading state
-    if (isLoading) {
+    if (isLoading || openingId) {
         return (
             <div className="w-full max-w-4xl mx-auto text-center py-16">
                 <span className="material-symbols-outlined text-6xl text-primary animate-spin">
                     progress_activity
                 </span>
-                <p className="mt-4 text-lg text-gray-400">Cargando tu biblioteca...</p>
+                <p className="mt-4 text-lg text-gray-400">
+                    {openingId ? 'Abriendo tu cuento...' : 'Cargando tu biblioteca...'}
+                </p>
             </div>
         );
     }
@@ -113,10 +163,10 @@ const StudentLibrary: React.FC<StudentLibraryProps> = ({
         return (
             <div className="w-full max-w-4xl mx-auto text-center py-16">
                 <span className="material-symbols-outlined text-6xl text-red-400">error</span>
-                <p className="mt-4 text-lg text-red-400">Error: {error}</p>
+                <p className="mt-4 text-lg text-red-400" role="alert">{error}</p>
                 <button
                     onClick={onBack}
-                    className="mt-6 px-6 py-3 bg-primary rounded-xl font-bold hover:bg-primary/80 transition-colors"
+                    className="mt-6 px-6 py-3 min-h-11 bg-primary rounded-xl font-bold hover:bg-primary/80 transition-colors"
                 >
                     Volver al Menú
                 </button>
@@ -125,7 +175,7 @@ const StudentLibrary: React.FC<StudentLibraryProps> = ({
     }
 
     // Empty state
-    if (stories.length === 0) {
+    if (entries.length === 0) {
         return (
             <div className="w-full max-w-4xl mx-auto text-center py-16">
                 <div className="mb-8">
@@ -141,7 +191,7 @@ const StudentLibrary: React.FC<StudentLibraryProps> = ({
                 </p>
                 <button
                     onClick={onBack}
-                    className="px-8 py-4 bg-primary rounded-2xl font-bold text-lg hover:bg-primary/80 transition-all hover:scale-105 flex items-center gap-3 mx-auto"
+                    className="px-8 py-4 min-h-11 bg-primary rounded-2xl font-bold text-lg hover:bg-primary/80 transition-all hover:scale-105 flex items-center gap-3 mx-auto"
                 >
                     <span className="material-symbols-outlined">auto_stories</span>
                     Crear mi primer cuento
@@ -158,7 +208,7 @@ const StudentLibrary: React.FC<StudentLibraryProps> = ({
                     📚 Mi Biblioteca
                 </h2>
                 <p className="text-gray-400">
-                    {stories.length} {stories.length === 1 ? 'cuento' : 'cuentos'} guardados
+                    {entries.length} {entries.length === 1 ? 'cuento' : 'cuentos'} guardados
                 </p>
             </div>
 

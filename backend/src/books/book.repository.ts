@@ -7,9 +7,19 @@ export interface StoredPage {
   imagePath?: string;
 }
 
+export interface BookStoryConfig {
+  protagonist: string;
+  scenery: string;
+  mission: string;
+  style: string;
+  storySize?: string;
+  audience?: string;
+}
+
 export interface BookSnapshot {
   title: string;
   dedication?: string;
+  config?: BookStoryConfig;
   pages: StoredPage[];
 }
 
@@ -55,6 +65,6 @@ export interface SaveBookInput {
 export interface BookRepository {
   save(input: SaveBookInput): Promise<StoredBook>;
   findById(bookId: string, userId: string): Promise<StoredBook | undefined>;
-  listByUser(userId: string): Promise<StoredBookSummary[]>;
+  listByUser(userId: string, profileId?: string): Promise<StoredBookSummary[]>;
   softDelete(bookId: string, userId: string): Promise<boolean>;
 }

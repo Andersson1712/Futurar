@@ -6,6 +6,7 @@ import { speak } from '../utils/speech';
 
 interface StoryDetailsProps {
     story: Story;
+    persisted?: boolean;
     onBack: () => void;
     onRead: () => void;
     onGoMenu: () => void;
@@ -14,6 +15,7 @@ interface StoryDetailsProps {
 
 const StoryDetails: React.FC<StoryDetailsProps> = ({
     story,
+    persisted = false,
     onBack,
     onRead,
     onGoMenu,
@@ -29,6 +31,14 @@ const StoryDetails: React.FC<StoryDetailsProps> = ({
 
     const handleSave = async () => {
         if (isSaving || hasSaved) return;
+
+        // Books generated through the backend are already persisted (SPEC-008).
+        if (persisted) {
+            setHasSaved(true);
+            if (voiceEnabled) speak('Tu cuento ya está guardado en tu biblioteca');
+            return;
+        }
+
         setIsSaving(true);
         if (voiceEnabled) speak('Guardando tu cuento en la biblioteca...');
 

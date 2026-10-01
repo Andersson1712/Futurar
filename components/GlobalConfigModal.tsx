@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
+import {
+    loadStorySettings,
+    saveStorySettings,
+    type StorySettings,
+} from '../utils/storySettings';
 
 interface GlobalConfigModalProps {
     onClose: () => void;
     teacherId: string;
-}
-
-interface StorySettings {
-    storySize: 'small' | 'medium' | 'large';
-    customStructure: string;
 }
 
 const STORY_SIZES = [
@@ -15,24 +15,6 @@ const STORY_SIZES = [
     { id: 'medium', name: 'Mediano', pages: 10, description: 'Desarrollo completo de la historia' },
     { id: 'large', name: 'Grande', pages: 15, description: 'Cuento extenso con muchos detalles' },
 ];
-
-const STORAGE_KEY = 'futurar_story_config';
-
-const loadStorySettings = (): StorySettings => {
-    try {
-        const stored = localStorage.getItem(STORAGE_KEY);
-        if (stored) {
-            const parsed = JSON.parse(stored) as Partial<StorySettings>;
-            return {
-                storySize: parsed.storySize === 'small' || parsed.storySize === 'large' ? parsed.storySize : 'medium',
-                customStructure: parsed.customStructure || '',
-            };
-        }
-    } catch (error) {
-        console.error('Error reading story settings:', error);
-    }
-    return { storySize: 'medium', customStructure: '' };
-};
 
 /**
  * Story generation settings.
@@ -44,7 +26,7 @@ const GlobalConfigModal: React.FC<GlobalConfigModalProps> = ({ onClose }) => {
 
     const handleSave = () => {
         try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify({ storySize, customStructure }));
+            saveStorySettings({ storySize, customStructure });
         } catch (error) {
             console.error('Error saving story settings:', error);
         }
