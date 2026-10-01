@@ -1,5 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../services/supabase';
+import {
+    createProfile,
+    deactivateProfile,
+    listProfiles,
+    mapProfileSettings,
+    mapProfileToStudent,
+    saveProfileSettings,
+    updateProfile,
+} from '../services/backendProfiles';
+import { useAuth } from '../contexts/AuthContext';
+import LoginForm from './LoginForm';
 import type { Student, StudentSettings, Story } from '../types/database';
 import StudentEditor from './StudentEditor';
 import GlobalConfigModal from './GlobalConfigModal';
@@ -19,6 +30,7 @@ interface TeacherPanelProps {
 }
 
 const TeacherPanel: React.FC<TeacherPanelProps> = ({ onSwitchToStudent }) => {
+    const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
     const [students, setStudents] = useState<StudentWithData[]>([]);
     const [selectedStudent, setSelectedStudent] = useState<StudentWithData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -30,29 +42,22 @@ const TeacherPanel: React.FC<TeacherPanelProps> = ({ onSwitchToStudent }) => {
     const [editingStudent, setEditingStudent] = useState<StudentWithData | null>(null);
     const [activeTab, setActiveTab] = useState<'students' | 'stats' | 'credentials'>('students');
 
-    // Cargar estudiantes (automáticamente al inicio)
+    // Cargar estudiantes (automáticamente al iniciar sesión)
     useEffect(() => {
-        loadStudents();
-    }, []);
+        if (isAuthenticated) {
+            loadStudents();
+        }
+    }, [isAuthenticated]);
 
     const loadStudents = async () => {
         setIsLoading(true);
         try {
-            const { data, error } = await supabase
-                .from('students')
-                .select(`
-                  *,
-                  student_settings (*),
-                  stories (*)
-                `)
-                .order('name');
+            const profiles = await listProfiles(false);
 
-            if (error) throw error;
-
-            // Mapper para asegurar estructura correcta (supabase a veces devuelve array en relaciones 1:1 si no está marcado explícitamente en cliente)
-            const processedData = (data as any[]).map(s => ({
-                ...s,
-                student_settings: Array.isArray(s.student_settings) ? s.student_settings[0] : s.student_settings
+            const processedData = profiles.map(profile => ({
+                ...mapProfileToStudent(profile),
+                student_settings: mapProfileSettings(profile.settings),
+                stories: [],
             }));
 
             setStudents(processedData as StudentWithData[]);
@@ -74,17 +79,12 @@ const TeacherPanel: React.FC<TeacherPanelProps> = ({ onSwitchToStudent }) => {
     };
 
     const handleDeleteStudent = async (studentId: string) => {
-        if (!confirm('¿Estás seguro de eliminar este estudiante? Se eliminarán también todas sus historias.')) {
+        if (!confirm('¿Estás seguro de desactivar este estudiante? Sus cuentos se conservan.')) {
             return;
         }
 
         try {
-            const { error } = await supabase
-                .from('students')
-                .delete()
-                .eq('id', studentId);
-
-            if (error) throw error;
+            await deactivateProfile(studentId);
 
             setStudents(prev => prev.filter(s => s.id !== studentId));
             if (selectedStudent?.id === studentId) {
@@ -102,60 +102,30 @@ const TeacherPanel: React.FC<TeacherPanelProps> = ({ onSwitchToStudent }) => {
             const isNewStudent = !studentId;
 
             if (studentId) {
-                // Actualizar estudiante existente
-                const { error: stuError } = await supabase
-                    .from('students')
-                    .update(studentData)
-                    .eq('id', studentId);
-
-                if (stuError) throw stuError;
+                await updateProfile(studentId, {
+                    name: studentData.name,
+                    age: studentData.age ?? undefined,
+                    birthdate: studentData.birthdate ?? undefined,
+                    avatarIcon: studentData.avatar_icon ?? undefined,
+                    notes: studentData.notes ?? undefined,
+                    isActive: studentData.is_active ?? undefined,
+                });
             } else {
-                // Crear nuevo estudiante
                 if (!studentData.name) {
                     throw new Error('El nombre del estudiante es obligatorio');
                 }
 
-                const { data: newStudent, error: stuError } = await supabase
-                    .from('students')
-                    .insert({
-                        ...studentData,
-                        name: studentData.name,
-                        teacher_id: DEFAULT_TEACHER_ID
-                    })
-                    .select()
-                    .single();
-
-                if (stuError) throw stuError;
-                studentId = newStudent.id;
+                const created = await createProfile({
+                    name: studentData.name,
+                    age: studentData.age ?? undefined,
+                    birthdate: studentData.birthdate ?? undefined,
+                    avatarIcon: studentData.avatar_icon ?? undefined,
+                    notes: studentData.notes ?? undefined,
+                });
+                studentId = created.id;
             }
 
-            // Gestionar configuración (Settings)
-            // Verificar si ya existe configuración para este estudiante
-            const { data: existingSettings } = await supabase
-                .from('student_settings')
-                .select('id')
-                .eq('student_id', studentId)
-                .single();
-
-            if (existingSettings) {
-                // Actualizar settings
-                const { error: setError } = await supabase
-                    .from('student_settings')
-                    .update(settingsData)
-                    .eq('student_id', studentId);
-
-                if (setError) throw setError;
-            } else {
-                // Crear settings
-                const { error: setError } = await supabase
-                    .from('student_settings')
-                    .insert({
-                        student_id: studentId,
-                        ...settingsData
-                    });
-
-                if (setError) throw setError;
-            }
+            await saveProfileSettings(studentId, settingsData);
 
             // Si es nuevo estudiante, crear elementos predeterminados
             if (isNewStudent && studentId) {
@@ -222,12 +192,7 @@ const TeacherPanel: React.FC<TeacherPanelProps> = ({ onSwitchToStudent }) => {
 
     const handleToggleActive = async (student: Student) => {
         try {
-            const { error } = await supabase
-                .from('students')
-                .update({ is_active: !student.is_active })
-                .eq('id', student.id);
-
-            if (error) throw error;
+            await updateProfile(student.id, { isActive: !student.is_active });
             loadStudents();
         } catch (err) {
             console.error('Error actualizando estudiante:', err);
@@ -252,6 +217,20 @@ const TeacherPanel: React.FC<TeacherPanelProps> = ({ onSwitchToStudent }) => {
         'face', 'face_2', 'face_3', 'face_4', 'face_5', 'face_6',
         'emoji_people', 'accessibility_new', 'child_care', 'school'
     ];
+
+    if (isAuthLoading) {
+        return (
+            <div className="min-h-[100dvh] flex items-center justify-center bg-background-dark">
+                <span className="material-symbols-outlined text-5xl text-primary animate-spin">
+                    progress_activity
+                </span>
+            </div>
+        );
+    }
+
+    if (!isAuthenticated) {
+        return <LoginForm onSuccess={() => undefined} />;
+    }
 
     if (showEditor) {
         return (

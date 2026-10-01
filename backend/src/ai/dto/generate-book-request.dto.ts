@@ -58,9 +58,13 @@ export class GenerateBookRequestDto {
   @MaxLength(80)
   style!: string;
 
-  @ApiProperty({ enum: STORY_SIZES })
+  @ApiPropertyOptional({
+    enum: STORY_SIZES,
+    description: 'Defaults to the profile book complexity when omitted',
+  })
+  @IsOptional()
   @IsIn([...STORY_SIZES])
-  storySize!: StorySize;
+  storySize?: StorySize;
 
   @ApiPropertyOptional({ maxLength: 500 })
   @IsOptional()

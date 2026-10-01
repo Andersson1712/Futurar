@@ -18,62 +18,37 @@ vi.mock('../utils/audio', () => ({
   playSelectionSound: vi.fn(),
 }));
 
-vi.mock('../services/supabase', () => {
-  const STUDENT = {
+vi.mock('../services/backendProfiles', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('../services/backendProfiles')>();
+
+  const PROFILE = {
     id: 'student-1',
+    teacherId: 'teacher-1',
     name: 'Ana',
-    avatar_icon: 'person',
-    is_active: true,
-    student_settings: [],
+    avatarIcon: 'person',
+    isActive: true,
+    createdAt: '2026-01-01T00:00:00.000Z',
+    updatedAt: '2026-01-01T00:00:00.000Z',
   };
-
-  const OPTIONS: Record<string, unknown[]> = {
-    student_protagonists: [
-      { id: 'p1', label: 'Un dragón', icon: 'pets', is_enabled: true },
-    ],
-    student_scenarios: [
-      { id: 's1', label: 'Un bosque', icon: 'forest', is_enabled: true },
-    ],
-    student_missions: [
-      { id: 'm1', label: 'Una estrella', icon: 'star', is_enabled: true },
-    ],
-    student_styles: [
-      { id: 'st1', label: 'Acuarela', icon: 'brush', is_enabled: true },
-    ],
-  };
-
-  function makeChain(table: string): Record<string, unknown> {
-    const chain: Record<string, unknown> = {};
-    const self = () => chain;
-
-    chain.select = vi.fn(self);
-    chain.eq = vi.fn(self);
-    chain.order = vi.fn(self);
-    chain.insert = vi.fn(self);
-    chain.update = vi.fn(self);
-    chain.then = (
-      resolve: (value: unknown) => unknown,
-      reject?: (reason: unknown) => unknown,
-    ) =>
-      Promise.resolve(
-        table === 'students'
-          ? { data: [STUDENT], error: null }
-          : { data: OPTIONS[table] ?? [], error: null },
-      ).then(resolve, reject);
-
-    return chain;
-  }
 
   return {
-    supabase: {
-      from: vi.fn((table: string) => makeChain(table)),
-      auth: {
-        onAuthStateChange: vi.fn(() => ({
-          data: { subscription: { unsubscribe: vi.fn() } },
-        })),
-      },
-    },
-    default: {},
+    ...actual,
+    listProfiles: vi.fn(async () => [PROFILE]),
+    listProfileOptions: vi.fn(async () => ({
+      protagonists: [
+        { id: 'p1', label: 'Un dragón', icon: 'pets', isEnabled: true },
+      ],
+      scenarios: [
+        { id: 's1', label: 'Un bosque', icon: 'forest', isEnabled: true },
+      ],
+      missions: [
+        { id: 'm1', label: 'Una estrella', icon: 'star', isEnabled: true },
+      ],
+      styles: [
+        { id: 'st1', label: 'Acuarela', icon: 'brush', isEnabled: true },
+      ],
+    })),
   };
 });
 

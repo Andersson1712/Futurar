@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../services/supabase';
 import type { Student, StudentSettings, StudentElement } from '../types/database';
+import { t } from '../utils/messages';
 
 interface StudentWithSettings extends Student {
     student_settings?: StudentSettings | null;
@@ -226,11 +227,19 @@ const StudentEditor: React.FC<StudentEditorProps> = ({
     const [activeTab, setActiveTab] = useState<'profile' | 'config' | 'elements'>('profile');
     const [isLoadingElements, setIsLoadingElements] = useState(false);
 
+    const initialModules =
+        student?.student_settings?.modules &&
+        typeof student.student_settings.modules === 'object' &&
+        !Array.isArray(student.student_settings.modules)
+            ? (student.student_settings.modules as Record<string, boolean>)
+            : {};
+
     // Student Data
     const [formData, setFormData] = useState({
         name: student?.name || '',
         avatar_icon: student?.avatar_icon || 'face',
         age: student?.age?.toString() || '',
+        birthdate: student?.birthdate || '',
         notes: student?.notes || '',
         is_active: student?.is_active ?? true
     });
@@ -247,7 +256,14 @@ const StudentEditor: React.FC<StudentEditorProps> = ({
         line_height: (student?.student_settings?.line_height as string) || 'normal',
         bold_titles: student?.student_settings?.bold_titles ?? false,
         uppercase: student?.student_settings?.uppercase ?? false,
-        voice_gender: (student?.student_settings?.voice_gender as string) || 'auto'
+        voice_gender: (student?.student_settings?.voice_gender as string) || 'auto',
+        modules: {
+            create: initialModules.create ?? true,
+            library: initialModules.library ?? true,
+            design: initialModules.design ?? false
+        },
+        book_story_size: (student?.student_settings?.book_story_size as string) || 'medium',
+        book_audience: (student?.student_settings?.book_audience as string) || 'child'
     });
 
     // Elements Data
@@ -337,6 +353,7 @@ const StudentEditor: React.FC<StudentEditorProps> = ({
                 name: formData.name.trim(),
                 avatar_icon: formData.avatar_icon,
                 age: formData.age ? parseInt(formData.age) : null,
+                birthdate: formData.birthdate || null,
                 notes: formData.notes.trim() || null,
                 is_active: formData.is_active
             },
@@ -351,7 +368,10 @@ const StudentEditor: React.FC<StudentEditorProps> = ({
                 line_height: settingsData.line_height,
                 bold_titles: settingsData.bold_titles,
                 uppercase: settingsData.uppercase,
-                voice_gender: settingsData.voice_gender
+                voice_gender: settingsData.voice_gender,
+                modules: settingsData.modules,
+                book_story_size: settingsData.book_story_size,
+                book_audience: settingsData.book_audience
             }
         );
     };
@@ -461,6 +481,19 @@ const StudentEditor: React.FC<StudentEditorProps> = ({
                                         placeholder="Ej: 8"
                                         min="1"
                                         max="99"
+                                    />
+                                </div>
+
+                                {/* Fecha de nacimiento */}
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-400 mb-2">
+                                        {t('editor.birthdate')}
+                                    </label>
+                                    <input
+                                        type="date"
+                                        value={formData.birthdate}
+                                        onChange={(e) => setFormData(prev => ({ ...prev, birthdate: e.target.value }))}
+                                        className="w-full bg-background-dark border border-border-accent rounded-xl px-4 py-3 text-white focus:border-primary focus:outline-none"
                                     />
                                 </div>
                             </div>
@@ -732,6 +765,88 @@ const StudentEditor: React.FC<StudentEditorProps> = ({
                                 <p className="mt-3 text-xs text-gray-400">
                                     Si el dispositivo no tiene voz es-AR se usa es-US (limitación del sistema).
                                 </p>
+                            </div>
+
+                            {/* Módulos */}
+                            <div className="p-4 bg-background-dark rounded-xl border border-border-accent">
+                                <label className="block font-bold mb-4 flex items-center gap-2">
+                                    <span className="material-symbols-outlined text-primary">widgets</span>
+                                    {t('editor.modules')}
+                                </label>
+                                <div className="space-y-3">
+                                    {([
+                                        { key: 'create', label: t('editor.moduleCreate') },
+                                        { key: 'library', label: t('editor.moduleLibrary') },
+                                        { key: 'design', label: t('editor.moduleDesign') }
+                                    ] as const).map(module => (
+                                        <label key={module.key} className="flex items-center justify-between cursor-pointer">
+                                            <span className="font-bold">{module.label}</span>
+                                            <input
+                                                type="checkbox"
+                                                checked={settingsData.modules[module.key]}
+                                                onChange={(e) => setSettingsData(prev => ({
+                                                    ...prev,
+                                                    modules: { ...prev.modules, [module.key]: e.target.checked }
+                                                }))}
+                                                className="size-6 accent-[#137fec]"
+                                            />
+                                        </label>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Complejidad del cuento */}
+                            <div className="p-4 bg-background-dark rounded-xl border border-border-accent">
+                                <label className="block font-bold mb-4 flex items-center gap-2">
+                                    <span className="material-symbols-outlined text-primary">auto_stories</span>
+                                    {t('editor.bookComplexity')}
+                                </label>
+                                <div className="flex flex-wrap gap-3">
+                                    {[
+                                        { value: 'short', label: t('editor.bookShort') },
+                                        { value: 'medium', label: t('editor.bookMedium') },
+                                        { value: 'long', label: t('editor.bookLong') }
+                                    ].map(opt => (
+                                        <button
+                                            key={opt.value}
+                                            type="button"
+                                            onClick={() => setSettingsData(prev => ({ ...prev, book_story_size: opt.value }))}
+                                            className={`py-3 px-4 rounded-xl border-2 text-sm font-bold transition-all ${settingsData.book_story_size === opt.value
+                                                ? 'border-primary bg-primary/20 text-white'
+                                                : 'border-white/10 hover:border-white/30 text-gray-400'
+                                                }`}
+                                        >
+                                            {opt.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Audiencia */}
+                            <div className="p-4 bg-background-dark rounded-xl border border-border-accent">
+                                <label className="block font-bold mb-4 flex items-center gap-2">
+                                    <span className="material-symbols-outlined text-primary">groups</span>
+                                    {t('editor.bookAudience')}
+                                </label>
+                                <div className="flex flex-wrap gap-3">
+                                    {[
+                                        { value: 'child', label: t('editor.audienceChild') },
+                                        { value: 'teen', label: t('editor.audienceTeen') },
+                                        { value: 'adult', label: t('editor.audienceAdult') }
+                                    ].map(opt => (
+                                        <button
+                                            key={opt.value}
+                                            type="button"
+                                            onClick={() => setSettingsData(prev => ({ ...prev, book_audience: opt.value }))}
+                                            className={`py-3 px-4 rounded-xl border-2 text-sm font-bold transition-all ${settingsData.book_audience === opt.value
+                                                ? 'border-primary bg-primary/20 text-white'
+                                                : 'border-white/10 hover:border-white/30 text-gray-400'
+                                                }`}
+                                        >
+                                            {opt.label}
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
 
                         </div>

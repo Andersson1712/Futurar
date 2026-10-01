@@ -7,15 +7,12 @@ const IMPORT_PATTERN =
   /import\s*\{[^}]*\bsupabase\b[^}]*\}\s*from\s*['"][^'"]*services\/supabase['"]/;
 
 const ALLOWED = new Set([
-  'components/SettingsPanel.tsx',
   'components/StoryDetails.tsx',
   'components/StoryReader.tsx',
-  'components/StudentApp.tsx',
   'components/StudentEditor.tsx',
   'components/StudentLibrary.tsx',
   'components/TeacherPanel.tsx',
   'contexts/AuthContext.tsx',
-  'contexts/StudentContext.tsx',
 ]);
 
 function walk(dir) {

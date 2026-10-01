@@ -27,7 +27,7 @@ export class PromptBuilderService {
       scenery: command.scenery,
       mission: command.mission,
       style: command.style,
-      storySize: command.storySize,
+      storySize: command.storySize ?? 'medium',
       customStructure: command.customStructure,
       dedication: command.dedication,
       audience: command.audience ?? 'child',

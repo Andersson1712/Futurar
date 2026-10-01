@@ -2,6 +2,8 @@ import { Inject, Injectable } from '@nestjs/common';
 import { AiErrorException } from '../../common/errors/ai-error.exception';
 import { JOB_REPOSITORY } from '../../jobs/job.repository';
 import type { JobRepository } from '../../jobs/job.repository';
+import { PROFILE_SETTINGS_PROVIDER } from '../../profiles/profile-settings.provider';
+import type { ProfileSettingsProvider } from '../../profiles/profile-settings.provider';
 import type { TextGeneratorPort } from '../domain/ports/text-generator.port';
 import { TEXT_GENERATOR } from '../tokens';
 import { BookOutputParser } from './book-output.parser';
@@ -23,6 +25,8 @@ export class GenerationRunner {
     private readonly validator: BookOutputValidator,
     private readonly breaker: CircuitBreaker,
     private readonly persistence: BookPersistenceService,
+    @Inject(PROFILE_SETTINGS_PROVIDER)
+    private readonly profileSettings: ProfileSettingsProvider,
     @Inject(TEXT_GENERATOR) private readonly textGenerator: TextGeneratorPort,
   ) {}
 
@@ -35,9 +39,15 @@ export class GenerationRunner {
 
     await this.jobs.markProcessing(jobId);
 
-    const audience = job.request.audience ?? 'child';
+    const defaults = job.request.profileId
+      ? await this.profileSettings.getBookDefaults(job.request.profileId)
+      : {};
+    const audience = job.request.audience ?? defaults.audience ?? 'child';
+    const storySize = job.request.storySize ?? defaults.storySize ?? 'medium';
     const bookPrompt = this.promptBuilder.build({
       ...job.request,
+      storySize,
+      audience,
       userId: job.userId,
     });
     const result = await this.breaker.execute(() =>
@@ -61,7 +71,7 @@ export class GenerationRunner {
         scenery: job.request.scenery,
         mission: job.request.mission,
         style: job.request.style,
-        storySize: job.request.storySize,
+        storySize,
         audience,
       },
       model: result.model,

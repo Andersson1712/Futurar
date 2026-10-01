@@ -76,6 +76,20 @@ export const TRANSLATIONS = {
   'credentials.signInRequired': 'Iniciá sesión para gestionar la clave',
   'credentials.disabled':
     'La gestión de claves está deshabilitada en el servidor',
+
+  'editor.birthdate': 'Fecha de nacimiento (opcional)',
+  'editor.modules': 'Módulos habilitados',
+  'editor.moduleCreate': 'Crear cuentos',
+  'editor.moduleLibrary': 'Biblioteca',
+  'editor.moduleDesign': 'Diseñar',
+  'editor.bookComplexity': 'Complejidad del cuento',
+  'editor.bookShort': 'Corto',
+  'editor.bookMedium': 'Mediano',
+  'editor.bookLong': 'Largo',
+  'editor.bookAudience': 'Audiencia',
+  'editor.audienceChild': 'Infantil',
+  'editor.audienceTeen': 'Juvenil',
+  'editor.audienceAdult': 'Adultos',
 } as const;
 
 export type MessageKey = keyof typeof TRANSLATIONS;
