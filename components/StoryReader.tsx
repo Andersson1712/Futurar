@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../services/supabase';
 import { playSelectionSound } from '../utils/audio';
 import { speak, stopSpeaking, speakOption } from '../utils/speech';
+import { t } from '../utils/messages';
 import { getChapterImage } from '../utils/images';
 import { generateStoryPDF } from '../utils/pdfGenerator';
 
@@ -37,10 +38,10 @@ interface Chapter {
 }
 
 const actionOptions: ActionOption[] = [
-    { id: 'read', label: 'Leer', icon: 'volume_up' },
-    { id: 'save', label: 'Guardar', icon: 'bookmark' }, // TODO: Check if already saved?
-    { id: 'pdf', label: 'PDF', icon: 'picture_as_pdf' },
-    { id: 'new', label: 'Otro', icon: 'restart_alt' },
+    { id: 'read', label: t('reader.read'), icon: 'volume_up' },
+    { id: 'save', label: t('reader.save'), icon: 'bookmark' }, // TODO: Check if already saved?
+    { id: 'pdf', label: t('reader.pdf'), icon: 'picture_as_pdf' },
+    { id: 'new', label: t('reader.other'), icon: 'restart_alt' },
     { id: 'home', label: 'Salir', icon: 'home' }
 ];
 
@@ -163,7 +164,7 @@ const StoryReader: React.FC<StoryReaderProps> = ({
                 'save': 'Guardar en mi biblioteca',
                 'pdf': 'Descargar como PDF',
                 'new': 'Crear otro cuento',
-                'home': 'Volver al inicio',
+                'home': t('reader.home'),
             };
 
             speakOption(descriptions[currentOption.id] || currentOption.label);

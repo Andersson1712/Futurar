@@ -1,7 +1,74 @@
 /**
- * Temporary centralized UI copy (es-AR).
- * TODO(SPEC-018): replace with the real i18n layer and translation keys.
+ * Centralized es-AR UI copy (temporary i18n layer).
+ * SPEC-018: critical shared strings live here and are read through `t()`.
+ * Full i18n (namespaces, locales, panel extraction) is a follow-up spec.
  */
+
+export const LOCALE = 'es-AR';
+
+export const TRANSLATIONS = {
+  'controls.title': 'Controles',
+  'controls.toggle': 'Controles de accesibilidad',
+  'controls.speed': 'Velocidad',
+  'controls.speedSpoken': 'Velocidad de barrido',
+  'controls.voice': 'Asistente de Voz',
+  'controls.voiceOn': 'Activado',
+  'controls.voiceOff': 'Desactivado',
+  'controls.pause': 'Tomar un Descanso',
+  'controls.pauseHint': 'Pausar todo',
+  'controls.resume': 'Continuar',
+  'controls.resumeHint': 'Reanudar el barrido',
+  'controls.menu': 'Menú Principal',
+  'controls.menuHint': 'Regresar al inicio',
+  'controls.close': 'Cerrar',
+  'controls.closeHint': 'Seguir en esta pantalla',
+
+  'scan.keyboardHint': 'Presiona Espacio o Enter para seleccionar',
+  'scan.gridLabel': 'Opciones',
+
+  'wizard.menuTitle': '¿Qué quieres hacer hoy?',
+  'wizard.protagonistTitle': 'Elige tu Protagonista',
+  'wizard.sceneryTitle': 'Elige el Escenario',
+  'wizard.missionTitle': 'Elige la Misión',
+  'wizard.styleTitle': 'Elige el Estilo Visual',
+  'wizard.generatingTitle': 'Creando tu historia...',
+  'wizard.backToMenu': 'Volver al Menú',
+  'wizard.createStory': 'Crear Cuento',
+  'wizard.library': 'Mi Biblioteca',
+  'wizard.design': 'Diseñar',
+  'wizard.retry': 'Intentar de nuevo',
+
+  'library.loading': 'Cargando tu biblioteca...',
+  'library.emptyTitle': 'Tu biblioteca está vacía',
+  'library.emptyHint': '¡Crea tu primer cuento y aparecerá aquí!',
+  'library.createFirst': 'Crear mi primer cuento',
+  'library.backToMenu': 'Volver al Menú',
+  'library.openStory': 'Abriendo tu cuento...',
+
+  'reader.read': 'Leer',
+  'reader.save': 'Guardar',
+  'reader.pdf': 'PDF',
+  'reader.other': 'Otro',
+  'reader.home': 'Volver al inicio',
+
+  'login.title': 'Iniciar sesión',
+  'login.signIn': 'Iniciar Sesión',
+  'login.signUp': 'Crear Cuenta',
+  'login.email': 'Correo electrónico',
+  'login.password': 'Contraseña',
+} as const;
+
+export type MessageKey = keyof typeof TRANSLATIONS;
+
+export function t(key: MessageKey): string {
+  const value = TRANSLATIONS[key];
+
+  if (!value) {
+    throw new Error(`Missing translation for key: ${key}`);
+  }
+
+  return value;
+}
 
 const ERROR_MESSAGES: Record<string, string> = {
   INVALID_REQUEST:

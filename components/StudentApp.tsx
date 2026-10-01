@@ -9,7 +9,7 @@ import { ScanSettingsProvider, useScanSettings } from '../contexts/ScanSettingsC
 import { useAccessibility } from '../contexts/AccessibilityContext';
 import { fromStudentSettings } from '../utils/accessibility';
 import { speak, stopSpeaking } from '../utils/speech';
-import { MESSAGES, messageForErrorCode } from '../utils/messages';
+import { MESSAGES, messageForErrorCode, t } from '../utils/messages';
 import { getRandomImage } from '../utils/images';
 import { loadStorySettings } from '../utils/storySettings';
 import {
@@ -258,9 +258,9 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
     }, [students]);
 
     const menuOptions: ScanOption[] = [
-        { id: 'story', label: 'Crear Cuento', icon: 'auto_stories' },
-        { id: 'library', label: 'Mi Biblioteca', icon: 'collections_bookmark' },
-        { id: 'design', label: 'Diseñar', icon: 'brush' }
+        { id: 'story', label: t('wizard.createStory'), icon: 'auto_stories' },
+        { id: 'library', label: t('wizard.library'), icon: 'collections_bookmark' },
+        { id: 'design', label: t('wizard.design'), icon: 'brush' }
     ];
 
     // State for student-specific elements (loaded from database)
@@ -799,11 +799,11 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
                         )}
 
                         <h2 className="text-2xl md:text-4xl font-black mb-8 animate-fade-in">
-                            {step === 'MENU' && "¿Qué quieres hacer hoy?"}
-                            {step === 'SELECT_PROTAGONIST' && "Elige tu Protagonista"}
-                            {step === 'SELECT_SCENERY' && "Elige el Escenario"}
-                            {step === 'SELECT_MISSION' && "Elige la Misión"}
-                            {step === 'SELECT_STYLE' && "Elige el Estilo Visual"}
+                            {step === 'MENU' && t('wizard.menuTitle')}
+                            {step === 'SELECT_PROTAGONIST' && t('wizard.protagonistTitle')}
+                            {step === 'SELECT_SCENERY' && t('wizard.sceneryTitle')}
+                            {step === 'SELECT_MISSION' && t('wizard.missionTitle')}
+                            {step === 'SELECT_STYLE' && t('wizard.styleTitle')}
                         </h2>
 
                         <ScanningGrid
@@ -840,7 +840,7 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
                             onClick={handleBackToMenu}
                             className="bg-primary hover:bg-primary/80 text-white font-bold py-3 px-8 rounded-full transition-all"
                         >
-                            Volver al Menú
+                            {t('wizard.backToMenu')}
                         </button>
                     </div>
                 )}
@@ -858,7 +858,7 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
                         </div>
 
                         <h2 className="text-3xl md:text-4xl font-black mb-4">
-                            Creando tu historia...
+                            {t('wizard.generatingTitle')}
                         </h2>
 
                         <p className="text-lg text-gray-400 mb-6">
@@ -883,7 +883,7 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
                                     onClick={() => setStep('SELECT_STYLE')}
                                     className="mt-4 px-6 py-3 min-h-11 bg-primary rounded-xl font-bold hover:bg-primary/80 transition-colors"
                                 >
-                                    Intentar de nuevo
+                                    {t('wizard.retry')}
                                 </button>
                             </div>
                         )}
