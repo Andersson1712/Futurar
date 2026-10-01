@@ -16,10 +16,10 @@ Leyenda:
 
 ## Estado actual
 
-- Fase activa: **Fase 5 — Frontend: test runner y calidad**
-- Última tarea cerrada: SPEC-018 (implementado; tests críticos + i18n guard + E2E)
-- Próxima tarea: SPEC-019 (CI: lint/typecheck/test/build y merge bloqueado)
-- Rama de integración: `dev` (todo SPEC-001→018); `main` se actualiza al cerrar fase.
+- Fase activa: **Fase 6 — Panel de administración**
+- Última tarea cerrada: SPEC-019 (implementado; CI + protección de dev)
+- Próxima tarea: SPEC-020 (UI admin para API key + cifrado/KMS)
+- Rama de integración: `dev` (todo SPEC-001→019, protegida con CI); `main` congelada.
 
 ---
 
@@ -160,9 +160,9 @@ Leyenda:
 - [x] SPEC-018: E2E flujo crítico wizard→generación→lector
 
 ### EPIC 5.3 — CI frontend
-- [ ] SPEC-019: GitHub Actions lint/typecheck/test/build
-- [ ] SPEC-019: Bloquear merge si falla
-- [ ] SPEC-019: Coverage no decreciente
+- [x] SPEC-019: GitHub Actions lint/typecheck/test/build
+- [x] SPEC-019: Bloquear merge si falla
+- [x] SPEC-019: Coverage no decreciente
 
 ---
 
@@ -287,6 +287,7 @@ Leyenda:
 | SPEC-016 | Auditoría WCAG 2.2 AA, ISO 17549-3 y declaración | implementado | owner | 2026-09-30 |
 | SPEC-017 | Infra de tests: MSW + cobertura + E2E | implementado | owner | 2026-09-30 |
 | SPEC-018 | Tests críticos, i18n guard y E2E de flujo | implementado | owner | 2026-09-30 |
+| SPEC-019 | CI GitHub Actions + protección de rama dev | implementado | owner | 2026-09-30 |
 | … | … | … | … | … |
 
 ## Notas
@@ -400,3 +401,9 @@ Leyenda:
   login, biblioteca, lector) y E2E de flujo completo con interceptación de
   Supabase REST + API Nest (11 E2E passed / 1 skip). Umbral de cobertura subido
   a 36/35/33/37 (medido 37.6/37.5/34.6/39). 72 tests frontend.
+- SPEC-019: workflow `.github/workflows/ci.yml` con jobs `frontend`
+  (typecheck/check/coverage/build), `frontend-e2e` (Playwright) y `backend`
+  (build/lint/test/e2e) en Node 24; protección de `dev` con los 3 checks
+  requeridos, sin force-push ni borrado y PR obligatorio (0 aprobaciones,
+  admin puede excepcionar). ESLint frontend queda como chore aparte.
+  Fase 5 cerrada.
