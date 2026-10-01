@@ -5,10 +5,10 @@
 ## Current State
 - MVP: accessible story creation for severe motor disabilities, switch or direct input.
 - Frontend AI REMOVED (SPEC-001); generation gated by `AI_ENDPOINTS_ENABLED` until the key is rotated.
-- SPEC-002→014 done: server-owned Nest 12 AI module, /api/v1 contracts,
+- SPEC-002→015 done: server-owned Nest 12 AI module, /api/v1 contracts,
   prompts/validation, BullMQ/Redis jobs, SSE, book persistence with audit/soft
   delete/images, frontend via backend, click-wins, runners, unblocked scroll,
-  trapped controls dialog and autosave/resume.
+  trapped controls dialog, autosave/resume and per-profile accessibility.
 - Wizard, library, reader, TTS, dedications, teacher panel work; legacy Supabase data pending SPEC-021/023/027.
 
 ## Architecture Decisions
@@ -38,11 +38,11 @@
 - Scroll: vertical scroll allowed (`overflow-x` only, `pan-y`, dvh, `safe-center`); never global `overflow: hidden`.
 - Menus/modals: trapped dialog + backdrop (`isModalOpen` pauses grids); capture-phase keydown.
 - Autosave: `futurar_progress_v1` per student (whitelisted steps, empty config valid); clears on profile switch/new story/logout.
+- A11y per profile: `student_settings` (migration 0003) seeds ScanSettings; `<html>` gets font/line/uppercase/bold; voice es-AR→es-US; reduced-motion/contrast CSS.
 
 ## Next Steps
-- [ ] Owner: rotate Gemini key; apply migrations 0001/0002; create `book-images` bucket.
-- [ ] SPEC-015/016: per-profile settings + input modes, WCAG audit.
-- [ ] SPEC-017→019: MSW/Playwright extras, critical tests and CI (runners exist).
+- [ ] Owner: rotate Gemini key; apply migrations 0001/0002/0003; create `book-images` bucket.
+- [ ] SPEC-016: WCAG 2.2 AA audit + standards; SPEC-017→019: MSW/Playwright + CI.
 - [ ] SPEC-021/023: profiles/options API; SPEC-027 analytics; close SPEC-010 audit.
 - [ ] Chore: Vite 6→8 + frontend TS 5.8→7.
 
