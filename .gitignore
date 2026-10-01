@@ -12,6 +12,11 @@ dist
 dist-ssr
 *.local
 
+# Playwright artifacts
+test-results
+playwright-report
+blob-report
+
 # Env files: NEVER commit secrets (keep .env.example tracked)
 .env
 .env.*

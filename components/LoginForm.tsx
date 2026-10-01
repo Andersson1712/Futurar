@@ -56,7 +56,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-background-dark p-6">
+        <div className="min-h-[100dvh] flex items-center justify-center bg-background-dark p-6">
             <div className="w-full max-w-md">
                 {/* Logo y título */}
                 <div className="text-center mb-8">

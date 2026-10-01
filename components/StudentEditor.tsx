@@ -343,8 +343,8 @@ const StudentEditor: React.FC<StudentEditorProps> = ({
     };
 
     return (
-        <div className="h-screen bg-background-dark text-white p-6 flex flex-col overflow-hidden">
-            <div className="max-w-4xl mx-auto flex flex-col h-full overflow-hidden">
+        <div className="min-h-[100dvh] bg-background-dark text-white p-6 flex flex-col">
+            <div className="w-full max-w-4xl mx-auto flex flex-col flex-1 min-h-0">
                 {/* Header */}
                 <div className="flex items-center gap-4 mb-4">
                     <button
@@ -392,7 +392,7 @@ const StudentEditor: React.FC<StudentEditorProps> = ({
                     )}
                 </div>
 
-                <form onSubmit={handleSubmit} className="bg-surface-dark rounded-2xl p-8 border border-border-accent flex-1 flex flex-col overflow-hidden">
+                <form onSubmit={handleSubmit} className="bg-surface-dark rounded-2xl p-8 border border-border-accent flex-1 flex flex-col">
 
                     {activeTab === 'profile' && (
                         <div className="animate-fade-in flex-1 overflow-y-auto">

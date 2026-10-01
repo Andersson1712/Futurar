@@ -263,7 +263,7 @@ const TeacherPanel: React.FC<TeacherPanelProps> = ({ onSwitchToStudent }) => {
     }
 
     return (
-        <div className="min-h-screen bg-background-dark text-white font-display">
+        <div className="min-h-[100dvh] bg-background-dark text-white font-display">
             {/* Header */}
             <header className="bg-surface-dark border-b border-border-accent px-6 py-4">
                 <div className="max-w-7xl mx-auto flex items-center justify-between">

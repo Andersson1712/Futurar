@@ -263,7 +263,7 @@ const StoryReader: React.FC<StoryReaderProps> = ({
     const coverImage = chapters[0]?.imageUrl || getChapterImageForStory(scenery, 0);
 
     return (
-        <div className="w-full h-full flex flex-col bg-gradient-to-b from-slate-900 to-slate-950">
+        <div className="w-full min-h-[100dvh] flex flex-col bg-gradient-to-b from-slate-900 to-slate-950">
             {/* Header */}
             <div className="flex items-center justify-between px-4 md:px-6 py-3 bg-black/30 border-b border-white/10">
                 <div className="flex items-center gap-3">
