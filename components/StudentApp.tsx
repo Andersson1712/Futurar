@@ -68,7 +68,10 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
 
     // Get ONLY pause state from context (for FloatingControls)
     // DO NOT sync student settings to context - this causes infinite render loops
-    const { isPaused } = useScanSettings();
+    const { isPaused, isModalOpen } = useScanSettings();
+
+    // The scan pauses while the controls menu (modal) is open (SPEC-013)
+    const scanningPaused = isPaused || isModalOpen;
 
     // Compute effective settings directly from student (no context sync needed)
     const scanInterval = currentStudent?.student_settings?.scan_interval || 3000;
@@ -517,7 +520,7 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
                         scanInterval={scanInterval}
                         voiceEnabled={voiceEnabled}
                         soundEnabled={soundEnabled}
-                        isPaused={isPaused}
+                        isPaused={scanningPaused}
                         onSelectStory={handleSelectStory}
                         onBack={handleBackToMenu}
                     />
@@ -619,7 +622,7 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
                                 scanInterval={scanInterval}
                                 soundEnabled={true}
                                 voiceEnabled={voiceEnabled}
-                                isPaused={isPaused}
+                                isPaused={scanningPaused}
                             />
                         ) : (
                             <div className="text-center py-16">
@@ -692,7 +695,7 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
                             scanInterval={scanInterval}
                             soundEnabled={currentStudent?.student_settings?.sound_enabled ?? true}
                             voiceEnabled={voiceEnabled}
-                            isPaused={isPaused}
+                            isPaused={scanningPaused}
                         />
                     </div>
                 )}
