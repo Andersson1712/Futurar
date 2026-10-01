@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import {
+  BookDedication,
   BookRepository,
   SaveBookInput,
   StoredBook,
@@ -45,10 +46,15 @@ export class InMemoryBookRepository implements BookRepository {
       title: input.snapshot.title,
       pageCount: input.snapshot.pages.length,
       currentVersion: 1,
+      isFavorite: false,
       createdAt: now,
       updatedAt: now,
     };
-    const book: StoredBook = { ...summary, version };
+    const book: StoredBook = {
+      ...summary,
+      version,
+      dedication: input.dedication,
+    };
 
     this.books.set(id, { summary, book });
 
@@ -106,5 +112,52 @@ export class InMemoryBookRepository implements BookRepository {
     stored.book.updatedAt = deletedAt;
 
     return Promise.resolve(true);
+  }
+
+  saveDedication(
+    bookId: string,
+    userId: string,
+    dedication: BookDedication | null,
+  ): Promise<StoredBook | undefined> {
+    const stored = this.books.get(bookId);
+
+    if (
+      !stored ||
+      stored.summary.userId !== userId ||
+      stored.summary.deletedAt
+    ) {
+      return Promise.resolve(undefined);
+    }
+
+    const now = new Date();
+    stored.book.dedication = dedication ?? undefined;
+    stored.book.updatedAt = now;
+    stored.summary.updatedAt = now;
+
+    return Promise.resolve(stored.book);
+  }
+
+  setFavorite(
+    bookId: string,
+    userId: string,
+    isFavorite: boolean,
+  ): Promise<StoredBookSummary | undefined> {
+    const stored = this.books.get(bookId);
+
+    if (
+      !stored ||
+      stored.summary.userId !== userId ||
+      stored.summary.deletedAt
+    ) {
+      return Promise.resolve(undefined);
+    }
+
+    const now = new Date();
+    stored.summary.isFavorite = isFavorite;
+    stored.summary.updatedAt = now;
+    stored.book.isFavorite = isFavorite;
+    stored.book.updatedAt = now;
+
+    return Promise.resolve(stored.summary);
   }
 }

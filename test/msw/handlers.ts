@@ -37,6 +37,7 @@ export const SAMPLE_SUMMARY: BookSummaryPayload = {
   title: 'La aventura del dragón',
   pageCount: 1,
   version: 1,
+  isFavorite: false,
   createdAt: '2026-01-01T00:00:00.000Z',
   updatedAt: '2026-01-01T00:00:00.000Z',
 };
@@ -49,6 +50,20 @@ export const SAMPLE_DETAIL: BookDetailPayload = {
   style: 'Acuarela',
   version: 1,
   totalPages: 1,
+  isFavorite: false,
+  dedicationTo: 'Ana',
+  dedicationReason: 'su cumpleaños',
+  dedicationPosition: 'start',
+  createdAt: '2026-01-01T00:00:00.000Z',
+  updatedAt: '2026-01-01T00:00:00.000Z',
+};
+
+export const SAMPLE_CONTACT = {
+  id: 'contact-1',
+  profileId: 'student-1',
+  name: 'Ana',
+  relationship: 'mamá',
+  dedicationReason: 'su cumpleaños',
   createdAt: '2026-01-01T00:00:00.000Z',
   updatedAt: '2026-01-01T00:00:00.000Z',
 };
@@ -176,6 +191,53 @@ export const handlers = [
   ),
   http.delete(`${API_BASE}/api/v1/books/:id`, () =>
     new HttpResponse(null, { status: 204 }),
+  ),
+  http.put(`${API_BASE}/api/v1/books/:id/dedication`, async ({ request }) => {
+    const body = (await request.json()) as {
+      to: string;
+      reason?: string;
+      position: 'start' | 'end';
+    };
+
+    return HttpResponse.json({
+      ...SAMPLE_DETAIL,
+      dedicationTo: body.to,
+      dedicationReason: body.reason,
+      dedicationPosition: body.position,
+    });
+  }),
+  http.delete(`${API_BASE}/api/v1/books/:id/dedication`, () =>
+    HttpResponse.json({
+      ...SAMPLE_DETAIL,
+      dedicationTo: undefined,
+      dedicationReason: undefined,
+      dedicationPosition: undefined,
+    }),
+  ),
+  http.put(`${API_BASE}/api/v1/books/:id/favorite`, async ({ request }) => {
+    const body = (await request.json()) as { isFavorite: boolean };
+
+    return HttpResponse.json({ ...SAMPLE_SUMMARY, isFavorite: body.isFavorite });
+  }),
+  http.get(`${API_BASE}/api/v1/profiles/:id/contacts`, () =>
+    HttpResponse.json([SAMPLE_CONTACT]),
+  ),
+  http.post(`${API_BASE}/api/v1/profiles/:id/contacts`, async ({ request }) => {
+    const body = (await request.json()) as Record<string, unknown>;
+
+    return HttpResponse.json(
+      { ...SAMPLE_CONTACT, ...body, id: 'contact-2' },
+      { status: 201 },
+    );
+  }),
+  http.patch(`${API_BASE}/api/v1/contacts/:id`, async ({ request }) => {
+    const body = (await request.json()) as Record<string, unknown>;
+
+    return HttpResponse.json({ ...SAMPLE_CONTACT, ...body });
+  }),
+  http.delete(
+    `${API_BASE}/api/v1/contacts/:id`,
+    () => new HttpResponse(null, { status: 204 }),
   ),
   http.get(`${API_BASE}/api/v1/ai/credentials`, () => HttpResponse.json([])),
   http.put(

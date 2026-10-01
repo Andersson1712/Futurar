@@ -24,8 +24,12 @@ const StoryDetails: React.FC<StoryDetailsProps> = ({
 }) => {
     const [isExporting, setIsExporting] = useState(false);
     const [showDedicationModal, setShowDedicationModal] = useState(false);
-    const [dedicationText, setDedicationText] = useState('');
-    const [dedicationPosition, setDedicationPosition] = useState<'start' | 'end'>('start');
+    const [dedicationText, setDedicationText] = useState(
+        story.dedication_to ?? ''
+    );
+    const [dedicationPosition, setDedicationPosition] = useState<'start' | 'end'>(
+        story.dedication_position === 'end' ? 'end' : 'start'
+    );
     const [exportStatus, setExportStatus] = useState('');
     const [isSaving, setIsSaving] = useState(false);
     const [hasSaved, setHasSaved] = useState(false);

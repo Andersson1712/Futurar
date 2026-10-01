@@ -2,6 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { AiErrorException } from '../common/errors/ai-error.exception';
 import type { SupabaseService } from '../supabase/supabase.service';
 import {
+  BookDedication,
   BookRepository,
   SaveBookInput,
   StoredBook,
@@ -20,6 +21,10 @@ interface BookRow {
   title: string;
   page_count: number;
   current_version: number;
+  dedication_to: string | null;
+  dedication_reason: string | null;
+  dedication_position: string | null;
+  is_favorite: boolean | null;
   deleted_at: string | null;
   created_at: string;
   updated_at: string;
@@ -70,6 +75,9 @@ export class SupabaseBookRepository implements BookRepository {
         title: input.snapshot.title,
         page_count: input.snapshot.pages.length,
         current_version: 1,
+        dedication_to: input.dedication?.to ?? null,
+        dedication_reason: input.dedication?.reason ?? null,
+        dedication_position: input.dedication?.position ?? null,
       })
       .select()
       .single()) as unknown as RowResponse<BookRow>;
@@ -167,6 +175,62 @@ export class SupabaseBookRepository implements BookRepository {
     return (response.data?.length ?? 0) > 0;
   }
 
+  async saveDedication(
+    bookId: string,
+    userId: string,
+    dedication: BookDedication | null,
+  ): Promise<StoredBook | undefined> {
+    const client = this.requireClient();
+    const response = (await client
+      .from(BOOKS_TABLE)
+      .update({
+        dedication_to: dedication?.to ?? null,
+        dedication_reason: dedication?.reason ?? null,
+        dedication_position: dedication?.position ?? null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', bookId)
+      .eq('user_id', userId)
+      .is('deleted_at', null)
+      .select()
+      .maybeSingle()) as unknown as RowResponse<BookRow>;
+
+    if (response.error) {
+      throw persistenceUnavailable();
+    }
+
+    if (!response.data) return undefined;
+
+    return this.findById(bookId, userId);
+  }
+
+  async setFavorite(
+    bookId: string,
+    userId: string,
+    isFavorite: boolean,
+  ): Promise<StoredBookSummary | undefined> {
+    const client = this.requireClient();
+    const response = (await client
+      .from(BOOKS_TABLE)
+      .update({
+        is_favorite: isFavorite,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', bookId)
+      .eq('user_id', userId)
+      .is('deleted_at', null)
+      .select()
+      .maybeSingle()) as unknown as RowResponse<BookRow>;
+
+    if (response.error) {
+      throw persistenceUnavailable();
+    }
+
+    if (!response.data) return undefined;
+
+    return toSummary(response.data);
+  }
+
   private async findByGenerationJob(
     jobId: string,
   ): Promise<StoredBook | undefined> {
@@ -225,6 +289,17 @@ function assemble(book: BookRow, version: BookVersionRow): StoredBook {
   return {
     ...toSummary(book),
     version: toVersion(version),
+    dedication: toDedication(book),
+  };
+}
+
+function toDedication(row: BookRow): BookDedication | undefined {
+  if (!row.dedication_to || !row.dedication_position) return undefined;
+
+  return {
+    to: row.dedication_to,
+    reason: row.dedication_reason ?? undefined,
+    position: row.dedication_position as BookDedication['position'],
   };
 }
 
@@ -236,6 +311,7 @@ function toSummary(row: BookRow): StoredBookSummary {
     title: row.title,
     pageCount: row.page_count,
     currentVersion: row.current_version,
+    isFavorite: row.is_favorite ?? false,
     deletedAt: row.deleted_at ? new Date(row.deleted_at) : undefined,
     createdAt: new Date(row.created_at),
     updatedAt: new Date(row.updated_at),

@@ -135,4 +135,72 @@ describe('InMemoryBookRepository', () => {
     await expect(repository.softDelete(book.id, 'user-1')).resolves.toBe(true);
     await expect(repository.softDelete(book.id, 'user-1')).resolves.toBe(false);
   });
+
+  it('saves the dedication from the generation request', async () => {
+    const repository = new InMemoryBookRepository();
+
+    const book = await repository.save({
+      userId: 'user-1',
+      snapshot: SNAPSHOT,
+      audit: buildAudit({ generationJobId: undefined }),
+      dedication: { to: 'Ana', reason: 'su cumpleaños', position: 'start' },
+    });
+
+    expect(book.dedication).toEqual({
+      to: 'Ana',
+      reason: 'su cumpleaños',
+      position: 'start',
+    });
+    expect(book.isFavorite).toBe(false);
+  });
+
+  it('sets and clears the dedication of an owned book', async () => {
+    const repository = new InMemoryBookRepository();
+    const book = await repository.save({
+      userId: 'user-1',
+      snapshot: SNAPSHOT,
+      audit: buildAudit({ generationJobId: undefined }),
+    });
+
+    const dedicated = await repository.saveDedication(book.id, 'user-1', {
+      to: 'Beto',
+      position: 'end',
+    });
+    expect(dedicated?.dedication).toEqual({ to: 'Beto', position: 'end' });
+
+    await expect(
+      repository.saveDedication(book.id, 'user-2', {
+        to: 'Hack',
+        position: 'start',
+      }),
+    ).resolves.toBeUndefined();
+
+    const cleared = await repository.saveDedication(book.id, 'user-1', null);
+    expect(cleared?.dedication).toBeUndefined();
+  });
+
+  it('toggles the favorite flag and reflects it in the summary', async () => {
+    const repository = new InMemoryBookRepository();
+    const book = await repository.save({
+      userId: 'user-1',
+      snapshot: SNAPSHOT,
+      audit: buildAudit({ generationJobId: undefined }),
+    });
+
+    const favorite = await repository.setFavorite(book.id, 'user-1', true);
+    expect(favorite?.isFavorite).toBe(true);
+
+    const list = await repository.listByUser('user-1');
+    expect(list[0].isFavorite).toBe(true);
+
+    const detail = await repository.findById(book.id, 'user-1');
+    expect(detail?.isFavorite).toBe(true);
+
+    await expect(
+      repository.setFavorite(book.id, 'user-2', true),
+    ).resolves.toBeUndefined();
+    await expect(
+      repository.setFavorite('missing', 'user-1', true),
+    ).resolves.toBeUndefined();
+  });
 });

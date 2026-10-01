@@ -44,6 +44,15 @@ const StudentLibrary: React.FC<StudentLibraryProps> = ({
     const [isLoading, setIsLoading] = useState(true);
     const [openingId, setOpeningId] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
+
+    const visibleEntries = useMemo(
+        () =>
+            showFavoritesOnly
+                ? entries.filter(({ story }) => story.is_favorite)
+                : entries,
+        [entries, showFavoritesOnly],
+    );
 
     // Backend books (SPEC-008) + legacy Supabase stories, read-only.
     useEffect(() => {
@@ -87,7 +96,7 @@ const StudentLibrary: React.FC<StudentLibraryProps> = ({
 
     // Convert stories to scan options
     const storyOptions: ScanOption[] = useMemo(() => {
-        const options: ScanOption[] = entries.map(({ story }) => ({
+        const options: ScanOption[] = visibleEntries.map(({ story }) => ({
             id: story.id,
             label: story.title,
             icon: story.type === 'design' ? 'brush' : 'auto_stories',
@@ -105,7 +114,7 @@ const StudentLibrary: React.FC<StudentLibraryProps> = ({
         });
 
         return options;
-    }, [entries]);
+    }, [visibleEntries]);
 
     // Handle story selection: backend books need their detail first
     const handleSelect = async (opt: ScanOption) => {
@@ -208,20 +217,55 @@ const StudentLibrary: React.FC<StudentLibraryProps> = ({
                     📚 Mi Biblioteca
                 </h2>
                 <p className="text-gray-400">
-                    {entries.length} {entries.length === 1 ? 'cuento' : 'cuentos'} guardados
+                    {visibleEntries.length}{' '}
+                    {visibleEntries.length === 1 ? 'cuento' : 'cuentos'} guardados
                 </p>
+                <button
+                    type="button"
+                    onClick={() => setShowFavoritesOnly((prev) => !prev)}
+                    aria-pressed={showFavoritesOnly}
+                    className={`mt-4 min-h-11 px-5 py-3 rounded-xl border-2 font-bold inline-flex items-center gap-2 transition-all ${
+                        showFavoritesOnly
+                            ? 'border-primary bg-primary/20 text-white'
+                            : 'border-white/10 hover:border-white/30 text-gray-400'
+                    }`}
+                >
+                    <span className="material-symbols-outlined">
+                        {showFavoritesOnly ? 'star' : 'star_border'}
+                    </span>
+                    {showFavoritesOnly
+                        ? t('library.all')
+                        : t('library.favorites')}
+                </button>
             </div>
 
-            {/* Stories Grid */}
-            <ScanningGrid
-                options={storyOptions}
-                onSelect={handleSelect}
-                columns={Math.min(3, storyOptions.length)}
-                scanInterval={scanInterval}
-                soundEnabled={soundEnabled}
-                voiceEnabled={voiceEnabled}
-                isPaused={isPaused}
-            />
+            {visibleEntries.length === 0 ? (
+                <div className="text-center py-12">
+                    <span className="material-symbols-outlined text-6xl text-gray-600">
+                        star_border
+                    </span>
+                    <p className="mt-4 text-lg text-gray-400">
+                        {t('library.favorites')}: 0
+                    </p>
+                    <button
+                        type="button"
+                        onClick={() => setShowFavoritesOnly(false)}
+                        className="mt-6 px-6 py-3 min-h-11 bg-primary rounded-xl font-bold hover:bg-primary/80 transition-colors"
+                    >
+                        {t('library.all')}
+                    </button>
+                </div>
+            ) : (
+                <ScanningGrid
+                    options={storyOptions}
+                    onSelect={handleSelect}
+                    columns={Math.min(3, storyOptions.length)}
+                    scanInterval={scanInterval}
+                    soundEnabled={soundEnabled}
+                    voiceEnabled={voiceEnabled}
+                    isPaused={isPaused}
+                />
+            )}
         </div>
     );
 };

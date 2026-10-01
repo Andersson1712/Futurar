@@ -92,37 +92,6 @@ export const createStory = async (story: Database['public']['Tables']['stories']
     return data;
 };
 
-export const updateStoryDedication = async (
-    storyId: string,
-    dedication: {
-        dedication_to: string;
-        dedication_reason: string;
-        dedication_position: 'start' | 'end';
-    }
-) => {
-    const { data, error } = await supabase
-        .from('stories')
-        .update(dedication)
-        .eq('id', storyId)
-        .select()
-        .single();
-
-    if (error) throw error;
-    return data;
-};
-
-export const toggleStoryFavorite = async (storyId: string, isFavorite: boolean) => {
-    const { data, error } = await supabase
-        .from('stories')
-        .update({ is_favorite: isFavorite })
-        .eq('id', storyId)
-        .select()
-        .single();
-
-    if (error) throw error;
-    return data;
-};
-
 export const deleteStory = async (storyId: string) => {
     const { error } = await supabase
         .from('stories')

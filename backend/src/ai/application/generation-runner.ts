@@ -78,6 +78,7 @@ export class GenerationRunner {
       promptVersion: bookPrompt.version,
       usage: result.usage,
       generationJobId: jobId,
+      dedication: job.request.dedication,
     });
 
     await this.jobs.complete(jobId, storedBook);

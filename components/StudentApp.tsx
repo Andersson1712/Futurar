@@ -35,6 +35,9 @@ interface StoryConfig {
     content?: string;
     imageUrl?: string;
     type: 'story' | 'design';
+    dedication?: string;
+    dedicationPosition?: 'start' | 'end';
+    isFavorite?: boolean;
 }
 
 type AppStep =
@@ -517,7 +520,11 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
             style: config.style,
             image_url: config.imageUrl || null,
             student_id: currentStudent?.id || '',
-            type: config.type
+            type: config.type,
+            dedication_to: config.dedication ?? null,
+            dedication_reason: null,
+            dedication_position: config.dedicationPosition ?? null,
+            is_favorite: config.isFavorite ?? false
         };
 
         return (
@@ -558,6 +565,20 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
                     style={config.style}
                     studentId={currentStudent?.id}
                     persisted={Boolean(config.id)}
+                    bookId={config.id}
+                    dedication={config.dedication}
+                    dedicationPosition={config.dedicationPosition}
+                    isFavorite={config.isFavorite}
+                    onDedicationChange={(entry) =>
+                        setConfig((prev) => ({
+                            ...prev,
+                            dedication: entry?.text || undefined,
+                            dedicationPosition: entry?.position,
+                        }))
+                    }
+                    onFavoriteChange={(isFavorite) =>
+                        setConfig((prev) => ({ ...prev, isFavorite }))
+                    }
                     initialScrollTop={initialScrollTop}
                     onScrollProgress={handleViewerScroll}
                     onClose={() => setStep('STORY_DETAILS')}
@@ -599,6 +620,11 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
                 content: story.content || '',
                 imageUrl: story.image_url || undefined,
                 type: (story.type as 'story' | 'design') || 'story',
+                dedication: story.dedication_to ?? undefined,
+                dedicationPosition:
+                    (story.dedication_position as 'start' | 'end') ??
+                    undefined,
+                isFavorite: story.is_favorite ?? false,
             });
             setStep('STORY_DETAILS');
             speakWithState(`Has seleccionado ${story.title}`);

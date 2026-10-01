@@ -17,13 +17,14 @@ function buildSummary(
     title: 'La aventura del dragón',
     pageCount: 2,
     currentVersion: 1,
+    isFavorite: false,
     createdAt: new Date('2026-01-01T00:00:00.000Z'),
     updatedAt: new Date('2026-01-01T00:00:00.000Z'),
     ...overrides,
   };
 }
 
-function buildBook(): StoredBook {
+function buildBook(overrides: Partial<StoredBook> = {}): StoredBook {
   return {
     ...buildSummary(),
     version: {
@@ -46,6 +47,12 @@ function buildBook(): StoredBook {
       },
       createdAt: new Date('2026-01-01T00:00:00.000Z'),
     },
+    dedication: {
+      to: 'Ana',
+      reason: 'por su cumpleaños',
+      position: 'start',
+    },
+    ...overrides,
   };
 }
 
@@ -70,6 +77,8 @@ function buildService(
     findById: jest.fn().mockResolvedValue(buildBook()),
     listByUser: jest.fn().mockResolvedValue([buildSummary()]),
     softDelete: jest.fn().mockResolvedValue(true),
+    saveDedication: jest.fn(),
+    setFavorite: jest.fn(),
     ...options.books,
   };
   const storage = { upload: jest.fn(), signedUrl } as unknown as BookStorage;
@@ -114,6 +123,9 @@ describe('BooksService', () => {
       'users/user-1/jobs/job-1/page-1.png',
       120,
     );
+    expect(book.dedicationTo).toBe('Ana');
+    expect(book.dedicationReason).toBe('por su cumpleaños');
+    expect(book.dedicationPosition).toBe('start');
   });
 
   it('uses the default TTL when not configured', async () => {
@@ -153,5 +165,71 @@ describe('BooksService', () => {
     await expect(service.get('book-1', 'user-1')).rejects.toBeInstanceOf(
       AiErrorException,
     );
+  });
+
+  it('saves and clears the dedication of a book', async () => {
+    const saveDedication = jest
+      .fn()
+      .mockResolvedValue(
+        buildBook({ dedication: { to: 'Beto', position: 'end' } }),
+      );
+    const { service } = buildService({ books: { saveDedication } });
+
+    const saved = await service.saveDedication('book-1', 'user-1', {
+      to: 'Beto',
+      position: 'end',
+    });
+
+    expect(saveDedication).toHaveBeenCalledWith('book-1', 'user-1', {
+      to: 'Beto',
+      reason: undefined,
+      position: 'end',
+    });
+    expect(saved.dedicationTo).toBe('Beto');
+    expect(saved.dedicationPosition).toBe('end');
+
+    const clearSave = jest
+      .fn()
+      .mockResolvedValue(buildBook({ dedication: undefined }));
+    const clear = buildService({ books: { saveDedication: clearSave } });
+
+    const cleared = await clear.service.clearDedication('book-1', 'user-1');
+
+    expect(cleared.dedicationTo).toBeUndefined();
+    expect(clearSave).toHaveBeenCalledWith('book-1', 'user-1', null);
+  });
+
+  it('404s when dedicating or favoriting an unknown book', async () => {
+    const { service } = buildService({
+      books: {
+        saveDedication: jest.fn().mockResolvedValue(undefined),
+        setFavorite: jest.fn().mockResolvedValue(undefined),
+      },
+    });
+
+    await expect(
+      service.saveDedication('missing', 'user-1', {
+        to: 'Ana',
+        position: 'start',
+      }),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+    await expect(
+      service.clearDedication('missing', 'user-1'),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+    await expect(
+      service.setFavorite('missing', 'user-1', true),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+  });
+
+  it('sets the favorite flag of a book', async () => {
+    const setFavorite = jest
+      .fn()
+      .mockResolvedValue(buildSummary({ isFavorite: true }));
+    const { service } = buildService({ books: { setFavorite } });
+
+    const summary = await service.setFavorite('book-1', 'user-1', true);
+
+    expect(setFavorite).toHaveBeenCalledWith('book-1', 'user-1', true);
+    expect(summary).toMatchObject({ id: 'book-1', isFavorite: true });
   });
 });

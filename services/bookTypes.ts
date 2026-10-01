@@ -1,6 +1,13 @@
 export type StorySize = 'small' | 'medium' | 'large';
 export type Audience = 'child' | 'teen' | 'adult';
 export type BookJobStatus = 'queued' | 'processing' | 'completed' | 'failed';
+export type DedicationPosition = 'start' | 'end';
+
+export interface BookDedicationPayload {
+  to: string;
+  reason?: string;
+  position: DedicationPosition;
+}
 
 export interface GeneratedPagePayload {
   pageNumber: number;
@@ -40,6 +47,7 @@ export interface BookSummaryPayload {
   title: string;
   pageCount: number;
   version: number;
+  isFavorite?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -52,6 +60,10 @@ export interface BookDetailPayload extends GeneratedBookPayload {
   version: number;
   totalPages: number;
   pages: GeneratedPagePayload[];
+  isFavorite?: boolean;
+  dedicationTo?: string;
+  dedicationReason?: string;
+  dedicationPosition?: DedicationPosition;
   createdAt: string;
   updatedAt: string;
 }
