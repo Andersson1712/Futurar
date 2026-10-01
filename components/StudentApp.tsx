@@ -377,7 +377,7 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
     // Loading state
     if (isLoading) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 to-slate-950">
+            <div className="min-h-[100dvh] flex items-center justify-center bg-gradient-to-br from-slate-900 to-slate-950">
                 <div className="text-center">
                     <span className="material-symbols-outlined text-6xl text-primary animate-spin">progress_activity</span>
                     <p className="mt-4 text-lg text-gray-400">Cargando...</p>
@@ -403,7 +403,7 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
         };
 
         return (
-            <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-950">
+            <div className="min-h-[100dvh] bg-gradient-to-br from-slate-900 to-slate-950">
                 <StoryDetails
                     story={currentStory}
                     persisted={Boolean(config.id)}
@@ -430,7 +430,7 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
     // Vista de lectura del cuento
     if (step === 'RESULT_VIEW' && config.content) {
         return (
-            <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-950">
+            <div className="min-h-[100dvh] bg-gradient-to-br from-slate-900 to-slate-950">
                 <StoryReader
                     title={config.title || `Las Aventuras de ${config.protagonist}`}
                     content={config.content}
@@ -485,7 +485,7 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
         };
 
         return (
-            <div className="min-h-screen flex flex-col bg-gradient-to-br from-slate-900 to-slate-950 text-white font-display">
+            <div className="min-h-[100dvh] flex flex-col bg-gradient-to-br from-slate-900 to-slate-950 text-white font-display">
                 {/* Header */}
                 <header className="flex items-center justify-between px-4 md:px-8 py-3 bg-black/30 border-b border-white/10">
                     <div className="flex items-center gap-3">
@@ -510,7 +510,7 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
                 </header>
 
                 {/* Library Content */}
-                <main className="flex-1 flex flex-col items-center justify-center p-4 md:p-6 lg:p-8 overflow-hidden">
+                <main className="flex-1 flex flex-col items-center safe-center p-4 md:p-6 lg:p-8 overflow-y-auto">
                     <StudentLibrary
                         studentId={currentStudent.id}
                         studentName={currentStudent.name}
@@ -544,7 +544,7 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
 
 
     return (
-        <div className="min-h-screen flex flex-col bg-gradient-to-br from-slate-900 to-slate-950 text-white font-display">
+        <div className="min-h-[100dvh] flex flex-col bg-gradient-to-br from-slate-900 to-slate-950 text-white font-display">
             {/* Header Compacto */}
             <header className="flex items-center justify-between px-4 md:px-8 py-3 bg-black/30 border-b border-white/10 print:hidden">
                 <div className="flex items-center gap-3">
@@ -595,7 +595,7 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
             </header>
 
             {/* Main Content */}
-            <main className="flex-1 flex flex-col items-center justify-center p-4 md:p-6 lg:p-8 overflow-hidden">
+            <main className="flex-1 flex flex-col items-center safe-center p-4 md:p-6 lg:p-8 overflow-y-auto">
 
                 {/* Error Message */}
                 {error && (

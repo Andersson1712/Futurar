@@ -50,9 +50,22 @@
         }
 
         /* Base */
+        html,
+        body {
+            min-height: 100dvh;
+        }
+
         body {
             cursor: pointer;
             user-select: none;
+            overflow-x: hidden;
+            touch-action: pan-y;
+            overscroll-behavior-y: none;
+        }
+
+        /* Centrado seguro: evita clip del contenido alto dentro de flex */
+        .safe-center {
+            justify-content: safe center;
         }
 
         /* Scroll personalizado */
@@ -148,7 +161,7 @@
     </style>
 </head>
 
-<body class="bg-background-dark text-white font-display overflow-hidden select-none">
+<body class="bg-background-dark text-white font-display select-none">
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
 </body>

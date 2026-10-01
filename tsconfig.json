@@ -37,7 +37,8 @@
     "services/**/*.ts",
     "utils/**/*.ts",
     "types/**/*.ts",
-    "test/**/*.ts"
+    "test/**/*.ts",
+    "e2e/**/*.ts"
   ],
   "exclude": ["node_modules", "dist", "backend"]
 }
