@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { GenerateContentResponseUsageMetadata } from '@google/genai';
 import { AiProviderError, toProviderError } from '../../ai.errors';
@@ -8,9 +8,7 @@ import {
   TextGenerationUsage,
   TextGeneratorPort,
 } from '../../domain/ports/text-generator.port';
-import { GEMINI_CLIENT } from '../../tokens';
-import { requireGeminiClient } from './gemini-client.factory';
-import type { GeminiClient } from './gemini-client.factory';
+import { GeminiClientProvider } from './gemini-client.provider';
 import { GEMINI_DEFAULTS, resolveGeminiConfigValue } from './gemini.config';
 
 function mapUsage(
@@ -27,14 +25,14 @@ function mapUsage(
 @Injectable()
 export class GeminiTextAdapter implements TextGeneratorPort {
   constructor(
-    @Inject(GEMINI_CLIENT) private readonly client: GeminiClient,
+    private readonly clientProvider: GeminiClientProvider,
     private readonly configService: ConfigService,
   ) {}
 
   async generate(
     request: TextGenerationRequest,
   ): Promise<TextGenerationResult> {
-    const client = requireGeminiClient(this.client);
+    const client = await this.clientProvider.getClient(request.tenantId);
     const model = resolveGeminiConfigValue(
       this.configService,
       'AI_MODEL_TEXT',

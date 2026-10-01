@@ -117,4 +117,27 @@ describe('validateEnv', () => {
       validateEnv({ BOOK_IMAGE_SIGNED_URL_TTL_SECONDS: '10' }),
     ).toThrow(/Invalid environment configuration/);
   });
+
+  it('requires Supabase and a valid master key for credentials', () => {
+    expect(() => validateEnv({ AI_CREDENTIALS_ENABLED: 'true' })).toThrow(
+      /SUPABASE_URL/,
+    );
+
+    expect(() =>
+      validateEnv({
+        AI_CREDENTIALS_ENABLED: 'true',
+        SUPABASE_URL: 'https://example.supabase.co',
+        SUPABASE_SERVICE_KEY: 'service-key',
+        AI_SECRETS_MASTER_KEY: 'not-a-32-byte-key',
+      }),
+    ).toThrow(/AI_SECRETS_MASTER_KEY/);
+
+    const result = validateEnv({
+      AI_CREDENTIALS_ENABLED: 'true',
+      SUPABASE_URL: 'https://example.supabase.co',
+      SUPABASE_SERVICE_KEY: 'service-key',
+      AI_SECRETS_MASTER_KEY: Buffer.alloc(32, 7).toString('base64'),
+    });
+    expect(result.AI_CREDENTIALS_ENABLED).toBe(true);
+  });
 });

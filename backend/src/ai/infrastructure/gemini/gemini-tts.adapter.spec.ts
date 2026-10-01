@@ -1,6 +1,8 @@
 import { ConfigService } from '@nestjs/config';
 import { Modality, type GoogleGenAI } from '@google/genai';
+import { AiProviderError } from '../../ai.errors';
 import { GeminiTtsAdapter, MAX_TTS_INPUT_CHARS } from './gemini-tts.adapter';
+import { GeminiClientProvider } from './gemini-client.provider';
 
 function buildAdapter(
   generateContent: jest.Mock,
@@ -10,7 +12,11 @@ function buildAdapter(
     models: { generateContent },
   } as unknown as GoogleGenAI;
 
-  return new GeminiTtsAdapter(client, new ConfigService(config));
+  const clientProvider = {
+    getClient: jest.fn().mockResolvedValue(client),
+  } as unknown as GeminiClientProvider;
+
+  return new GeminiTtsAdapter(clientProvider, new ConfigService(config));
 }
 
 describe('GeminiTtsAdapter', () => {
@@ -110,7 +116,14 @@ describe('GeminiTtsAdapter', () => {
   });
 
   it('throws PROVIDER_UNAVAILABLE when no client is configured', async () => {
-    const adapter = new GeminiTtsAdapter(null, new ConfigService({}));
+    const clientProvider = {
+      getClient: jest
+        .fn()
+        .mockRejectedValue(
+          new AiProviderError('PROVIDER_UNAVAILABLE', 'missing key'),
+        ),
+    } as unknown as GeminiClientProvider;
+    const adapter = new GeminiTtsAdapter(clientProvider, new ConfigService({}));
 
     await expect(adapter.synthesize({ text: 'Hola' })).rejects.toMatchObject({
       code: 'PROVIDER_UNAVAILABLE',

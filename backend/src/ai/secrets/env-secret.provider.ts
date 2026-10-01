@@ -6,8 +6,11 @@ import { SecretName, SecretProvider } from './secret-provider';
 export class EnvSecretProvider implements SecretProvider {
   constructor(private readonly configService: ConfigService) {}
 
-  get(name: SecretName): string | undefined {
+  get(name: SecretName): Promise<string | undefined> {
     const value = this.configService.get<string>(name);
-    return value && value.trim().length > 0 ? value : undefined;
+
+    return Promise.resolve(
+      value && value.trim().length > 0 ? value : undefined,
+    );
   }
 }

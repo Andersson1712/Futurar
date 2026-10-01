@@ -4,6 +4,7 @@ export interface TextGenerationRequest {
   temperature?: number;
   maxOutputTokens?: number;
   responseJsonSchema?: Record<string, unknown>;
+  tenantId?: string;
 }
 
 export interface TextGenerationUsage {

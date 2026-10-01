@@ -47,6 +47,7 @@ export class GenerationRunner {
         temperature: BOOK_TEMPERATURE,
         maxOutputTokens: BOOK_MAX_OUTPUT_TOKENS,
         responseJsonSchema: bookPrompt.responseJsonSchema,
+        tenantId: job.userId,
       }),
     );
     const payload = this.parser.parse(result.text);

@@ -10,6 +10,7 @@ import {
   Min,
   validateSync,
 } from 'class-validator';
+import { parseMasterKey } from '../ai/secrets/crypto.service';
 
 export const AI_PROVIDERS = ['gemini'] as const;
 export type AiProvider = (typeof AI_PROVIDERS)[number];
@@ -70,6 +71,15 @@ export class EnvironmentVariables {
   @Transform(toBoolean)
   @IsBoolean()
   BOOK_IMAGES_ENABLED?: boolean;
+
+  @IsOptional()
+  @Transform(toBoolean)
+  @IsBoolean()
+  AI_CREDENTIALS_ENABLED?: boolean;
+
+  @IsOptional()
+  @IsString()
+  AI_SECRETS_MASTER_KEY?: string;
 
   @IsOptional()
   @IsString()
@@ -168,6 +178,24 @@ export function validateEnv(
     throw new Error(
       'BOOK_IMAGES_ENABLED=true requires: SUPABASE_URL, SUPABASE_SERVICE_KEY',
     );
+  }
+
+  if (validated.AI_CREDENTIALS_ENABLED === true) {
+    const missing = (['SUPABASE_URL', 'SUPABASE_SERVICE_KEY'] as const).filter(
+      (name) => !validated[name]?.trim(),
+    );
+
+    if (missing.length > 0) {
+      throw new Error(
+        `AI_CREDENTIALS_ENABLED=true requires: ${missing.join(', ')}`,
+      );
+    }
+
+    if (!parseMasterKey(validated.AI_SECRETS_MASTER_KEY)) {
+      throw new Error(
+        'AI_CREDENTIALS_ENABLED=true requires a base64 32-byte AI_SECRETS_MASTER_KEY',
+      );
+    }
   }
 
   return validated;

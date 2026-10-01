@@ -3,6 +3,8 @@ import { supabase } from '../services/supabase';
 import type { Student, StudentSettings, Story } from '../types/database';
 import StudentEditor from './StudentEditor';
 import GlobalConfigModal from './GlobalConfigModal';
+import ApiKeyPanel from './ApiKeyPanel';
+import { t } from '../utils/messages';
 
 // ID de docente por defecto para modo sin autenticación
 const DEFAULT_TEACHER_ID = '00000000-0000-0000-0000-000000000001';
@@ -26,7 +28,7 @@ const TeacherPanel: React.FC<TeacherPanelProps> = ({ onSwitchToStudent }) => {
     const [showConfig, setShowConfig] = useState(false);
 
     const [editingStudent, setEditingStudent] = useState<StudentWithData | null>(null);
-    const [activeTab, setActiveTab] = useState<'students' | 'stats'>('students');
+    const [activeTab, setActiveTab] = useState<'students' | 'stats' | 'credentials'>('students');
 
     // Cargar estudiantes (automáticamente al inicio)
     useEffect(() => {
@@ -320,9 +322,21 @@ const TeacherPanel: React.FC<TeacherPanelProps> = ({ onSwitchToStudent }) => {
                         <span className="material-symbols-outlined mr-2 align-middle">analytics</span>
                         Estadísticas
                     </button>
+                    <button
+                        onClick={() => setActiveTab('credentials')}
+                        className={`px-6 py-3 rounded-xl font-bold transition-colors ${activeTab === 'credentials'
+                            ? 'bg-primary text-white'
+                            : 'bg-surface-dark text-gray-400 hover:text-white'
+                            }`}
+                    >
+                        <span className="material-symbols-outlined mr-2 align-middle">key</span>
+                        {t('credentials.tab')}
+                    </button>
                 </div>
 
                 {/* Content */}
+                {activeTab === 'credentials' && <ApiKeyPanel />}
+
                 {activeTab === 'stats' && (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
                         <div className="bg-surface-dark rounded-2xl p-6 border border-border-accent">
