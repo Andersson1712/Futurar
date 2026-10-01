@@ -5,10 +5,10 @@
 ## Current State
 - MVP: accessible story creation for severe motor disabilities, switch or direct input.
 - Frontend AI REMOVED (SPEC-001); generation gated by `AI_ENDPOINTS_ENABLED` until the key is rotated.
-- SPEC-002→022 done: Nest 12 AI backend, /api/v1, jobs/SSE, persistence,
+- SPEC-002→023 done: Nest 12 AI backend, /api/v1, jobs/SSE, persistence,
   frontend via backend, a11y, test infra + CI, encrypted keys, profiles API,
-  contacts/dedications/favorites. Legacy Supabase data pending SPEC-023/027.
-  Wizard/library/reader/TTS/teacher work.
+  contacts/dedications/favorites, actions/options catalog. Legacy Supabase data
+  pending SPEC-023B/027. Wizard/library/reader/TTS/teacher work.
 
 ## Architecture Decisions
 - Nest backend is the single source of truth for AI and data; the frontend uses
@@ -39,12 +39,12 @@
 - Autosave: `futurar_progress_v1` per student (whitelisted steps, empty config valid); clears on profile switch/new story/logout.
 - A11y per profile: `student_settings` (migration 0003) seeds ScanSettings; `<html>` gets font/line/uppercase/bold; voice es-AR→es-US; reduced-motion/contrast CSS.
 - A11y audit: axe-core in Vitest (color-contrast off in jsdom) + `utils/contrast` ratios; `useDialogA11y` for dialogs; declaration in `docs/accessibility/`.
-- CI: `.github/workflows/ci.yml` (frontend/e2e/backend, Node 24); `dev` protected with 3 required checks; actions v7.
+- CI: `.github/workflows/ci.yml` (frontend/e2e/backend, Node 24; actions v7); `dev` protected (3 checks); test infra: MSW 2.x (v3 needs TS ≥5.9), coverage floor 36/35/33/37, E2E mocks Supabase+Nest, i18n `t()`.
 - Credentials: `ai_credentials` + AES-256-GCM (`AI_SECRETS_MASTER_KEY`, base64 32B); async tenant-aware SecretProvider (DB → env); clients cached by key hash; flag `AI_CREDENTIALS_ENABLED` default false; API returns metadata only.
 - Profiles (SPEC-021): `ProfilesModule` CRUD scoped by JWT teacher, soft delete (`is_active=false`), `PUT /settings`, read-only `GET /options`; generation defaults from `book_story_size`/`book_audience` (fallback medium/child); frontend only via `services/backendProfiles.ts`.
 - Contacts/dedications (SPEC-022): `profile_contacts` (1:N, cascade) via `ProfilesModule`; book-level `dedication_to/reason/position` + `is_favorite` with PUT/DELETE `/books/:id/dedication` and PUT `/books/:id/favorite`; reader modal uses contacts, PDF prefills; legacy `stories` stay read-only.
-- Test infra: MSW 2.x (v3 needs TS >=5.9); coverage floor 36/35/33/37; E2E mocks Supabase+Nest; i18n `t()`.
+- Actions catalog (SPEC-023): `actions → action_options → action_option_items` per teacher + `profile_actions`/`profile_option_items`; `GET /profiles/:id/options` adapts level-1 enabled items; profile create seeds defaults and `modules` mirrors actions; editor reads the catalog; limits/pagination = SPEC-023B.
 
 ## Next Steps
-- [ ] Owner: rotate Gemini key; apply migrations 0001→0006; create `book-images` bucket; set `AI_SECRETS_MASTER_KEY` when enabling credentials.
-- [ ] SPEC-023: actions/options CRUD; chore Vite/TS.
+- [ ] Owner: rotate Gemini key; apply migrations 0001→0007; create `book-images` bucket; set `AI_SECRETS_MASTER_KEY` when enabling credentials.
+- [ ] SPEC-023B: limits/pagination; SPEC-027: analytics; chore Vite/TS.

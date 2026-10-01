@@ -68,6 +68,57 @@ export const SAMPLE_CONTACT = {
   updatedAt: '2026-01-01T00:00:00.000Z',
 };
 
+export const SAMPLE_ACTION = {
+  id: 'action-1',
+  teacherId: 'teacher-1',
+  code: 'create',
+  label: 'Crear Cuento',
+  icon: 'auto_stories',
+  sortOrder: 1,
+  isActive: true,
+  createdAt: '2026-01-01T00:00:00.000Z',
+  updatedAt: '2026-01-01T00:00:00.000Z',
+};
+
+export const SAMPLE_ACTION_ITEM = {
+  id: 'item-1',
+  optionId: 'option-1',
+  label: 'Un dragón',
+  icon: 'pets',
+  level: 1,
+  sortOrder: 1,
+  isActive: true,
+  createdAt: '2026-01-01T00:00:00.000Z',
+  updatedAt: '2026-01-01T00:00:00.000Z',
+};
+
+export const SAMPLE_ACTION_OPTION = {
+  id: 'option-1',
+  actionId: 'action-1',
+  code: 'protagonist',
+  label: 'Protagonista',
+  icon: 'face',
+  optionType: 'list',
+  maxEnabled: 4,
+  sortOrder: 1,
+  isActive: true,
+  createdAt: '2026-01-01T00:00:00.000Z',
+  updatedAt: '2026-01-01T00:00:00.000Z',
+  items: [SAMPLE_ACTION_ITEM],
+};
+
+export const SAMPLE_PROFILE_ITEM = {
+  itemId: 'item-1',
+  optionId: 'option-1',
+  optionCode: 'protagonist',
+  actionCode: 'create',
+  label: 'Un dragón',
+  icon: 'pets',
+  level: 1,
+  sortOrder: 1,
+  isEnabled: true,
+};
+
 export const SAMPLE_PROFILE_SETTINGS = {
   scanInterval: 3000,
   scanColumns: 2,
@@ -239,6 +290,108 @@ export const handlers = [
     `${API_BASE}/api/v1/contacts/:id`,
     () => new HttpResponse(null, { status: 204 }),
   ),
+  http.get(`${API_BASE}/api/v1/actions`, () =>
+    HttpResponse.json([SAMPLE_ACTION]),
+  ),
+  http.post(`${API_BASE}/api/v1/actions`, async ({ request }) => {
+    const body = (await request.json()) as Record<string, unknown>;
+
+    return HttpResponse.json(
+      { ...SAMPLE_ACTION, ...body, id: 'action-2' },
+      { status: 201 },
+    );
+  }),
+  http.get(`${API_BASE}/api/v1/actions/:id/options`, () =>
+    HttpResponse.json([SAMPLE_ACTION_OPTION]),
+  ),
+  http.post(`${API_BASE}/api/v1/actions/:id/options`, async ({ request }) => {
+    const body = (await request.json()) as Record<string, unknown>;
+
+    return HttpResponse.json(
+      { ...SAMPLE_ACTION_OPTION, ...body, id: 'option-2', items: [] },
+      { status: 201 },
+    );
+  }),
+  http.patch(`${API_BASE}/api/v1/actions/:id`, async ({ request }) => {
+    const body = (await request.json()) as Record<string, unknown>;
+
+    return HttpResponse.json({ ...SAMPLE_ACTION, ...body });
+  }),
+  http.delete(
+    `${API_BASE}/api/v1/actions/:id`,
+    () => new HttpResponse(null, { status: 204 }),
+  ),
+  http.patch(`${API_BASE}/api/v1/options/:id`, async ({ request }) => {
+    const body = (await request.json()) as Record<string, unknown>;
+
+    return HttpResponse.json({ ...SAMPLE_ACTION_OPTION, ...body });
+  }),
+  http.delete(
+    `${API_BASE}/api/v1/options/:id`,
+    () => new HttpResponse(null, { status: 204 }),
+  ),
+  http.post(`${API_BASE}/api/v1/options/:id/items`, async ({ request }) => {
+    const body = (await request.json()) as Record<string, unknown>;
+
+    return HttpResponse.json(
+      { ...SAMPLE_ACTION_ITEM, ...body, id: 'item-2' },
+      { status: 201 },
+    );
+  }),
+  http.patch(`${API_BASE}/api/v1/items/:id`, async ({ request }) => {
+    const body = (await request.json()) as Record<string, unknown>;
+
+    return HttpResponse.json({ ...SAMPLE_ACTION_ITEM, ...body });
+  }),
+  http.delete(
+    `${API_BASE}/api/v1/items/:id`,
+    () => new HttpResponse(null, { status: 204 }),
+  ),
+  http.get(`${API_BASE}/api/v1/profiles/:id/actions`, () =>
+    HttpResponse.json([
+      {
+        actionId: 'action-1',
+        code: 'create',
+        label: 'Crear Cuento',
+        icon: 'auto_stories',
+        sortOrder: 1,
+        isEnabled: true,
+      },
+    ]),
+  ),
+  http.put(`${API_BASE}/api/v1/profiles/:id/actions`, async ({ request }) => {
+    const body = (await request.json()) as {
+      actions: Array<{ actionId: string; isEnabled: boolean }>;
+    };
+
+    return HttpResponse.json(
+      body.actions.map((action) => ({
+        actionId: action.actionId,
+        code: 'create',
+        label: 'Crear Cuento',
+        icon: 'auto_stories',
+        sortOrder: 1,
+        isEnabled: action.isEnabled,
+      })),
+    );
+  }),
+  http.get(`${API_BASE}/api/v1/profiles/:id/items`, () =>
+    HttpResponse.json([SAMPLE_PROFILE_ITEM]),
+  ),
+  http.put(`${API_BASE}/api/v1/profiles/:id/items`, async ({ request }) => {
+    const body = (await request.json()) as {
+      items: Array<{ itemId: string; isEnabled: boolean; sortOrder?: number }>;
+    };
+
+    return HttpResponse.json(
+      body.items.map((item) => ({
+        ...SAMPLE_PROFILE_ITEM,
+        itemId: item.itemId,
+        isEnabled: item.isEnabled,
+        sortOrder: item.sortOrder ?? SAMPLE_PROFILE_ITEM.sortOrder,
+      })),
+    );
+  }),
   http.get(`${API_BASE}/api/v1/ai/credentials`, () => HttpResponse.json([])),
   http.put(
     `${API_BASE}/api/v1/ai/credentials/:provider`,

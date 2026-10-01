@@ -17,9 +17,9 @@ Leyenda:
 ## Estado actual
 
 - Fase activa: **Fase 6 — Panel de administración**
-- Última tarea cerrada: SPEC-022 (implementado; contactos, dedicatorias y favoritos por backend)
-- Próxima tarea: SPEC-023 (acciones y opciones dinámicas)
-- Rama de integración: `dev` (todo SPEC-001→022, protegida con CI); `main` congelada.
+- Última tarea cerrada: SPEC-023 (implementado; catálogo de acciones/opciones por backend)
+- Próxima tarea: SPEC-023B (límites por pantalla/acción/página y paginación del barrido)
+- Rama de integración: `dev` (todo SPEC-001→023, protegida con CI); `main` congelada.
 
 ---
 
@@ -187,10 +187,10 @@ Leyenda:
 - [x] SPEC-022: UI de dedicatoria en visor (+ favoritos de libros backend)
 
 ### EPIC 6.4 — Acciones y opciones dinámicas (norte)
-- [ ] SPEC-023: Modelo Acción → Opciones → Niveles → Tipos
-- [ ] SPEC-023: CRUD de acciones y opciones
-- [ ] SPEC-023: Permisos por perfil
-- [ ] SPEC-023: Límites por pantalla/acción/página
+- [x] SPEC-023: Modelo Acción → Opciones → Ítems (nivel/tipo) por docente
+- [x] SPEC-023: CRUD de acciones y opciones (backend; editor docente migrado)
+- [x] SPEC-023: Permisos por perfil (`profile_actions`/`profile_option_items`)
+- [ ] SPEC-023B: Límites por pantalla/acción/página (max_enabled, paginación)
 
 ---
 
@@ -434,3 +434,14 @@ Leyenda:
   PDF prellenado, pestaña Contactos en el editor y limpieza del código muerto
   de `stories`. 222 tests backend + 101 frontend; cobertura 47.8/46.5/44.7/50.1.
   Owner: aplicar 0006.
+- SPEC-023: migración 0007 con catálogo `actions`/`action_options`/
+  `action_option_items` + permisos `profile_actions`/`profile_option_items`;
+  seed por docente y backfill deduplicado idempotente desde las tablas legacy
+  (read-only). `ActionsModule` con CRUD docente; `ProfilesService` usa el
+  catálogo para el adapter de `GET /profiles/:id/options`, siembra defaults al
+  crear perfil, espeja `modules` y expone `GET/PUT /profiles/:id/actions|items`.
+  Frontend: `services/backendActions.ts`, pestaña Elementos del editor sobre el
+  catálogo, `TeacherPanel` sin seed local y allowlist de `check:supabase`
+  reducida a `StoryDetails`/`StoryReader`/`StudentLibrary`/`AuthContext`.
+  234 tests backend + 106 frontend; cobertura 50.5/49.4/49.5/53.0. Límites y
+  paginación quedan para SPEC-023B. Owner: aplicar 0007.

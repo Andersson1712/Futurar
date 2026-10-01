@@ -114,5 +114,4 @@ export interface ProfileRepository {
     profileId: string,
     settings: ProfileSettings,
   ): Promise<ProfileSettings>;
-  listOptions(profileId: string): Promise<ProfileOptions>;
 }

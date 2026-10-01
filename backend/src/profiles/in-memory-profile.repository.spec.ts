@@ -1,14 +1,5 @@
 import { InMemoryProfileRepository } from './in-memory-profile.repository';
-import { DEFAULT_PROFILE_SETTINGS, ProfileOptions } from './profile.repository';
-
-const OPTIONS: ProfileOptions = {
-  protagonists: [
-    { id: 'p1', label: 'Un dragón', icon: 'pets', isEnabled: true },
-  ],
-  scenarios: [],
-  missions: [],
-  styles: [],
-};
+import { DEFAULT_PROFILE_SETTINGS } from './profile.repository';
 
 describe('InMemoryProfileRepository (SPEC-021)', () => {
   it('creates, lists and scopes profiles by teacher', async () => {
@@ -64,13 +55,5 @@ describe('InMemoryProfileRepository (SPEC-021)', () => {
       bookStorySize: 'large',
       modules: { create: true, library: false, design: true },
     });
-  });
-
-  it('returns seeded options', async () => {
-    const repository = new InMemoryProfileRepository();
-    const created = await repository.create('teacher-1', { name: 'Ana' });
-    repository.seedOptions(created.id, OPTIONS);
-
-    await expect(repository.listOptions(created.id)).resolves.toEqual(OPTIONS);
   });
 });

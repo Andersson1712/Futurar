@@ -1,5 +1,11 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { AiErrorException } from '../common/errors/ai-error.exception';
+import { ACTION_REPOSITORY } from '../actions/action.repository';
+import type {
+  ActionRepository,
+  ProfileActionEntry,
+  ProfileItemEntry,
+} from '../actions/action.repository';
 import {
   DEFAULT_PROFILE_SETTINGS,
   PROFILE_REPOSITORY,
@@ -16,6 +22,10 @@ import {
   UpdateProfileDto,
 } from './dto/profile.dto';
 import type {
+  SaveProfileActionsDto,
+  SaveProfileItemsDto,
+} from '../actions/dto/action.dto';
+import type {
   BookDefaults,
   ProfileSettingsProvider,
 } from './profile-settings.provider';
@@ -25,6 +35,8 @@ export class ProfilesService implements ProfileSettingsProvider {
   constructor(
     @Inject(PROFILE_REPOSITORY)
     private readonly repository: ProfileRepository,
+    @Inject(ACTION_REPOSITORY)
+    private readonly actions: ActionRepository,
   ) {}
 
   list(teacherId: string, activeOnly = true): Promise<Profile[]> {
@@ -39,8 +51,12 @@ export class ProfilesService implements ProfileSettingsProvider {
     return profile;
   }
 
-  create(teacherId: string, dto: CreateProfileDto): Promise<Profile> {
-    return this.repository.create(teacherId, dto);
+  async create(teacherId: string, dto: CreateProfileDto): Promise<Profile> {
+    const profile = await this.repository.create(teacherId, dto);
+
+    await this.actions.seedProfileDefaults(profile.id, teacherId);
+
+    return profile;
   }
 
   async update(
@@ -90,7 +106,17 @@ export class ProfilesService implements ProfileSettingsProvider {
       modules: { ...current.modules, ...stripUndefined(modules ?? {}) },
     };
 
-    return this.repository.saveSettings(profileId, merged);
+    const saved = await this.repository.saveSettings(profileId, merged);
+
+    if (modules) {
+      await this.actions.syncProfileActions(profileId, teacherId, {
+        create: merged.modules.create,
+        library: merged.modules.library,
+        design: merged.modules.design,
+      });
+    }
+
+    return saved;
   }
 
   async listOptions(
@@ -99,7 +125,61 @@ export class ProfilesService implements ProfileSettingsProvider {
   ): Promise<ProfileOptions> {
     await this.get(profileId, teacherId);
 
-    return this.repository.listOptions(profileId);
+    return this.actions.getStudentOptions(profileId);
+  }
+
+  async listProfileActions(
+    profileId: string,
+    teacherId: string,
+  ): Promise<ProfileActionEntry[]> {
+    await this.get(profileId, teacherId);
+
+    return this.actions.getProfileActions(profileId, teacherId);
+  }
+
+  async saveProfileActions(
+    profileId: string,
+    teacherId: string,
+    dto: SaveProfileActionsDto,
+  ): Promise<ProfileActionEntry[]> {
+    await this.get(profileId, teacherId);
+
+    const saved = await this.actions.saveProfileActions(
+      profileId,
+      teacherId,
+      dto.actions,
+    );
+
+    if (!saved) throw actionNotFound();
+
+    return saved;
+  }
+
+  async listProfileItems(
+    profileId: string,
+    teacherId: string,
+  ): Promise<ProfileItemEntry[]> {
+    await this.get(profileId, teacherId);
+
+    return this.actions.getProfileItems(profileId, teacherId);
+  }
+
+  async saveProfileItems(
+    profileId: string,
+    teacherId: string,
+    dto: SaveProfileItemsDto,
+  ): Promise<ProfileItemEntry[]> {
+    await this.get(profileId, teacherId);
+
+    const saved = await this.actions.saveProfileItems(
+      profileId,
+      teacherId,
+      dto.items,
+    );
+
+    if (!saved) throw itemNotFound();
+
+    return saved;
   }
 
   async getBookDefaults(profileId: string): Promise<BookDefaults> {
@@ -122,4 +202,12 @@ function stripUndefined<T extends object>(value: T): Partial<T> {
 
 function profileNotFound(): AiErrorException {
   return new AiErrorException(404, 'NOT_FOUND', 'Profile not found');
+}
+
+function actionNotFound(): AiErrorException {
+  return new AiErrorException(404, 'NOT_FOUND', 'Action not found');
+}
+
+function itemNotFound(): AiErrorException {
+  return new AiErrorException(404, 'NOT_FOUND', 'Item not found');
 }

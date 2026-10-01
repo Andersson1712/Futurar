@@ -1,5 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../services/supabase';
+import {
+    createActionItem,
+    deleteActionItem,
+    listActionOptions,
+    listActions,
+    listProfileItems,
+    saveProfileItems,
+    type ActionOptionPayload,
+    type ProfileItemPayload,
+} from '../services/backendActions';
 import {
     createProfileContact,
     deleteProfileContact,
@@ -7,7 +16,7 @@ import {
     updateProfileContact,
     type ProfileContactPayload,
 } from '../services/backendContacts';
-import type { Student, StudentSettings, StudentElement } from '../types/database';
+import type { Student, StudentSettings } from '../types/database';
 import { t } from '../utils/messages';
 
 interface StudentWithSettings extends Student {
@@ -22,7 +31,7 @@ interface StudentEditorProps {
 }
 
 // Icon mapping based on element name keywords
-const getIconForLabel = (label: string, category: 'protagonist' | 'scenario' | 'mission' | 'style'): string => {
+const getIconForLabel = (label: string, category: string): string => {
     const labelLower = label.toLowerCase();
 
     // Protagonist icons
@@ -76,10 +85,17 @@ const getIconForLabel = (label: string, category: 'protagonist' | 'scenario' | '
 };
 
 // Element section component
+interface ElementEntry {
+    id: string;
+    label: string;
+    icon: string;
+    isEnabled: boolean;
+}
+
 interface ElementSectionProps {
     title: string;
-    category: 'protagonist' | 'scenario' | 'mission' | 'style';
-    elements: StudentElement[];
+    icon: string;
+    elements: ElementEntry[];
     onToggle: (id: string, enabled: boolean) => void;
     onDelete: (id: string) => void;
     onAdd: (label: string) => void;
@@ -88,7 +104,7 @@ interface ElementSectionProps {
 
 const ElementSection: React.FC<ElementSectionProps> = ({
     title,
-    category,
+    icon,
     elements,
     onToggle,
     onDelete,
@@ -98,7 +114,7 @@ const ElementSection: React.FC<ElementSectionProps> = ({
     const [newLabel, setNewLabel] = useState('');
     const [showAddForm, setShowAddForm] = useState(false);
 
-    const enabledCount = elements.filter(e => e.is_enabled).length;
+    const enabledCount = elements.filter(e => e.isEnabled).length;
     const canEnableMore = enabledCount < maxEnabled;
 
     const handleAdd = () => {
@@ -114,9 +130,7 @@ const ElementSection: React.FC<ElementSectionProps> = ({
             <div className="flex items-center justify-between mb-4">
                 <h3 className="font-bold text-lg flex items-center gap-2">
                     <span className="material-symbols-outlined text-primary">
-                        {category === 'protagonist' ? 'face' :
-                            category === 'scenario' ? 'landscape' :
-                                category === 'mission' ? 'flag' : 'palette'}
+                        {icon}
                     </span>
                     {title}
                 </h3>
@@ -130,16 +144,16 @@ const ElementSection: React.FC<ElementSectionProps> = ({
                 {elements.map(element => (
                     <div
                         key={element.id}
-                        className={`flex items-center justify-between p-3 rounded-lg border transition-all ${element.is_enabled
+                        className={`flex items-center justify-between p-3 rounded-lg border transition-all ${element.isEnabled
                             ? 'bg-primary/10 border-primary/30'
                             : 'bg-white/5 border-white/10'
                             }`}
                     >
                         <div className="flex items-center gap-3">
-                            <span className={`material-symbols-outlined ${element.is_enabled ? 'text-primary' : 'text-gray-400'}`}>
+                            <span className={`material-symbols-outlined ${element.isEnabled ? 'text-primary' : 'text-gray-400'}`}>
                                 {element.icon}
                             </span>
-                            <span className={element.is_enabled ? 'text-white' : 'text-gray-400'}>
+                            <span className={element.isEnabled ? 'text-white' : 'text-gray-400'}>
                                 {element.label}
                             </span>
                         </div>
@@ -147,17 +161,18 @@ const ElementSection: React.FC<ElementSectionProps> = ({
                             {/* Toggle button */}
                             <button
                                 type="button"
+                                aria-label={`${element.label}: ${element.isEnabled ? t('editor.disable') : t('editor.enable')}`}
                                 onClick={() => {
-                                    if (!element.is_enabled && !canEnableMore) {
+                                    if (!element.isEnabled && !canEnableMore) {
                                         alert(`Solo puedes tener ${maxEnabled} elementos habilitados. Deshabilita uno primero.`);
                                         return;
                                     }
-                                    onToggle(element.id, !element.is_enabled);
+                                    onToggle(element.id, !element.isEnabled);
                                 }}
-                                className={`relative w-12 h-6 rounded-full transition-colors ${element.is_enabled ? 'bg-primary' : 'bg-gray-600'
+                                className={`relative w-12 h-6 rounded-full transition-colors ${element.isEnabled ? 'bg-primary' : 'bg-gray-600'
                                     }`}
                             >
-                                <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full transition-transform ${element.is_enabled ? 'translate-x-6' : 'translate-x-0.5'
+                                <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full transition-transform ${element.isEnabled ? 'translate-x-6' : 'translate-x-0.5'
                                     }`} />
                             </button>
                             {/* Delete button */}
@@ -273,11 +288,9 @@ const StudentEditor: React.FC<StudentEditorProps> = ({
         book_audience: (student?.student_settings?.book_audience as string) || 'child'
     });
 
-    // Elements Data
-    const [protagonists, setProtagonists] = useState<StudentElement[]>([]);
-    const [scenarios, setScenarios] = useState<StudentElement[]>([]);
-    const [missions, setMissions] = useState<StudentElement[]>([]);
-    const [styles, setStyles] = useState<StudentElement[]>([]);
+    // Elements Data (SPEC-023 catalog)
+    const [catalogOptions, setCatalogOptions] = useState<ActionOptionPayload[]>([]);
+    const [profileItems, setProfileItems] = useState<Record<string, ProfileItemPayload>>({});
 
     // Contacts Data (SPEC-022)
     const [contacts, setContacts] = useState<ProfileContactPayload[]>([]);
@@ -383,17 +396,18 @@ const StudentEditor: React.FC<StudentEditorProps> = ({
 
         setIsLoadingElements(true);
         try {
-            const [protRes, scenRes, missRes, styleRes] = await Promise.all([
-                supabase.from('student_protagonists').select('*').eq('student_id', student.id),
-                supabase.from('student_scenarios').select('*').eq('student_id', student.id),
-                supabase.from('student_missions').select('*').eq('student_id', student.id),
-                supabase.from('student_styles').select('*').eq('student_id', student.id)
+            const [actions, items] = await Promise.all([
+                listActions(),
+                listProfileItems(student.id)
             ]);
+            const createAction = actions.find((action) => action.code === 'create');
 
-            setProtagonists(protRes.data || []);
-            setScenarios(scenRes.data || []);
-            setMissions(missRes.data || []);
-            setStyles(styleRes.data || []);
+            setCatalogOptions(
+                createAction ? await listActionOptions(createAction.id) : []
+            );
+            setProfileItems(
+                Object.fromEntries(items.map((item) => [item.itemId, item]))
+            );
         } catch (err) {
             console.error('Error loading elements:', err);
         } finally {
@@ -401,39 +415,40 @@ const StudentEditor: React.FC<StudentEditorProps> = ({
         }
     };
 
-    // Element CRUD operations
-    type ElementTable = 'student_protagonists' | 'student_scenarios' | 'student_missions' | 'student_styles';
+    const handleToggleElement = async (itemId: string, enabled: boolean) => {
+        if (!student?.id) return;
 
-    const handleToggleElement = async (table: ElementTable, id: string, enabled: boolean) => {
         try {
-            await supabase.from(table).update({ is_enabled: enabled }).eq('id', id);
-            loadElements(); // Reload to sync state
+            const saved = await saveProfileItems(student.id, [
+                { itemId, isEnabled: enabled }
+            ]);
+            setProfileItems(
+                Object.fromEntries(saved.map((item) => [item.itemId, item]))
+            );
         } catch (err) {
             console.error('Error toggling element:', err);
         }
     };
 
-    const handleDeleteElement = async (table: ElementTable, id: string) => {
+    const handleDeleteElement = async (itemId: string) => {
         try {
-            await supabase.from(table).delete().eq('id', id);
-            loadElements();
+            await deleteActionItem(itemId);
+            await loadElements();
         } catch (err) {
             console.error('Error deleting element:', err);
         }
     };
 
-    const handleAddElement = async (table: ElementTable, label: string, category: 'protagonist' | 'scenario' | 'mission' | 'style') => {
-        if (!student?.id) return;
-
+    const handleAddElement = async (
+        optionId: string,
+        label: string,
+        category: string
+    ) => {
         const icon = getIconForLabel(label, category);
+
         try {
-            await supabase.from(table).insert({
-                student_id: student.id,
-                label,
-                icon,
-                is_enabled: true
-            });
-            loadElements();
+            await createActionItem(optionId, { label, icon });
+            await loadElements();
         } catch (err) {
             console.error('Error adding element:', err);
         }
@@ -969,54 +984,41 @@ const StudentEditor: React.FC<StudentEditorProps> = ({
                                 <div className="flex items-center justify-center py-12">
                                     <span className="material-symbols-outlined text-4xl text-primary animate-spin">progress_activity</span>
                                 </div>
+                            ) : catalogOptions.length === 0 ? (
+                                <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl">
+                                    <p className="text-amber-400 text-sm flex items-center gap-2">
+                                        <span className="material-symbols-outlined">info</span>
+                                        {t('editor.catalogEmpty')}
+                                    </p>
+                                </div>
                             ) : (
                                 <div className="space-y-6">
                                     <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl mb-6">
                                         <p className="text-amber-400 text-sm flex items-center gap-2">
                                             <span className="material-symbols-outlined">info</span>
-                                            Puedes habilitar hasta <strong>4 elementos</strong> por categoría. El icono se genera automáticamente según el nombre.
+                                            {t('editor.catalogHint')}
                                         </p>
                                     </div>
 
-                                    <ElementSection
-                                        title="Personajes"
-                                        category="protagonist"
-                                        elements={protagonists}
-                                        maxEnabled={4}
-                                        onToggle={(id, enabled) => handleToggleElement('student_protagonists', id, enabled)}
-                                        onDelete={(id) => handleDeleteElement('student_protagonists', id)}
-                                        onAdd={(label) => handleAddElement('student_protagonists', label, 'protagonist')}
-                                    />
-
-                                    <ElementSection
-                                        title="Escenarios"
-                                        category="scenario"
-                                        elements={scenarios}
-                                        maxEnabled={4}
-                                        onToggle={(id, enabled) => handleToggleElement('student_scenarios', id, enabled)}
-                                        onDelete={(id) => handleDeleteElement('student_scenarios', id)}
-                                        onAdd={(label) => handleAddElement('student_scenarios', label, 'scenario')}
-                                    />
-
-                                    <ElementSection
-                                        title="Misiones"
-                                        category="mission"
-                                        elements={missions}
-                                        maxEnabled={4}
-                                        onToggle={(id, enabled) => handleToggleElement('student_missions', id, enabled)}
-                                        onDelete={(id) => handleDeleteElement('student_missions', id)}
-                                        onAdd={(label) => handleAddElement('student_missions', label, 'mission')}
-                                    />
-
-                                    <ElementSection
-                                        title="Estilos Visuales"
-                                        category="style"
-                                        elements={styles}
-                                        maxEnabled={4}
-                                        onToggle={(id, enabled) => handleToggleElement('student_styles', id, enabled)}
-                                        onDelete={(id) => handleDeleteElement('student_styles', id)}
-                                        onAdd={(label) => handleAddElement('student_styles', label, 'style')}
-                                    />
+                                    {catalogOptions.map((option) => (
+                                        <ElementSection
+                                            key={option.id}
+                                            title={option.label}
+                                            icon={option.icon}
+                                            maxEnabled={option.maxEnabled}
+                                            elements={option.items.map((item) => ({
+                                                id: item.id,
+                                                label: item.label,
+                                                icon: item.icon,
+                                                isEnabled:
+                                                    profileItems[item.id]?.isEnabled ??
+                                                    item.isActive
+                                            }))}
+                                            onToggle={(id, enabled) => void handleToggleElement(id, enabled)}
+                                            onDelete={(id) => void handleDeleteElement(id)}
+                                            onAdd={(label) => void handleAddElement(option.id, label, option.code)}
+                                        />
+                                    ))}
                                 </div>
                             )}
                         </div>
