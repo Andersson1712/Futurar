@@ -17,9 +17,9 @@ Leyenda:
 ## Estado actual
 
 - Fase activa: **Fase 6 — Panel de administración**
-- Última tarea cerrada: SPEC-019 (implementado; CI + protección de dev)
-- Próxima tarea: SPEC-020 (UI admin para API key + cifrado/KMS)
-- Rama de integración: `dev` (todo SPEC-001→019, protegida con CI); `main` congelada.
+- Última tarea cerrada: SPEC-020 (implementado; claves cifradas por docente)
+- Próxima tarea: SPEC-021 (perfiles: CRUD, módulos, config técnica, complejidad)
+- Rama de integración: `dev` (todo SPEC-001→020, protegida con CI); `main` congelada.
 
 ---
 
@@ -169,11 +169,11 @@ Leyenda:
 ## Fase 6 — Panel de administración
 
 ### EPIC 6.1 — Configuración de API key
-- [ ] SPEC-020: UI admin para ingresar key
-- [ ] SPEC-020: Backend cifra con KMS/libsodium
-- [ ] SPEC-020: Nunca devuelve key completa
-- [ ] SPEC-020: Rotación sin downtime
-- [ ] SPEC-020: Multi-fundación (key por tenant)
+- [x] SPEC-020: UI admin para ingresar key
+- [x] SPEC-020: Backend cifra con AES-256-GCM (master key; KMS adapter futuro)
+- [x] SPEC-020: Nunca devuelve key completa
+- [x] SPEC-020: Rotación sin downtime
+- [x] SPEC-020: Multi-fundación (key por tenant; `tenant_id` reservado)
 
 ### EPIC 6.2 — Gestión de perfiles
 - [ ] SPEC-021: CRUD perfiles (nombre, apellido, fecha nac, avatar)
@@ -288,6 +288,7 @@ Leyenda:
 | SPEC-017 | Infra de tests: MSW + cobertura + E2E | implementado | owner | 2026-09-30 |
 | SPEC-018 | Tests críticos, i18n guard y E2E de flujo | implementado | owner | 2026-09-30 |
 | SPEC-019 | CI GitHub Actions + protección de rama dev | implementado | owner | 2026-09-30 |
+| SPEC-020 | Claves de IA cifradas por docente + rotación | implementado | owner | 2026-09-30 |
 | … | … | … | … | … |
 
 ## Notas
@@ -407,3 +408,9 @@ Leyenda:
   requeridos, sin force-push ni borrado y PR obligatorio (0 aprobaciones,
   admin puede excepcionar). ESLint frontend queda como chore aparte.
   Fase 5 cerrada.
+- SPEC-020: `ai_credentials` (migración 0004) con AES-256-GCM y master key
+  `AI_SECRETS_MASTER_KEY`; `SecretProvider` async y por tenant con fallback a
+  env; `GeminiClientProvider` cachea por hash de key (rotación sin restart);
+  API `/api/v1/ai/credentials` solo metadata; flag `AI_CREDENTIALS_ENABLED`
+  default false; panel `ApiKeyPanel` en el panel docente. 190 tests backend +
+  78 frontend; cobertura 38.7/38.1/36.1/40.2.

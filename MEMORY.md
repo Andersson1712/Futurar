@@ -5,9 +5,8 @@
 ## Current State
 - MVP: accessible story creation for severe motor disabilities, switch or direct input.
 - Frontend AI REMOVED (SPEC-001); generation gated by `AI_ENDPOINTS_ENABLED` until the key is rotated.
-- SPEC-002→019 done: Nest 12 AI module, /api/v1 contracts, prompts/validation,
-  BullMQ/Redis jobs, SSE, book persistence, frontend via backend, a11y fixes,
-  test infra (Vitest/MSW/axe/Playwright, coverage, E2E) and CI with protected dev.
+- SPEC-002→020 done: Nest 12 AI backend, /api/v1 contracts, jobs/SSE,
+  persistence, frontend via backend, a11y, test infra + CI and encrypted keys.
 - Wizard, library, reader, TTS, dedications, teacher panel work; legacy Supabase data pending SPEC-021/023/027.
 
 ## Architecture Decisions
@@ -40,11 +39,12 @@
 - A11y per profile: `student_settings` (migration 0003) seeds ScanSettings; `<html>` gets font/line/uppercase/bold; voice es-AR→es-US; reduced-motion/contrast CSS.
 - A11y audit: axe-core in Vitest (color-contrast off in jsdom) + `utils/contrast` ratios; `useDialogA11y` for dialogs; declaration in `docs/accessibility/`.
 - CI: `.github/workflows/ci.yml` (frontend/e2e/backend, Node 24); `dev` protected with 3 required checks; actions v7.
+- Credentials: `ai_credentials` + AES-256-GCM (`AI_SECRETS_MASTER_KEY`, base64 32B); async tenant-aware SecretProvider (DB → env); clients cached by key hash; flag `AI_CREDENTIALS_ENABLED` default false; API returns metadata only.
 - Test infra: MSW 2.x (v3 needs TS >=5.9); coverage floor 36/35/33/37; E2E mocks Supabase+Nest; i18n `t()`.
 
 ## Next Steps
-- [ ] Owner: rotate Gemini key; apply migrations 0001/0002/0003; create `book-images` bucket.
-- [ ] SPEC-020: admin API-key UI with KMS/encryption; SPEC-021/023: profiles API; chore Vite/TS.
+- [ ] Owner: rotate Gemini key; apply migrations 0001/0002/0003/0004; create `book-images` bucket; set `AI_SECRETS_MASTER_KEY` when enabling credentials.
+- [ ] SPEC-021: profiles API; SPEC-023: actions/options; chore Vite/TS.
 
 ## Housekeeping
 - Keep under ~50 lines: before finishing, compact and remove resolved items.
