@@ -303,7 +303,7 @@ const StoryReader: React.FC<StoryReaderProps> = ({
                 <div className="flex items-center gap-3">
                     <button
                         onClick={onClose}
-                        className="p-2 hover:bg-white/10 rounded-full transition-colors"
+                        className="p-2 min-w-11 min-h-11 hover:bg-white/10 rounded-full transition-colors"
                     >
                         <span className="material-symbols-outlined text-xl">arrow_back</span>
                     </button>
@@ -367,7 +367,7 @@ const StoryReader: React.FC<StoryReaderProps> = ({
                         <p className="text-gray-300 leading-relaxed text-sm md:text-base font-serif">
                             {excerpt}
                         </p>
-                        <p className="mt-4 text-xs text-gray-500 italic">
+                        <p className="mt-4 text-xs text-gray-400 italic">
                             Misión: {mission} • Estilo: {style}
                         </p>
                     </div>
@@ -441,7 +441,7 @@ const StoryReader: React.FC<StoryReaderProps> = ({
 
             {/* Footer */}
             <div className="px-4 py-2 bg-black/30 border-t border-white/10 text-center">
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-gray-400">
                     Presiona <kbd className="px-1.5 py-0.5 bg-slate-800 rounded">Espacio</kbd> o <kbd className="px-1.5 py-0.5 bg-slate-800 rounded">Enter</kbd> para seleccionar
                 </p>
             </div>

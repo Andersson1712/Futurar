@@ -16,7 +16,7 @@
             theme: {
                 extend: {
                     colors: {
-                        primary: "#137fec",
+                        primary: "#0b6bd3",
                         "background-dark": "#0B1116",
                         "surface-dark": "#16202a",
                         "border-accent": "#233648"
@@ -53,6 +53,12 @@
         html,
         body {
             min-height: 100dvh;
+        }
+
+        /* Foco visible siempre (WCAG 2.4.7 / 2.4.11) */
+        :focus-visible {
+            outline: 3px solid #ffffff;
+            outline-offset: 2px;
         }
 
         body {

@@ -190,7 +190,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
                 </form>
 
                 {/* Footer */}
-                <p className="text-center text-gray-500 text-sm mt-6">
+                <p className="text-center text-gray-400 text-sm mt-6">
                     © 2025 Futurar Universal Access
                 </p>
             </div>

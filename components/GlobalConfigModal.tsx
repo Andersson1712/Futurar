@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
     loadStorySettings,
     saveStorySettings,
     type StorySettings,
 } from '../utils/storySettings';
+import { useDialogA11y } from '../hooks/useDialogA11y';
 
 interface GlobalConfigModalProps {
     onClose: () => void;
@@ -23,6 +24,9 @@ const STORY_SIZES = [
 const GlobalConfigModal: React.FC<GlobalConfigModalProps> = ({ onClose }) => {
     const [storySize, setStorySize] = useState<StorySettings['storySize']>(() => loadStorySettings().storySize);
     const [customStructure, setCustomStructure] = useState(() => loadStorySettings().customStructure);
+    const dialogRef = useRef<HTMLDivElement>(null);
+
+    useDialogA11y(dialogRef, true, onClose);
 
     const handleSave = () => {
         try {
@@ -35,7 +39,13 @@ const GlobalConfigModal: React.FC<GlobalConfigModalProps> = ({ onClose }) => {
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-            <div className="bg-surface-dark w-full max-w-2xl rounded-2xl border border-border-accent shadow-2xl overflow-hidden animate-fade-in max-h-[90vh] flex flex-col">
+            <div
+                ref={dialogRef}
+                role="dialog"
+                aria-modal="true"
+                aria-label="Configuración de Cuentos"
+                className="bg-surface-dark w-full max-w-2xl rounded-2xl border border-border-accent shadow-2xl overflow-hidden animate-fade-in max-h-[90vh] flex flex-col"
+            >
                 {/* Header */}
                 <div className="p-6 border-b border-border-accent flex justify-between items-center shrink-0">
                     <h2 className="text-xl font-bold flex items-center gap-2">
@@ -78,7 +88,7 @@ const GlobalConfigModal: React.FC<GlobalConfigModalProps> = ({ onClose }) => {
                                 </button>
                             ))}
                         </div>
-                        <p className="mt-2 text-xs text-gray-500">
+                        <p className="mt-2 text-xs text-gray-400">
                             {STORY_SIZES.find(s => s.id === storySize)?.description}
                         </p>
                     </div>
@@ -87,9 +97,9 @@ const GlobalConfigModal: React.FC<GlobalConfigModalProps> = ({ onClose }) => {
                     <div>
                         <label className="block text-sm font-medium text-gray-300 mb-2">
                             Estructura Personalizada del Cuento
-                            <span className="text-gray-500 font-normal ml-2">(opcional)</span>
+                            <span className="text-gray-400 font-normal ml-2">(opcional)</span>
                         </label>
-                        <p className="text-xs text-gray-500 mb-3">
+                        <p className="text-xs text-gray-400 mb-3">
                             Describe cómo quieres que se estructure el cuento. Esto se aplicará además de la
                             selección de protagonista, escenario y misión.
                         </p>

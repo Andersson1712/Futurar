@@ -199,7 +199,7 @@ const ScanningGrid: React.FC<ScanningGridProps> = ({
 
               {/* Descripción opcional */}
               {!compact && opt.description && (
-                <p className={`mt-1 md:mt-2 text-xs md:text-sm font-medium text-center ${isActive ? 'text-white/80' : 'text-gray-500'}`}>
+                <p className={`mt-1 md:mt-2 text-xs md:text-sm font-medium text-center ${isActive ? 'text-white/80' : 'text-gray-400'}`}>
                   {opt.description}
                 </p>
               )}
@@ -220,7 +220,7 @@ const ScanningGrid: React.FC<ScanningGridProps> = ({
 
       {/* Indicador de soporte HID */}
       {!compact && isHIDSupported && !connectedDevice && (
-        <p className="text-center text-gray-500 text-xs md:text-sm mt-4 md:mt-6">
+        <p className="text-center text-gray-400 text-xs md:text-sm mt-4 md:mt-6">
           Presiona <kbd className="px-1.5 py-0.5 bg-slate-800 rounded text-xs">Espacio</kbd> o <kbd className="px-1.5 py-0.5 bg-slate-800 rounded text-xs">Enter</kbd> para seleccionar
         </p>
       )}
