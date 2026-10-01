@@ -68,6 +68,13 @@
             justify-content: safe center;
         }
 
+        /* Opción activa del menú de controles (barrido por switch) */
+        .menu-option[data-active='true'] {
+            outline: 3px solid #ffffff;
+            outline-offset: 2px;
+            background: rgba(255, 255, 255, 0.08);
+        }
+
         /* Scroll personalizado */
         .custom-scrollbar::-webkit-scrollbar {
             width: 8px;

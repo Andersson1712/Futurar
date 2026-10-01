@@ -21,6 +21,8 @@ interface ScanSettingsContextType extends ScanSettings {
     setSoundEnabled: (enabled: boolean) => void;
     goToMenu: () => void;
     setGoToMenuHandler: (handler: () => void) => void;
+    isModalOpen: boolean;
+    setModalOpen: (open: boolean) => void;
 }
 
 const defaultSettings: ScanSettings = {
@@ -58,6 +60,11 @@ export const ScanSettingsProvider: React.FC<ScanSettingsProviderProps> = ({
     const [goToMenuHandler, setGoToMenuHandlerState] = useState<(() => void) | null>(
         () => onGoToMenu || null
     );
+    const [isModalOpen, setIsModalOpen] = useState(false);
+
+    const setModalOpen = useCallback((open: boolean) => {
+        setIsModalOpen(open);
+    }, []);
 
     // Update settings when initial settings change
     useEffect(() => {
@@ -142,6 +149,8 @@ export const ScanSettingsProvider: React.FC<ScanSettingsProviderProps> = ({
                 setSoundEnabled,
                 goToMenu,
                 setGoToMenuHandler,
+                isModalOpen,
+                setModalOpen,
             }}
         >
             {children}

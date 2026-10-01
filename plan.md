@@ -17,9 +17,9 @@ Leyenda:
 ## Estado actual
 
 - Fase activa: **Fase 4 — Accesibilidad: bugs críticos**
-- Última tarea cerrada: SPEC-012 (implementado; scroll libre + E2E Playwright)
-- Próxima tarea: SPEC-013 (focus trap del menú "Más")
-- Rama de integración: `dev` (todo SPEC-001→012); `main` se actualiza al cerrar fase.
+- Última tarea cerrada: SPEC-013 (implementado; menú de controles con focus trap)
+- Próxima tarea: SPEC-014 (autoguardado y continuar)
+- Rama de integración: `dev` (todo SPEC-001→013); `main` se actualiza al cerrar fase.
 
 ---
 
@@ -116,8 +116,8 @@ Leyenda:
 - [x] SPEC-012: Test E2E scroll mobile/desktop
 
 ### EPIC 4.3 — Focus trap del menú "Más"
-- [ ] SPEC-013: Focus trap Continuar/Pausar/Volver
-- [ ] SPEC-013: Test: no se puede salir sin seleccionar
+- [x] SPEC-013: Focus trap Continuar/Pausar/Volver
+- [x] SPEC-013: Test: no se puede salir sin seleccionar
 
 ### EPIC 4.4 — Autoguardado y continuar
 - [ ] SPEC-014: Persistir progreso del wizard y visor
@@ -280,6 +280,7 @@ Leyenda:
 | SPEC-010 | Sesión (JWT/refresh/logout) y auditoría de acceso a datos | implementado | owner | 2026-09-30 |
 | SPEC-011 | Clic/pointerdown gana al foco del barrido + runner de tests | implementado | owner | 2026-09-30 |
 | SPEC-012 | Scroll libre mobile/desktop + E2E Playwright | implementado | owner | 2026-09-30 |
+| SPEC-013 | Focus trap del menú de controles + navegación por switch | implementado | owner | 2026-09-30 |
 | … | … | … | … | … |
 
 ## Notas
@@ -359,3 +360,9 @@ Leyenda:
   pantallas de editor/reader/teacher con dvh. E2E con Playwright 1.63
   (Chromium 1243 ya cacheado): 5 tests × desktop/Pixel 7 = 9 passed / 1 skip;
   scripts `test:e2e`; `e2e/` excluido de Vitest.
+- SPEC-013: `FloatingControls` es un diálogo modal con backdrop (afuera no
+  cierra), foco atrapado y navegación por barrido (auto-avance + Space/Enter/HID,
+  flechas, Tab cicla), salidas explícitas `Cerrar`/Escape; guard en fase de
+  captura + `isModalOpen` en `ScanSettingsContext` pausan el grid de atrás.
+  7 tests nuevos (14 en total) cubren trap, afuera, Tab, Space, Escape, pausa y
+  Menú Principal. `npm run test:e2e` completo verde (9 passed / 1 skip).

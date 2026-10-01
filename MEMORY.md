@@ -5,10 +5,10 @@
 ## Current State
 - MVP: accessible story creation for severe motor disabilities, switch or direct input.
 - Frontend AI REMOVED (SPEC-001); generation gated by `AI_ENDPOINTS_ENABLED` until the key is rotated.
-- SPEC-002→012 done: server-owned Nest 12 AI module, /api/v1 contracts,
+- SPEC-002→013 done: server-owned Nest 12 AI module, /api/v1 contracts,
   prompts/validation, BullMQ/Redis jobs, SSE, book persistence with audit/soft
-  delete/images, frontend via backend, click-wins fix, test runners and
-  unblocked scroll.
+  delete/images, frontend via backend, click-wins fix, test runners, unblocked
+  scroll and a trapped controls dialog.
 - Wizard, library, reader, TTS, dedications, teacher panel work; legacy Supabase data pending SPEC-021/023/027.
 
 ## Architecture Decisions
@@ -20,14 +20,12 @@
   in-memory fallback; retries 3× exponential + circuit breaker.
 - Books in `books`/`book_versions` (idempotent by job id, per-version audit,
   soft delete); images optional in a private bucket, signed URLs on read.
-- Frontend `services/backendApi.ts` (fresh JWT, refresh + one retry on 401) and
-  `bookGeneration.ts` (SSE via fetch + 2 s polling fallback); library merges
-  backend books with legacy `stories` read-only (no duplicate saves).
+- Frontend `backendApi` (JWT refresh/retry) + `bookGeneration` (SSE + polling);
+  library merges backend books with legacy `stories` read-only (no duplicate saves).
 - Prompts versioned (`book/v1`, 5/10/15 pages, audience, dedication); output
   validated/moderated/limited.
-- NestJS 12 + TS 6 (ESM via require(esm)); Jest needs
-  NODE_OPTIONS=--experimental-vm-modules. UI es-AR + i18n; SDD; a11y WCAG 2.2
-  AA / ISO 17549-3.
+- NestJS 12 + TS 6 (ESM/require(esm)); Jest needs
+  NODE_OPTIONS=--experimental-vm-modules. UI es-AR; SDD; a11y WCAG 2.2 AA.
 - Integration branch `dev`; feature branch from dev + PR to dev; main frozen
   until indicated (legacy dev backed up in `dev-legacy-backup`).
 
@@ -38,10 +36,11 @@
 - Gemini TTS lacks es-AR (default es-419); models gemini-3.8-flash / gemini-3.1-flash-image / gemini-3.8-flash-tts.
 - Input contract: pointerdown on `[data-option]` wins over scan focus; never act on release.
 - Scroll: vertical scroll allowed (`overflow-x` only, `pan-y`, dvh, `safe-center`); never global `overflow: hidden`.
+- Menus/modals: trapped dialog + backdrop (`isModalOpen` pauses grids); capture-phase keydown.
 
 ## Next Steps
 - [ ] Owner: rotate Gemini key; apply migrations 0001/0002; create `book-images` bucket.
-- [ ] SPEC-013→016: focus trap, autosave, per-profile settings, WCAG.
+- [ ] SPEC-014→016: autosave, per-profile settings, WCAG.
 - [ ] SPEC-017→019: MSW/Playwright extras, critical tests and CI (runners exist).
 - [ ] SPEC-021/023: profiles/options API; SPEC-027 analytics; close SPEC-010 audit.
 - [ ] Chore: Vite 6→8 + frontend TS 5.8→7.
