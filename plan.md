@@ -17,9 +17,9 @@ Leyenda:
 ## Estado actual
 
 - Fase activa: **Fase 4 — Accesibilidad: bugs críticos**
-- Última tarea cerrada: SPEC-013 (implementado; menú de controles con focus trap)
-- Próxima tarea: SPEC-014 (autoguardado y continuar)
-- Rama de integración: `dev` (todo SPEC-001→013); `main` se actualiza al cerrar fase.
+- Última tarea cerrada: SPEC-014 (implementado; autoguardado y continuar)
+- Próxima tarea: SPEC-015 (configuración de accesibilidad por perfil)
+- Rama de integración: `dev` (todo SPEC-001→014); `main` se actualiza al cerrar fase.
 
 ---
 
@@ -120,8 +120,8 @@ Leyenda:
 - [x] SPEC-013: Test: no se puede salir sin seleccionar
 
 ### EPIC 4.4 — Autoguardado y continuar
-- [ ] SPEC-014: Persistir progreso del wizard y visor
-- [ ] SPEC-014: Test: abandonar y volver → continúa
+- [x] SPEC-014: Persistir progreso del wizard y visor
+- [x] SPEC-014: Test: abandonar y volver → continúa
 
 ### EPIC 4.5 — Configuración de accesibilidad por perfil
 - [ ] SPEC-015: Velocidad de barrido persistida por perfil
@@ -281,6 +281,7 @@ Leyenda:
 | SPEC-011 | Clic/pointerdown gana al foco del barrido + runner de tests | implementado | owner | 2026-09-30 |
 | SPEC-012 | Scroll libre mobile/desktop + E2E Playwright | implementado | owner | 2026-09-30 |
 | SPEC-013 | Focus trap del menú de controles + navegación por switch | implementado | owner | 2026-09-30 |
+| SPEC-014 | Autoguardado y continuar (wizard + visor) | implementado | owner | 2026-09-30 |
 | … | … | … | … | … |
 
 ## Notas
@@ -366,3 +367,8 @@ Leyenda:
   captura + `isModalOpen` en `ScanSettingsContext` pausan el grid de atrás.
   7 tests nuevos (14 en total) cubren trap, afuera, Tab, Space, Escape, pausa y
   Menú Principal. `npm run test:e2e` completo verde (9 passed / 1 skip).
+- SPEC-014: `utils/progressStore.ts` (clave versionada por alumno, pasos
+  whitelisteados, `GENERATING → SELECT_STYLE`, config vacía válida, viewer
+  descartado si no hay cuota) + restauración/guardado en `StudentApp`
+  (debounce 300 ms + `pagehide`) y scroll del visor en `StoryReader`. Se limpia
+  en cambio de perfil, cuento nuevo y logout. 23 tests frontend en total.

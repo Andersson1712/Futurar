@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { supabase } from '../services/supabase';
 import ScanningGrid from './ScanningGrid';
 import StoryReader from './StoryReader';
@@ -10,6 +10,12 @@ import { speak, stopSpeaking } from '../utils/speech';
 import { MESSAGES, messageForErrorCode } from '../utils/messages';
 import { getRandomImage } from '../utils/images';
 import { loadStorySettings } from '../utils/storySettings';
+import {
+    clearProgress,
+    loadProgress,
+    saveProgress,
+    type ViewerProgress,
+} from '../utils/progressStore';
 import { ApiError, NetworkError } from '../services/backendApi';
 import { followJob, requestBookGeneration } from '../services/bookGeneration';
 import { bookToStory } from '../services/bookMappers';
@@ -65,6 +71,9 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
         type: 'story'
     });
     const [isSpeaking, setIsSpeaking] = useState(false);
+    const [isRestored, setIsRestored] = useState(false);
+    const [initialScrollTop, setInitialScrollTop] = useState(0);
+    const viewerProgressRef = useRef<ViewerProgress | undefined>(undefined);
 
     // Get ONLY pause state from context (for FloatingControls)
     // DO NOT sync student settings to context - this causes infinite render loops
@@ -108,6 +117,94 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
         };
         loadStudents();
     }, []);
+
+    // Restore wizard/viewer progress (SPEC-014)
+    useEffect(() => {
+        if (isRestored || isLoading || students.length === 0) return;
+
+        const progress = loadProgress();
+
+        if (progress) {
+            const student = students.find((item) => item.id === progress.studentId);
+
+            if (student) {
+                const restoredConfig: StoryConfig = {
+                    id: progress.config.id,
+                    protagonist: progress.config.protagonist,
+                    scenery: progress.config.scenery,
+                    mission: progress.config.mission,
+                    style: progress.config.style,
+                    title: progress.config.title,
+                    content: progress.config.content,
+                    imageUrl: progress.config.imageUrl,
+                    type: progress.config.type,
+                };
+
+                setCurrentStudent(student);
+                setConfig(restoredConfig);
+
+                const needsContent =
+                    progress.step === 'STORY_DETAILS' ||
+                    progress.step === 'RESULT_VIEW';
+
+                if (!needsContent || restoredConfig.content) {
+                    setStep(progress.step as AppStep);
+                }
+
+                if (progress.viewer && progress.viewer.storyId === restoredConfig.id) {
+                    setInitialScrollTop(progress.viewer.scrollTop);
+                    viewerProgressRef.current = progress.viewer;
+                }
+            }
+        }
+
+        setIsRestored(true);
+    }, [isRestored, isLoading, students]);
+
+    // Autosave progress (SPEC-014): debounced on state changes and on exit
+    const persistProgress = useCallback(() => {
+        if (!currentStudent || step === 'PROFILE' || step === 'GENERATING') return;
+
+        saveProgress({
+            studentId: currentStudent.id,
+            step,
+            config: { ...config },
+            viewer: viewerProgressRef.current,
+            updatedAt: new Date().toISOString(),
+        });
+    }, [currentStudent, step, config]);
+
+    useEffect(() => {
+        if (!isRestored) return;
+
+        const timeout = setTimeout(persistProgress, 300);
+        return () => clearTimeout(timeout);
+    }, [isRestored, persistProgress]);
+
+    useEffect(() => {
+        const handlePageHide = () => persistProgress();
+        const handleVisibility = () => {
+            if (document.visibilityState === 'hidden') persistProgress();
+        };
+
+        window.addEventListener('pagehide', handlePageHide);
+        document.addEventListener('visibilitychange', handleVisibility);
+
+        return () => {
+            window.removeEventListener('pagehide', handlePageHide);
+            document.removeEventListener('visibilitychange', handleVisibility);
+        };
+    }, [persistProgress]);
+
+    const handleViewerScroll = useCallback(
+        (scrollTop: number) => {
+            if (!config.id) return;
+
+            viewerProgressRef.current = { storyId: config.id, scrollTop };
+            persistProgress();
+        },
+        [config.id, persistProgress]
+    );
 
     // TTS Helper - uses shared utility with callbacks for isSpeaking state
     const speakWithState = (text: string) => {
@@ -257,6 +354,9 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
     const handleBackToProfile = () => {
         console.log('🚪 handleBackToProfile called - setting step to PROFILE');
         handleStopSpeaking();
+        clearProgress();
+        viewerProgressRef.current = undefined;
+        setInitialScrollTop(0);
         setStep('PROFILE');
         setCurrentStudent(null);
         setConfig({ protagonist: '', scenery: '', mission: '', style: '', type: 'story' });
@@ -275,6 +375,9 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
 
     const handleCreateAnother = () => {
         handleStopSpeaking();
+        clearProgress();
+        viewerProgressRef.current = undefined;
+        setInitialScrollTop(0);
         setStep('SELECT_PROTAGONIST');
         setConfig(prev => ({ ...prev, id: undefined, protagonist: '', scenery: '', mission: '', style: '', content: '', title: '' }));
     };
@@ -443,6 +546,8 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
                     style={config.style}
                     studentId={currentStudent?.id}
                     persisted={Boolean(config.id)}
+                    initialScrollTop={initialScrollTop}
+                    onScrollProgress={handleViewerScroll}
                     onClose={() => setStep('STORY_DETAILS')}
                     onRead={speakWithState}
                     onCreateAnother={handleCreateAnother}

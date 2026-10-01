@@ -5,10 +5,10 @@
 ## Current State
 - MVP: accessible story creation for severe motor disabilities, switch or direct input.
 - Frontend AI REMOVED (SPEC-001); generation gated by `AI_ENDPOINTS_ENABLED` until the key is rotated.
-- SPEC-002→013 done: server-owned Nest 12 AI module, /api/v1 contracts,
+- SPEC-002→014 done: server-owned Nest 12 AI module, /api/v1 contracts,
   prompts/validation, BullMQ/Redis jobs, SSE, book persistence with audit/soft
-  delete/images, frontend via backend, click-wins fix, test runners, unblocked
-  scroll and a trapped controls dialog.
+  delete/images, frontend via backend, click-wins, runners, unblocked scroll,
+  trapped controls dialog and autosave/resume.
 - Wizard, library, reader, TTS, dedications, teacher panel work; legacy Supabase data pending SPEC-021/023/027.
 
 ## Architecture Decisions
@@ -37,10 +37,11 @@
 - Input contract: pointerdown on `[data-option]` wins over scan focus; never act on release.
 - Scroll: vertical scroll allowed (`overflow-x` only, `pan-y`, dvh, `safe-center`); never global `overflow: hidden`.
 - Menus/modals: trapped dialog + backdrop (`isModalOpen` pauses grids); capture-phase keydown.
+- Autosave: `futurar_progress_v1` per student (whitelisted steps, empty config valid); clears on profile switch/new story/logout.
 
 ## Next Steps
 - [ ] Owner: rotate Gemini key; apply migrations 0001/0002; create `book-images` bucket.
-- [ ] SPEC-014→016: autosave, per-profile settings, WCAG.
+- [ ] SPEC-015/016: per-profile settings + input modes, WCAG audit.
 - [ ] SPEC-017→019: MSW/Playwright extras, critical tests and CI (runners exist).
 - [ ] SPEC-021/023: profiles/options API; SPEC-027 analytics; close SPEC-010 audit.
 - [ ] Chore: Vite 6→8 + frontend TS 5.8→7.
