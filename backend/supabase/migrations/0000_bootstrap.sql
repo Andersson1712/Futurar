@@ -135,3 +135,12 @@ alter table public.student_protagonists enable row level security;
 alter table public.student_scenarios enable row level security;
 alter table public.student_missions enable row level security;
 alter table public.student_styles enable row level security;
+
+-- 6. RLS: frontend legacy tables OFF ----------------------------------------
+-- The frontend (anon key) reads/writes these directly, so RLS must stay off.
+-- (Stated explicitly: if the tables pre-exist with RLS on and no policies,
+-- inserts fail with 42501 and selects come back empty.) All three statements
+-- are safe to re-run.
+alter table public.teachers disable row level security;
+alter table public.stories disable row level security;
+alter table public.usage_sessions disable row level security;
