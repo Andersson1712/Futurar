@@ -1,9 +1,8 @@
 import { GeminiClientProvider } from './gemini-client.provider';
 import { AiProviderError } from '../../ai.errors';
-import type { SecretProvider } from '../../secrets/secret-provider';
 
 function buildProvider(get: jest.Mock): GeminiClientProvider {
-  return new GeminiClientProvider({ get } as unknown as SecretProvider);
+  return new GeminiClientProvider({ get });
 }
 
 describe('GeminiClientProvider (SPEC-020)', () => {

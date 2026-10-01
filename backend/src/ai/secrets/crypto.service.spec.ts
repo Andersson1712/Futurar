@@ -27,11 +27,17 @@ describe('CryptoService (SPEC-020)', () => {
     const payload = crypto.encrypt('secret');
 
     expect(() =>
-      crypto.decrypt({ ...payload, authTag: Buffer.from('nope').toString('base64') }),
+      crypto.decrypt({
+        ...payload,
+        authTag: Buffer.from('nope').toString('base64'),
+      }),
     ).toThrow(AiErrorException);
 
     expect(() =>
-      crypto.decrypt({ ...payload, ciphertext: Buffer.from('nope').toString('base64') }),
+      crypto.decrypt({
+        ...payload,
+        ciphertext: Buffer.from('nope').toString('base64'),
+      }),
     ).toThrow(AiErrorException);
   });
 

@@ -27,15 +27,26 @@ describe('AiCredentialsController (SPEC-020)', () => {
       controllers: [AiCredentialsController],
       providers: [
         AiCredentialsService,
-        { provide: ConfigService, useValue: new ConfigService({ AI_CREDENTIALS_ENABLED: true }) },
-        { provide: CREDENTIAL_REPOSITORY, useClass: InMemoryCredentialRepository },
-        { provide: CRYPTO_SERVICE, useValue: new CryptoService(randomBytes(32)) },
+        {
+          provide: ConfigService,
+          useValue: new ConfigService({ AI_CREDENTIALS_ENABLED: true }),
+        },
+        {
+          provide: CREDENTIAL_REPOSITORY,
+          useClass: InMemoryCredentialRepository,
+        },
+        {
+          provide: CRYPTO_SERVICE,
+          useValue: new CryptoService(randomBytes(32)),
+        },
       ],
     })
       .overrideGuard(SupabaseAuthGuard)
       .useValue({
         canActivate: (context: ExecutionContext) => {
-          context.switchToHttp().getRequest<TestRequest>().user = { id: 'teacher-1' };
+          context.switchToHttp().getRequest<TestRequest>().user = {
+            id: 'teacher-1',
+          };
           return true;
         },
       })
@@ -56,7 +67,10 @@ describe('AiCredentialsController (SPEC-020)', () => {
       .send({ apiKey: API_KEY })
       .expect(200);
 
-    expect(response.body).toMatchObject({ provider: 'gemini', status: 'active' });
+    expect(response.body).toMatchObject({
+      provider: 'gemini',
+      status: 'active',
+    });
     expect(JSON.stringify(response.body)).not.toContain(API_KEY);
   });
 
@@ -79,7 +93,8 @@ describe('AiCredentialsController (SPEC-020)', () => {
     const after = await request(app.getHttpServer())
       .get('/api/v1/ai/credentials')
       .expect(200);
-    expect(after.body[0].status).toBe('revoked');
+    const afterBody = after.body as Array<{ status: string }>;
+    expect(afterBody[0].status).toBe('revoked');
   });
 
   it('rejects invalid payloads and providers', async () => {

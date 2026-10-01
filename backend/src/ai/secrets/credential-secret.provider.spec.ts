@@ -9,20 +9,19 @@ function buildProvider(options: {
   const findActiveKey = options.storedError
     ? jest.fn().mockRejectedValue(options.storedError)
     : jest.fn().mockResolvedValue(options.stored);
-  const fallback: SecretProvider = {
-    get: jest.fn().mockResolvedValue(options.env),
-  };
+  const fallbackGet = jest.fn().mockResolvedValue(options.env);
+  const fallback: SecretProvider = { get: fallbackGet };
 
   return {
     provider: new CredentialSecretProvider({ findActiveKey }, fallback),
     findActiveKey,
-    fallback,
+    fallbackGet,
   };
 }
 
 describe('CredentialSecretProvider (SPEC-020)', () => {
   it('prefers the tenant credential', async () => {
-    const { provider, findActiveKey, fallback } = buildProvider({
+    const { provider, findActiveKey, fallbackGet } = buildProvider({
       stored: 'stored-key',
       env: 'env-key',
     });
@@ -31,7 +30,7 @@ describe('CredentialSecretProvider (SPEC-020)', () => {
       'stored-key',
     );
     expect(findActiveKey).toHaveBeenCalledWith('teacher-1');
-    expect(fallback.get).not.toHaveBeenCalled();
+    expect(fallbackGet).not.toHaveBeenCalled();
   });
 
   it('falls back to the env provider without a tenant or stored key', async () => {
@@ -57,6 +56,8 @@ describe('CredentialSecretProvider (SPEC-020)', () => {
   it('returns undefined when nothing is configured', async () => {
     const { provider } = buildProvider({});
 
-    await expect(provider.get('GEMINI_API_KEY', 'teacher-1')).resolves.toBeUndefined();
+    await expect(
+      provider.get('GEMINI_API_KEY', 'teacher-1'),
+    ).resolves.toBeUndefined();
   });
 });

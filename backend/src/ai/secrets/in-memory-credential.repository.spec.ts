@@ -3,7 +3,9 @@ import type { SaveCredentialInput } from './credential.repository';
 
 const ENCRYPTED = { ciphertext: 'c', iv: 'i', authTag: 't' };
 
-function buildInput(overrides: Partial<SaveCredentialInput> = {}): SaveCredentialInput {
+function buildInput(
+  overrides: Partial<SaveCredentialInput> = {},
+): SaveCredentialInput {
   return {
     ownerId: 'teacher-1',
     provider: 'gemini',
@@ -19,7 +21,11 @@ describe('InMemoryCredentialRepository (SPEC-020)', () => {
 
     const metadata = await repository.save(buildInput());
 
-    expect(metadata).toMatchObject({ provider: 'gemini', keyHint: 'AB12', status: 'active' });
+    expect(metadata).toMatchObject({
+      provider: 'gemini',
+      keyHint: 'AB12',
+      status: 'active',
+    });
     expect(JSON.stringify(metadata)).not.toContain('ciphertext');
   });
 
@@ -36,7 +42,9 @@ describe('InMemoryCredentialRepository (SPEC-020)', () => {
     expect(all).toHaveLength(2);
     expect(all.filter((item) => item.status === 'active')).toHaveLength(1);
     expect(all.find((item) => item.keyHint === 'OLD1')?.status).toBe('revoked');
-    expect(all.find((item) => item.keyHint === 'OLD1')?.rotatedAt).toBeDefined();
+    expect(
+      all.find((item) => item.keyHint === 'OLD1')?.rotatedAt,
+    ).toBeDefined();
   });
 
   it('scopes credentials per owner', async () => {

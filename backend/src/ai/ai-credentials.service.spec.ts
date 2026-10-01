@@ -7,10 +7,14 @@ import { AiErrorException } from '../common/errors/ai-error.exception';
 
 const API_KEY = 'AIzaSyTestKey1234567890abcdefg';
 
-function buildService(options: { enabled?: boolean; crypto?: CryptoService | null } = {}) {
+function buildService(
+  options: { enabled?: boolean; crypto?: CryptoService | null } = {},
+) {
   const repository = new InMemoryCredentialRepository();
   const crypto =
-    options.crypto === undefined ? new CryptoService(randomBytes(32)) : options.crypto;
+    options.crypto === undefined
+      ? new CryptoService(randomBytes(32))
+      : options.crypto;
   const configService = new ConfigService({
     AI_CREDENTIALS_ENABLED: options.enabled ?? true,
   });
@@ -25,7 +29,11 @@ describe('AiCredentialsService (SPEC-020)', () => {
 
     const metadata = await service.save('teacher-1', 'gemini', API_KEY);
 
-    expect(metadata).toMatchObject({ provider: 'gemini', keyHint: 'defg', status: 'active' });
+    expect(metadata).toMatchObject({
+      provider: 'gemini',
+      keyHint: 'defg',
+      status: 'active',
+    });
     expect(JSON.stringify(metadata)).not.toContain(API_KEY);
 
     const stored = await repository.findActive('teacher-1', 'gemini');
@@ -45,7 +53,9 @@ describe('AiCredentialsService (SPEC-020)', () => {
   it('rejects invalid keys and providers', async () => {
     const { service } = buildService();
 
-    await expect(service.save('teacher-1', 'gemini', 'short')).rejects.toMatchObject({
+    await expect(
+      service.save('teacher-1', 'gemini', 'short'),
+    ).rejects.toMatchObject({
       code: 'VALIDATION_FAILED',
     });
     await expect(
