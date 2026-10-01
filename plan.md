@@ -17,10 +17,10 @@ Leyenda:
 ## Estado actual
 
 - Fase activa: **Fase 2 — Jobs, SSE y persistencia**
-- Última tarea cerrada: SPEC-007 (implementado; SSE y cola BullMQ/inline verdes)
-- Próxima tarea: SPEC-008 (persistencia del libro, auditoría y signed URLs)
-- Bloqueos: ninguno. SPEC-001 rotación/purga de key sigue pendiente del owner
-  (bloquea pruebas con Gemini real, no el desarrollo).
+- Última tarea cerrada: SPEC-008 (implementado; persistencia, auditoría y soft delete verdes)
+- Próxima tarea: SPEC-009 (frontend genera y lee solo vía backend)
+- Bloqueos: ninguno. SPEC-001 rotación/purga de key y migraciones 0001/0002 +
+  bucket `book-images` son acciones manuales del owner.
 
 ---
 
@@ -79,10 +79,10 @@ Leyenda:
 - [x] SPEC-007: Fallback polling
 
 ### EPIC 2.3 — Persistencia del libro
-- [ ] SPEC-008: Guardar libro validado + URLs de imágenes
-- [ ] SPEC-008: Signed URLs con expiración
-- [ ] SPEC-008: Auditoría (quién, cuándo, prompt version, costo)
-- [ ] SPEC-008: Soft delete y versionado
+- [x] SPEC-008: Guardar libro validado + URLs de imágenes
+- [x] SPEC-008: Signed URLs con expiración
+- [x] SPEC-008: Auditoría (quién, cuándo, prompt version, costo)
+- [x] SPEC-008: Soft delete y versionado
 
 ---
 
@@ -276,6 +276,7 @@ Leyenda:
 | SPEC-005 | Validación de salida, moderación, límites y job in-memory | implementado | owner | 2026-09-30 |
 | SPEC-006 | BullMQ/Redis + jobs Supabase + retries + breaker | implementado | owner | 2026-09-30 |
 | SPEC-007 | SSE de estado de job + fallback polling | implementado | owner | 2026-09-30 |
+| SPEC-008 | Persistencia de libros, imágenes, auditoría y soft delete | implementado | owner | 2026-09-30 |
 | … | … | … | … | … |
 
 ## Notas
@@ -324,3 +325,11 @@ Leyenda:
   de `@nestjs/bullmq` para mantener el driver condicional (una dep menos).
   Métricas: 130 unit + 1 e2e verdes, lint/prettier limpios; smoke verifica SSE
   registrado en OpenAPI y 401 sin token.
+- SPEC-008: tablas `books` + `book_versions` (migración `0002_books.sql`) con
+  `save` idempotente por `generation_job_id`, auditoría por versión, soft
+  delete y `/api/v1/books` (list/get/delete). Imágenes por página best-effort
+  tras `BOOK_IMAGES_ENABLED` (default false), bucket privado `book-images` y
+  signed URLs con TTL configurable (nunca se persisten URLs). `stories` del
+  frontend queda intacta para SPEC-010. Acciones manuales del owner: aplicar
+  0001/0002, crear bucket y rotar la key. Métricas: 163 unit + 1 e2e verdes,
+  lint/prettier limpios; smoke verifica 401 y paths en OpenAPI.
