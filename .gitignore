@@ -17,6 +17,9 @@ test-results
 playwright-report
 blob-report
 
+# Coverage
+coverage
+
 # Env files: NEVER commit secrets (keep .env.example tracked)
 .env
 .env.*
