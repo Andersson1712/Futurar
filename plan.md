@@ -16,9 +16,9 @@ Leyenda:
 
 ## Estado actual
 
-- Fase activa: **Fase 1 — Backend Nest como fuente de verdad de la IA**
-- Última tarea cerrada: SPEC-005 (implementado; generación síncrona operativa con flag)
-- Próxima tarea: SPEC-006 (BullMQ + jobs persistentes)
+- Fase activa: **Fase 2 — Jobs, SSE y persistencia**
+- Última tarea cerrada: SPEC-007 (implementado; SSE y cola BullMQ/inline verdes)
+- Próxima tarea: SPEC-008 (persistencia del libro, auditoría y signed URLs)
 - Bloqueos: ninguno. SPEC-001 rotación/purga de key sigue pendiente del owner
   (bloquea pruebas con Gemini real, no el desarrollo).
 
@@ -68,15 +68,15 @@ Leyenda:
 ## Fase 2 — Jobs, SSE y persistencia
 
 ### EPIC 2.1 — Cola de generación
-- [ ] SPEC-006: BullMQ + Redis para book-generation
-- [ ] SPEC-006: GenerationJob en Supabase (id, userId, profileId, status, …)
-- [ ] SPEC-006: Retries con backoff + circuit breaker
-- [ ] SPEC-006: Idempotencia por Idempotency-Key
+- [x] SPEC-006: BullMQ + Redis para book-generation
+- [x] SPEC-006: GenerationJob en Supabase (id, userId, profileId, status, …)
+- [x] SPEC-006: Retries con backoff + circuit breaker
+- [x] SPEC-006: Idempotencia por Idempotency-Key
 
 ### EPIC 2.2 — Streaming al frontend
-- [ ] SPEC-007: GET /ai/jobs/:id/events (SSE)
-- [ ] SPEC-007: Auth en SSE
-- [ ] SPEC-007: Fallback polling
+- [x] SPEC-007: GET /ai/jobs/:id/events (SSE)
+- [x] SPEC-007: Auth en SSE
+- [x] SPEC-007: Fallback polling
 
 ### EPIC 2.3 — Persistencia del libro
 - [ ] SPEC-008: Guardar libro validado + URLs de imágenes
@@ -274,6 +274,8 @@ Leyenda:
 | SPEC-003 | Contratos HTTP IA: DTOs, OpenAPI /api/v1, idempotencia, auth | implementado | owner | 2026-09-30 |
 | SPEC-004 | Prompts versionados book/v1 + PromptBuilder | implementado | owner | 2026-09-30 |
 | SPEC-005 | Validación de salida, moderación, límites y job in-memory | implementado | owner | 2026-09-30 |
+| SPEC-006 | BullMQ/Redis + jobs Supabase + retries + breaker | implementado | owner | 2026-09-30 |
+| SPEC-007 | SSE de estado de job + fallback polling | implementado | owner | 2026-09-30 |
 | … | … | … | … | … |
 
 ## Notas
@@ -313,3 +315,12 @@ Leyenda:
   reemplaza por BullMQ/Redis sin cambiar contratos. Códigos nuevos:
   `INVALID_OUTPUT` (502) y `CONTENT_BLOCKED` (422). Métricas: 91 unit + 1 e2e
   verdes, lint/prettier limpios.
+- SPEC-006/007: pipeline durable con `QUEUE_DRIVER=inline|bullmq` (default
+  bullmq solo con `REDIS_URL`), `JobRepository` (Supabase + migración
+  `0001_generation_jobs.sql` y fallback in-memory), retries 3× backoff
+  exponencial, circuit breaker (5 fallos/60s), idempotencia Redis o in-memory.
+  SSE en `/api/v1/ai/jobs/:id/events` con polling server-side 1s, heartbeat 15s
+  y cierre en estado terminal; auth header-only. Se usó `bullmq` directo en vez
+  de `@nestjs/bullmq` para mantener el driver condicional (una dep menos).
+  Métricas: 130 unit + 1 e2e verdes, lint/prettier limpios; smoke verifica SSE
+  registrado en OpenAPI y 401 sin token.
