@@ -16,11 +16,10 @@ Leyenda:
 
 ## Estado actual
 
-- Fase activa: **Fase 3 — Migración del frontend**
-- Última tarea cerrada: SPEC-010 (implementado; generación y sesión vía backend)
-- Próxima tarea: SPEC-011 (clic gana al foco del barrido)
-- Bloqueos: ninguno. Acciones manuales del owner: rotación de key, migraciones
-  y bucket de imágenes.
+- Fase activa: **Fase 4 — Accesibilidad: bugs críticos**
+- Última tarea cerrada: SPEC-011 (implementado; runner de tests + clic gana al barrido)
+- Próxima tarea: SPEC-012 (scroll bloqueado en mobile/desktop)
+- Rama de integración: `dev` (todo SPEC-001→011); `main` se actualiza al cerrar fase.
 
 ---
 
@@ -106,10 +105,10 @@ Leyenda:
 ## Fase 4 — Accesibilidad: bugs críticos
 
 ### EPIC 4.1 — Clic gana al foco del barrido
-- [ ] SPEC-011: Fix pointerdown con closest('[data-option]')
-- [ ] SPEC-011: Cancelar timer del barrido al interactuar
-- [ ] SPEC-011: Test: foco en A, click en B → selecciona B
-- [ ] SPEC-011: Modos por perfil (barrido/mouse/pulsador/táctil)
+- [x] SPEC-011: Fix pointerdown con data-option
+- [x] SPEC-011: Cancelar timer del barrido al interactuar
+- [x] SPEC-011: Test: foco en A, click en B → selecciona B
+- [ ] SPEC-015: Modos por perfil (movido desde SPEC-011)
 
 ### EPIC 4.2 — Scroll bloqueado
 - [ ] SPEC-012: Quitar overflow:hidden global
@@ -279,6 +278,7 @@ Leyenda:
 | SPEC-008 | Persistencia de libros, imágenes, auditoría y soft delete | implementado | owner | 2026-09-30 |
 | SPEC-009 | Frontend genera vía backend (SSE + polling + biblioteca) | implementado | owner | 2026-09-30 |
 | SPEC-010 | Sesión (JWT/refresh/logout) y auditoría de acceso a datos | implementado | owner | 2026-09-30 |
+| SPEC-011 | Clic/pointerdown gana al foco del barrido + runner de tests | implementado | owner | 2026-09-30 |
 | … | … | … | … | … |
 
 ## Notas
@@ -346,3 +346,10 @@ Leyenda:
   typecheck/build/check verdes; backend 165 unit + 1 e2e, lint/prettier limpios.
   Deuda registrada: students/options siguen en Supabase (SPEC-021/023) y
   analytics en SPEC-027.
+- SPEC-011: opciones con `data-option` y selección en `pointerdown` (guarda de
+  disparo único + cancelación del timer del barrido); `useInputDevice` pasó de
+  `click` a `pointerdown` ignorando botones/inputs/opciones. Runner mínimo de
+  SPEC-017 adelantado: Vitest 5 + RTL + jsdom con `npm test` (7 tests de
+  regresión). Modos por perfil movidos a SPEC-015. `dev` es la rama de
+  integración (SPEC-001→011) y `main` se actualiza al cerrar fase; el dev
+  legacy quedó respaldado en `dev-legacy-backup`.
