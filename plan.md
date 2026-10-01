@@ -16,11 +16,11 @@ Leyenda:
 
 ## Estado actual
 
-- Fase activa: **Fase 2 — Jobs, SSE y persistencia**
-- Última tarea cerrada: SPEC-008 (implementado; persistencia, auditoría y soft delete verdes)
-- Próxima tarea: SPEC-009 (frontend genera y lee solo vía backend)
-- Bloqueos: ninguno. SPEC-001 rotación/purga de key y migraciones 0001/0002 +
-  bucket `book-images` son acciones manuales del owner.
+- Fase activa: **Fase 3 — Migración del frontend**
+- Última tarea cerrada: SPEC-010 (implementado; generación y sesión vía backend)
+- Próxima tarea: SPEC-011 (clic gana al foco del barrido)
+- Bloqueos: ninguno. Acciones manuales del owner: rotación de key, migraciones
+  y bucket de imágenes.
 
 ---
 
@@ -89,17 +89,17 @@ Leyenda:
 ## Fase 3 — Migración del frontend
 
 ### EPIC 3.1 — Frontend consume solo backend
-- [ ] SPEC-009: Reemplazar llamadas Gemini por llamadas a Nest
-- [ ] SPEC-009: Eliminar @google/generative-ai del package.json
-- [ ] SPEC-009: Eliminar VITE_GEMINI_* del frontend
-- [ ] SPEC-009: Adaptar estados de carga al SSE
-- [ ] SPEC-009: Manejo de errores con códigos + i18n
+- [x] SPEC-009: Reemplazar llamadas Gemini por llamadas a Nest
+- [x] SPEC-001: Eliminar @google/generative-ai del package.json
+- [x] SPEC-001: Eliminar VITE_GEMINI_* del frontend
+- [x] SPEC-009: Adaptar estados de carga al SSE
+- [x] SPEC-009: Manejo de errores con códigos + i18n
 
 ### EPIC 3.2 — Supabase solo Auth en frontend
-- [ ] SPEC-010: Auditar que frontend no use Supabase para datos
-- [ ] SPEC-010: JWT en cada request al backend
-- [ ] SPEC-010: Refresh de sesión
-- [ ] SPEC-010: Logout limpia estado local
+- [x] SPEC-010: Auditar que frontend no use Supabase para datos
+- [x] SPEC-010: JWT en cada request al backend
+- [x] SPEC-010: Refresh de sesión
+- [x] SPEC-010: Logout limpia estado local
 
 ---
 
@@ -277,6 +277,8 @@ Leyenda:
 | SPEC-006 | BullMQ/Redis + jobs Supabase + retries + breaker | implementado | owner | 2026-09-30 |
 | SPEC-007 | SSE de estado de job + fallback polling | implementado | owner | 2026-09-30 |
 | SPEC-008 | Persistencia de libros, imágenes, auditoría y soft delete | implementado | owner | 2026-09-30 |
+| SPEC-009 | Frontend genera vía backend (SSE + polling + biblioteca) | implementado | owner | 2026-09-30 |
+| SPEC-010 | Sesión (JWT/refresh/logout) y auditoría de acceso a datos | implementado | owner | 2026-09-30 |
 | … | … | … | … | … |
 
 ## Notas
@@ -333,3 +335,14 @@ Leyenda:
   frontend queda intacta para SPEC-010. Acciones manuales del owner: aplicar
   0001/0002, crear bucket y rotar la key. Métricas: 163 unit + 1 e2e verdes,
   lint/prettier limpios; smoke verifica 401 y paths en OpenAPI.
+- SPEC-009/010: frontend con cliente API propio (`services/backendApi.ts`,
+  `bookGeneration.ts` con SSE por fetch + polling y `backendBooks.ts`), generación
+  real con errores es-AR por código, biblioteca que mezcla libros del backend
+  (`GET /books?profileId=`) con `stories` legacy en solo-lectura y sin escrituras
+  duplicadas. Backend: `profileId` opcional en el request, `story_config` en las
+  versiones y filtro de listado. Sesión: JWT fresco con refresh+retry en 401,
+  logout limpia estado y check `npm run check:supabase` con allowlist.
+  Scripts nuevos: `typecheck` y `check:supabase`. Métricas: frontend
+  typecheck/build/check verdes; backend 165 unit + 1 e2e, lint/prettier limpios.
+  Deuda registrada: students/options siguen en Supabase (SPEC-021/023) y
+  analytics en SPEC-027.
