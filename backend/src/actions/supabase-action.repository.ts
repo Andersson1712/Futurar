@@ -48,6 +48,7 @@ interface OptionRow {
   icon: string | null;
   option_type: string | null;
   max_enabled: number | null;
+  max_per_page: number | null;
   sort_order: number | null;
   is_active: boolean | null;
   created_at: string | null;
@@ -238,6 +239,7 @@ export class SupabaseActionRepository implements ActionRepository {
         icon: input.icon ?? 'category',
         option_type: input.optionType ?? 'list',
         max_enabled: input.maxEnabled ?? 4,
+        max_per_page: input.maxPerPage ?? 6,
         sort_order: input.sortOrder ?? 0,
       })
       .select()
@@ -268,6 +270,7 @@ export class SupabaseActionRepository implements ActionRepository {
     if (patch.icon !== undefined) values.icon = patch.icon;
     if (patch.optionType !== undefined) values.option_type = patch.optionType;
     if (patch.maxEnabled !== undefined) values.max_enabled = patch.maxEnabled;
+    if (patch.maxPerPage !== undefined) values.max_per_page = patch.maxPerPage;
     if (patch.sortOrder !== undefined) values.sort_order = patch.sortOrder;
     if (patch.isActive !== undefined) values.is_active = patch.isActive;
 
@@ -542,7 +545,7 @@ export class SupabaseActionRepository implements ActionRepository {
     for (const entry of catalog) {
       if (entry.action.code !== 'create') continue;
       if (!entry.action.isActive || !entry.option.isActive) continue;
-      if (!entry.item.isActive || entry.item.level !== 1) continue;
+      if (!entry.item.isActive) continue;
 
       const profileItem = state.get(entry.item.id);
 
@@ -557,6 +560,8 @@ export class SupabaseActionRepository implements ActionRepository {
         label: entry.item.label,
         icon: entry.item.icon,
         isEnabled: true,
+        level: entry.item.level,
+        sortOrder: entry.item.sortOrder,
       });
     }
 
@@ -802,6 +807,7 @@ function mapOption(row: OptionRow, items: ActionOptionItem[]): ActionOption {
     icon: row.icon ?? 'category',
     optionType: (row.option_type as ActionOption['optionType']) ?? 'list',
     maxEnabled: row.max_enabled ?? 4,
+    maxPerPage: row.max_per_page ?? 6,
     sortOrder: row.sort_order ?? 0,
     isActive: row.is_active ?? true,
     createdAt: new Date(row.created_at ?? Date.now()),

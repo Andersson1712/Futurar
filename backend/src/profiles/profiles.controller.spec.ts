@@ -4,6 +4,7 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { configureApp } from '../app.setup';
 import { ACTION_REPOSITORY } from '../actions/action.repository';
+import { ActionsService } from '../actions/actions.service';
 import { InMemoryActionRepository } from '../actions/in-memory-action.repository';
 import { SupabaseAuthGuard } from '../common/guards/supabase-auth.guard';
 import { InMemoryProfileRepository } from './in-memory-profile.repository';
@@ -24,6 +25,7 @@ describe('ProfilesController (SPEC-021)', () => {
       controllers: [ProfilesController],
       providers: [
         ProfilesService,
+        ActionsService,
         { provide: PROFILE_REPOSITORY, useClass: InMemoryProfileRepository },
         { provide: ACTION_REPOSITORY, useClass: InMemoryActionRepository },
       ],

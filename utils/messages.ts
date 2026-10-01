@@ -37,6 +37,7 @@ export const TRANSLATIONS = {
   'wizard.library': 'Mi Biblioteca',
   'wizard.design': 'Diseñar',
   'wizard.retry': 'Intentar de nuevo',
+  'wizard.moreOptions': 'Más opciones',
 
   'library.loading': 'Cargando tu biblioteca...',
   'library.emptyTitle': 'Tu biblioteca está vacía',
@@ -97,6 +98,9 @@ export const TRANSLATIONS = {
   'editor.catalogEmpty': 'Todavía no hay opciones en el catálogo.',
   'editor.enable': 'habilitar',
   'editor.disable': 'deshabilitar',
+  'editor.limitOption': 'Límite de elementos habilitados alcanzado.',
+  'editor.limitPage': 'Límite de elementos por página alcanzado.',
+  'editor.limitExceeded': 'Se superó un límite. Deshabilitá algunos elementos.',
   'editor.contactName': 'Nombre',
   'editor.contactRelationship': 'Relación',
   'editor.contactReason': 'Motivo de dedicatoria (opcional)',

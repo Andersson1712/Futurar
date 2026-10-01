@@ -28,10 +28,10 @@ const PROFILE = {
 };
 
 const PROFILE_OPTIONS = {
-  protagonists: [{ id: 'p1', label: 'Un dragón', icon: 'pets', isEnabled: true }],
-  scenarios: [{ id: 's1', label: 'Un bosque', icon: 'forest', isEnabled: true }],
-  missions: [{ id: 'm1', label: 'Una estrella', icon: 'star', isEnabled: true }],
-  styles: [{ id: 'st1', label: 'Acuarela', icon: 'brush', isEnabled: true }],
+  protagonists: [{ id: 'p1', label: 'Un dragón', icon: 'pets', isEnabled: true, level: 1 }],
+  scenarios: [{ id: 's1', label: 'Un bosque', icon: 'forest', isEnabled: true, level: 1 }],
+  missions: [{ id: 'm1', label: 'Una estrella', icon: 'star', isEnabled: true, level: 1 }],
+  styles: [{ id: 'st1', label: 'Acuarela', icon: 'brush', isEnabled: true, level: 1 }],
 };
 
 const CONTACT = {
@@ -132,6 +132,7 @@ export async function mockBackend(page: Page): Promise<void> {
             icon: 'face',
             optionType: 'list',
             maxEnabled: 4,
+            maxPerPage: 6,
             sortOrder: 1,
             isActive: true,
             createdAt: '2026-01-01T00:00:00.000Z',

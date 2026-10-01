@@ -67,6 +67,8 @@ export interface ProfileOption {
   label: string;
   icon: string;
   isEnabled: boolean;
+  level: number;
+  sortOrder: number;
 }
 
 export interface ProfileOptions {
