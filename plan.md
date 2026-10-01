@@ -16,10 +16,10 @@ Leyenda:
 
 ## Estado actual
 
-- Fase activa: **Fase 6 — Panel de administración**
-- Última tarea cerrada: SPEC-023 (implementado; catálogo de acciones/opciones por backend)
-- Próxima tarea: SPEC-023B (límites por pantalla/acción/página y paginación del barrido)
-- Rama de integración: `dev` (todo SPEC-001→023, protegida con CI); `main` congelada.
+- Fase activa: **Fase 7 — Proceso, gobernanza y open source**
+- Última tarea cerrada: SPEC-024 (gobernanza: ramas protegidas, commitlint/husky, plantillas)
+- Próxima tarea: SPEC-025 (documentación pública: README, CONTRIBUTING, ADRs, guías)
+- Rama de integración: `dev` (todo SPEC-001→023B, protegida con CI); `main` congelada y protegida.
 
 ---
 
@@ -190,19 +190,19 @@ Leyenda:
 - [x] SPEC-023: Modelo Acción → Opciones → Ítems (nivel/tipo) por docente
 - [x] SPEC-023: CRUD de acciones y opciones (backend; editor docente migrado)
 - [x] SPEC-023: Permisos por perfil (`profile_actions`/`profile_option_items`)
-- [ ] SPEC-023B: Límites por pantalla/acción/página (max_enabled, paginación)
+- [x] SPEC-023B: Límites por pantalla/acción/página (max_enabled, paginación)
 
 ---
 
 ## Fase 7 — Proceso, gobernanza y open source
 
 ### EPIC 7.1 — Git flow
-- [ ] SPEC-024: Proteger main (PR, review, CI, linear, no force push)
-- [ ] SPEC-024: commitlint + husky
-- [ ] SPEC-024: PR template con checklist a11y y tests
-- [ ] SPEC-024: Issue templates
-- [ ] SPEC-024: CODEOWNERS
-- [ ] SPEC-024: Squash merge por defecto
+- [x] SPEC-024: Proteger main (PR, review, CI, linear, no force push)
+- [x] SPEC-024: commitlint + husky
+- [x] SPEC-024: PR template con checklist a11y y tests
+- [x] SPEC-024: Issue templates
+- [x] SPEC-024: CODEOWNERS
+- [x] SPEC-024: Squash merge por defecto
 
 ### EPIC 7.2 — Documentación
 - [ ] SPEC-025: README.md (en) + README.es.md (es)

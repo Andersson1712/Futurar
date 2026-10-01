@@ -3,6 +3,13 @@
 # Default owner
 * @Andersson1712
 
+# Repo governance
+/.github/ @Andersson1712
+/CODEOWNERS @Andersson1712
+/commitlint.config.js @Andersson1712
+/.husky/ @Andersson1712
+/scripts/github-governance.sh @Andersson1712
+
 # AI must NEVER run in the frontend (SPEC-001 freeze).
 # Any change that adds an AI SDK, provider key or provider call here requires
 # explicit review and violates AGENTS.md.
@@ -11,3 +18,8 @@
 /package.json @Andersson1712
 /docs/security/ @Andersson1712
 /backend/src/ai/ @Andersson1712
+
+# Backend data ownership (profiles/actions are the source of truth).
+/backend/src/actions/ @Andersson1712
+/backend/src/profiles/ @Andersson1712
+/scripts/check-supabase-imports.mjs @Andersson1712
