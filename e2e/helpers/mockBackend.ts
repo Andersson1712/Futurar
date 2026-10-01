@@ -1,46 +1,37 @@
 import type { Page } from '@playwright/test';
 
-const STUDENT = {
+const PROFILE = {
   id: 'student-1',
+  teacherId: 'teacher-1',
   name: 'Ana',
-  avatar_icon: 'person',
-  is_active: true,
   age: 8,
-  notes: null,
-  created_at: '2026-01-01T00:00:00.000Z',
-  teacher_id: 'teacher-1',
-  student_settings: [
-    {
-      id: 'settings-1',
-      student_id: 'student-1',
-      scan_interval: 800,
-      scan_columns: 2,
-      voice_feedback: false,
-      sound_enabled: false,
-      sweep_enabled: true,
-      input_mode: 'scan',
-      line_height: 'normal',
-      bold_titles: false,
-      uppercase: false,
-      voice_gender: 'auto',
-      font_size: 'normal',
-    },
-  ],
+  avatarIcon: 'person',
+  isActive: true,
+  createdAt: '2026-01-01T00:00:00.000Z',
+  updatedAt: '2026-01-01T00:00:00.000Z',
+  settings: {
+    scanInterval: 800,
+    scanColumns: 2,
+    voiceFeedback: false,
+    soundEnabled: false,
+    sweepEnabled: true,
+    inputMode: 'scan',
+    lineHeight: 'normal',
+    boldTitles: false,
+    uppercase: false,
+    voiceGender: 'auto',
+    fontSize: 'normal',
+    modules: { create: true, library: true, design: false },
+    bookStorySize: 'medium',
+    bookAudience: 'child',
+  },
 };
 
-const OPTIONS: Record<string, unknown[]> = {
-  student_protagonists: [
-    { id: 'p1', label: 'Un dragón', icon: 'pets', is_enabled: true },
-  ],
-  student_scenarios: [
-    { id: 's1', label: 'Un bosque', icon: 'forest', is_enabled: true },
-  ],
-  student_missions: [
-    { id: 'm1', label: 'Una estrella', icon: 'star', is_enabled: true },
-  ],
-  student_styles: [
-    { id: 'st1', label: 'Acuarela', icon: 'brush', is_enabled: true },
-  ],
+const PROFILE_OPTIONS = {
+  protagonists: [{ id: 'p1', label: 'Un dragón', icon: 'pets', isEnabled: true }],
+  scenarios: [{ id: 's1', label: 'Un bosque', icon: 'forest', isEnabled: true }],
+  missions: [{ id: 'm1', label: 'Una estrella', icon: 'star', isEnabled: true }],
+  styles: [{ id: 'st1', label: 'Acuarela', icon: 'brush', isEnabled: true }],
 };
 
 const COMPLETED_JOB = {
@@ -66,24 +57,30 @@ const COMPLETED_JOB = {
 };
 
 export async function mockBackend(page: Page): Promise<void> {
-  // Supabase REST (generic first, specific later: Playwright uses LIFO).
+  // Legacy Supabase REST fallback (only Auth + legacy reads remain).
   await page.route('**/rest/v1/**', (route) => route.fulfill({ json: [] }));
-  await page.route('**/rest/v1/students**', (route) =>
-    route.fulfill({ json: [STUDENT] }),
-  );
 
-  for (const [table, rows] of Object.entries(OPTIONS)) {
-    await page.route(`**/rest/v1/${table}**`, (route) =>
-      route.fulfill({ json: rows }),
-    );
-  }
-
-  // Nest backend.
+  // Nest backend: generic 404 first, specific routes later (Playwright LIFO).
   await page.route('**/api/v1/**', (route) =>
     route.fulfill({
       status: 404,
       json: { statusCode: 404, code: 'NOT_FOUND', message: 'not mocked' },
     }),
+  );
+  await page.route('**/api/v1/profiles', (route) =>
+    route.fulfill({ json: [PROFILE] }),
+  );
+  await page.route(/\/api\/v1\/profiles\?active=/, (route) =>
+    route.fulfill({ json: [PROFILE] }),
+  );
+  await page.route('**/api/v1/profiles/student-1/options', (route) =>
+    route.fulfill({ json: PROFILE_OPTIONS }),
+  );
+  await page.route('**/api/v1/profiles/student-1/settings', (route) =>
+    route.fulfill({ json: PROFILE.settings }),
+  );
+  await page.route('**/api/v1/profiles/student-1', (route) =>
+    route.fulfill({ json: PROFILE }),
   );
   await page.route('**/api/v1/ai/books/generate', (route) =>
     route.fulfill({

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { supabase } from '../services/supabase';
+import { listProfileOptions, listProfiles, mapProfileSettings, mapProfileToStudent } from '../services/backendProfiles';
 import ScanningGrid from './ScanningGrid';
 import StoryReader from './StoryReader';
 import StoryDetails from './StoryDetails';
@@ -113,23 +113,15 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
         });
     }, [currentStudent, accessibility, applyProfileSettings]);
 
-    // Cargar estudiantes
+    // Cargar estudiantes (SPEC-021: solo vía backend)
     useEffect(() => {
         const loadStudents = async () => {
             try {
-                const { data, error: dbError } = await supabase
-                    .from('students')
-                    .select(`*, student_settings(*)`)
-                    .eq('is_active', true)
-                    .order('name');
+                const profiles = await listProfiles(true);
 
-                if (dbError) throw dbError;
-
-                const processedData = (data || []).map(s => ({
-                    ...s,
-                    student_settings: Array.isArray(s.student_settings) && s.student_settings.length > 0
-                        ? s.student_settings[0]
-                        : (s.student_settings as unknown as StudentSettings | null)
+                const processedData = profiles.map(profile => ({
+                    ...mapProfileToStudent(profile),
+                    student_settings: mapProfileSettings(profile.settings),
                 })) as StudentWithSettings[];
 
                 setStudents(processedData);
@@ -279,17 +271,12 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
             }
 
             try {
-                const [protRes, scenRes, missRes, styleRes] = await Promise.all([
-                    supabase.from('student_protagonists').select('*').eq('student_id', currentStudent.id).eq('is_enabled', true),
-                    supabase.from('student_scenarios').select('*').eq('student_id', currentStudent.id).eq('is_enabled', true),
-                    supabase.from('student_missions').select('*').eq('student_id', currentStudent.id).eq('is_enabled', true),
-                    supabase.from('student_styles').select('*').eq('student_id', currentStudent.id).eq('is_enabled', true)
-                ]);
+                const options = await listProfileOptions(currentStudent.id);
 
-                setStudentProtagonists((protRes.data || []).map(p => ({ id: p.id, label: p.label, icon: p.icon })));
-                setStudentScenarios((scenRes.data || []).map(s => ({ id: s.id, label: s.label, icon: s.icon })));
-                setStudentMissions((missRes.data || []).map(m => ({ id: m.id, label: m.label, icon: m.icon })));
-                setStudentStyles((styleRes.data || []).map(st => ({ id: st.id, label: st.label, icon: st.icon })));
+                setStudentProtagonists(options.protagonists.map(p => ({ id: p.id, label: p.label, icon: p.icon })));
+                setStudentScenarios(options.scenarios.map(s => ({ id: s.id, label: s.label, icon: s.icon })));
+                setStudentMissions(options.missions.map(m => ({ id: m.id, label: m.label, icon: m.icon })));
+                setStudentStyles(options.styles.map(st => ({ id: st.id, label: st.label, icon: st.icon })));
                 setElementsLoaded(true);
             } catch (err) {
                 console.error('Error loading student elements:', err);

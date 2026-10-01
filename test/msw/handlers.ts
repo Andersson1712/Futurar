@@ -53,6 +53,50 @@ export const SAMPLE_DETAIL: BookDetailPayload = {
   updatedAt: '2026-01-01T00:00:00.000Z',
 };
 
+export const SAMPLE_PROFILE_SETTINGS = {
+  scanInterval: 3000,
+  scanColumns: 2,
+  voiceFeedback: false,
+  soundEnabled: false,
+  sweepEnabled: true,
+  inputMode: 'scan',
+  lineHeight: 'normal',
+  boldTitles: false,
+  uppercase: false,
+  voiceGender: 'auto',
+  fontSize: 'normal',
+  modules: { create: true, library: true, design: false },
+  bookStorySize: 'medium',
+  bookAudience: 'child',
+};
+
+export const SAMPLE_PROFILE = {
+  id: 'student-1',
+  teacherId: 'teacher-1',
+  name: 'Ana',
+  age: 8,
+  avatarIcon: 'person',
+  isActive: true,
+  createdAt: '2026-01-01T00:00:00.000Z',
+  updatedAt: '2026-01-01T00:00:00.000Z',
+  settings: SAMPLE_PROFILE_SETTINGS,
+};
+
+export const SAMPLE_PROFILE_OPTIONS = {
+  protagonists: [
+    { id: 'p1', label: 'Un dragón', icon: 'pets', isEnabled: true },
+  ],
+  scenarios: [
+    { id: 's1', label: 'Un bosque', icon: 'forest', isEnabled: true },
+  ],
+  missions: [
+    { id: 'm1', label: 'Una estrella', icon: 'star', isEnabled: true },
+  ],
+  styles: [
+    { id: 'st1', label: 'Acuarela', icon: 'brush', isEnabled: true },
+  ],
+};
+
 export function sseResponse(
   events: Array<{ type: string; data: unknown }>,
 ): HttpResponse<ReadableStream<Uint8Array>> {
@@ -93,6 +137,42 @@ export const handlers = [
   ),
   http.get(`${API_BASE}/api/v1/books/:id`, () =>
     HttpResponse.json(SAMPLE_DETAIL),
+  ),
+  http.get(`${API_BASE}/api/v1/profiles`, () =>
+    HttpResponse.json([SAMPLE_PROFILE]),
+  ),
+  http.post(`${API_BASE}/api/v1/profiles`, async ({ request }) => {
+    const body = (await request.json()) as Record<string, unknown>;
+
+    return HttpResponse.json(
+      {
+        ...SAMPLE_PROFILE,
+        ...body,
+        id: 'student-2',
+        settings: SAMPLE_PROFILE_SETTINGS,
+      },
+      { status: 201 },
+    );
+  }),
+  http.get(`${API_BASE}/api/v1/profiles/:id`, () =>
+    HttpResponse.json(SAMPLE_PROFILE),
+  ),
+  http.patch(`${API_BASE}/api/v1/profiles/:id`, async ({ request }) => {
+    const body = (await request.json()) as Record<string, unknown>;
+
+    return HttpResponse.json({ ...SAMPLE_PROFILE, ...body });
+  }),
+  http.delete(
+    `${API_BASE}/api/v1/profiles/:id`,
+    () => new HttpResponse(null, { status: 204 }),
+  ),
+  http.put(`${API_BASE}/api/v1/profiles/:id/settings`, async ({ request }) => {
+    const body = (await request.json()) as Record<string, unknown>;
+
+    return HttpResponse.json({ ...SAMPLE_PROFILE_SETTINGS, ...body });
+  }),
+  http.get(`${API_BASE}/api/v1/profiles/:id/options`, () =>
+    HttpResponse.json(SAMPLE_PROFILE_OPTIONS),
   ),
   http.delete(`${API_BASE}/api/v1/books/:id`, () =>
     new HttpResponse(null, { status: 204 }),

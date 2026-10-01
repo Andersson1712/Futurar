@@ -11,6 +11,7 @@ import type {
 import { CircuitBreaker } from './circuit-breaker';
 import { GenerationRunner } from './generation-runner';
 import { PromptBuilderService } from './prompt-builder.service';
+import type { ProfileSettingsProvider } from '../../profiles/profile-settings.provider';
 
 const REQUEST: GenerateBookRequestDto = {
   protagonist: 'Un dragón',
@@ -53,6 +54,10 @@ function buildRunner(job: JobRecord | null = JOB) {
     }),
   );
   const persistence = { persist } as unknown as BookPersistenceService;
+  const getBookDefaults = jest.fn().mockResolvedValue({});
+  const profileSettings = {
+    getBookDefaults,
+  } as unknown as ProfileSettingsProvider;
   const runner = new GenerationRunner(
     jobs,
     new PromptBuilderService(),
@@ -60,10 +65,19 @@ function buildRunner(job: JobRecord | null = JOB) {
     new BookOutputValidator(),
     new CircuitBreaker(),
     persistence,
+    profileSettings,
     textGenerator,
   );
 
-  return { runner, findById, markProcessing, complete, generate, persist };
+  return {
+    runner,
+    findById,
+    markProcessing,
+    complete,
+    generate,
+    persist,
+    getBookDefaults,
+  };
 }
 
 describe('GenerationRunner', () => {
@@ -103,6 +117,33 @@ describe('GenerationRunner', () => {
         totalPages: 1,
       }),
     );
+  });
+
+  it('falls back to the profile book defaults when the request omits them', async () => {
+    const job = {
+      ...JOB,
+      request: {
+        protagonist: 'Un dragón',
+        scenery: 'Un bosque',
+        mission: 'Encontrar la estrella',
+        style: 'Acuarela',
+        profileId: 'student-1',
+      },
+    };
+    const { runner, persist, getBookDefaults, generate } = buildRunner(job);
+    getBookDefaults.mockResolvedValue({ storySize: 'large', audience: 'teen' });
+    generate.mockResolvedValue({ text: VALID_BOOK_TEXT, model: 'gemini-test' });
+
+    await runner.run('job-1');
+
+    expect(getBookDefaults).toHaveBeenCalledWith('student-1');
+    const persistCalls = persist.mock.calls as unknown as Array<
+      [PersistBookInput]
+    >;
+    expect(persistCalls[0][0].storyConfig).toMatchObject({
+      storySize: 'large',
+      audience: 'teen',
+    });
   });
 
   it('throws NOT_FOUND when the job does not exist', async () => {

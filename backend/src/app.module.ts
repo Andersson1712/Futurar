@@ -6,6 +6,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AiModule } from './ai/ai.module';
 import { BooksModule } from './books/books.module';
+import { ProfilesModule } from './profiles/profiles.module';
 import { validateEnv } from './config/env.validation';
 import { SupabaseModule } from './supabase/supabase.module';
 
@@ -26,6 +27,7 @@ import { SupabaseModule } from './supabase/supabase.module';
     }),
     SupabaseModule,
     BooksModule,
+    ProfilesModule,
     AiModule,
   ],
   controllers: [AppController],

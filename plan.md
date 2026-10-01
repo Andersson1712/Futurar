@@ -17,9 +17,9 @@ Leyenda:
 ## Estado actual
 
 - Fase activa: **Fase 6 — Panel de administración**
-- Última tarea cerrada: SPEC-020 (implementado; claves cifradas por docente)
-- Próxima tarea: SPEC-021 (perfiles: CRUD, módulos, config técnica, complejidad)
-- Rama de integración: `dev` (todo SPEC-001→020, protegida con CI); `main` congelada.
+- Última tarea cerrada: SPEC-021 (implementado; perfiles/settings/opciones por backend)
+- Próxima tarea: SPEC-022 (dedicaciones: contactos por perfil)
+- Rama de integración: `dev` (todo SPEC-001→021, protegida con CI); `main` congelada.
 
 ---
 
@@ -176,10 +176,10 @@ Leyenda:
 - [x] SPEC-020: Multi-fundación (key por tenant; `tenant_id` reservado)
 
 ### EPIC 6.2 — Gestión de perfiles
-- [ ] SPEC-021: CRUD perfiles (nombre, apellido, fecha nac, avatar)
-- [ ] SPEC-021: Módulos activos por perfil
-- [ ] SPEC-021: Config técnica (velocidad, voz, barrido on/off)
-- [ ] SPEC-021: Complejidad del libro (capítulos, tamaño, audiencia)
+- [x] SPEC-021: CRUD perfiles (nombre, fecha nac, avatar; soft delete)
+- [x] SPEC-021: Módulos activos por perfil (`modules jsonb`)
+- [x] SPEC-021: Config técnica (velocidad, voz, barrido on/off) vía backend
+- [x] SPEC-021: Complejidad del libro (tamaño, audiencia) usada al generar
 
 ### EPIC 6.3 — Dedicaciones
 - [ ] SPEC-022: Contactos por perfil
@@ -414,3 +414,13 @@ Leyenda:
   API `/api/v1/ai/credentials` solo metadata; flag `AI_CREDENTIALS_ENABLED`
   default false; panel `ApiKeyPanel` en el panel docente. 190 tests backend +
   78 frontend; cobertura 38.7/38.1/36.1/40.2.
+- SPEC-021: `ProfilesModule` (migración 0005: `birthdate`, `modules`,
+  `book_story_size`, `book_audience`) con CRUD scoped por docente, soft delete,
+  `PUT /settings` validado y `GET /options` de solo lectura; el provider de
+  settings del perfil alimenta `generation-runner` (storySize/audience del
+  perfil, fallback medium/child). Frontend migra `StudentApp`/`TeacherPanel`/`SettingsPanel`/
+  `StudentEditor` a `services/backendProfiles.ts` (mappers camel↔snake),
+  `TeacherPanel` exige login, `StudentContext` eliminado y allowlist de
+  `check:supabase` reducida (queda StudentEditor/TeacherPanel para options y
+  `stories`/`usage_sessions` legacy). 204 tests backend + 88 frontend; E2E con
+  mock Nest de perfiles. Owner: aplicar 0005.
