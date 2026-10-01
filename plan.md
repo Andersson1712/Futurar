@@ -17,9 +17,9 @@ Leyenda:
 ## Estado actual
 
 - Fase activa: **Fase 5 — Frontend: test runner y calidad**
-- Última tarea cerrada: SPEC-017 (implementado; MSW + cobertura con umbral)
-- Próxima tarea: SPEC-018 (tests críticos de accesibilidad y flujo)
-- Rama de integración: `dev` (todo SPEC-001→017); `main` se actualiza al cerrar fase.
+- Última tarea cerrada: SPEC-018 (implementado; tests críticos + i18n guard + E2E)
+- Próxima tarea: SPEC-019 (CI: lint/typecheck/test/build y merge bloqueado)
+- Rama de integración: `dev` (todo SPEC-001→018); `main` se actualiza al cerrar fase.
 
 ---
 
@@ -150,13 +150,14 @@ Leyenda:
 - [x] SPEC-017: Playwright para E2E
 
 ### EPIC 5.2 — Tests críticos
-- [ ] SPEC-018: Test click wins over focus
-- [ ] SPEC-018: Test focus trap del menú Más
-- [ ] SPEC-018: Test autosave + continuar
-- [ ] SPEC-018: Test scroll mobile/desktop
-- [ ] SPEC-018: Test TTS activo por defecto
-- [ ] SPEC-018: Test i18n sin strings hardcodeados
-- [ ] SPEC-018: Test a11y con vitest-axe
+- [x] SPEC-018: Test click wins over focus (SPEC-011)
+- [x] SPEC-018: Test focus trap del menú Más (SPEC-013)
+- [x] SPEC-018: Test autosave + continuar (SPEC-014)
+- [x] SPEC-018: Test scroll mobile/desktop (SPEC-012)
+- [x] SPEC-018: Test TTS activo por defecto
+- [x] SPEC-018: Test i18n sin strings críticos hardcodeados (capa completa pendiente)
+- [x] SPEC-018: Test a11y con axe (SPEC-016)
+- [x] SPEC-018: E2E flujo crítico wizard→generación→lector
 
 ### EPIC 5.3 — CI frontend
 - [ ] SPEC-019: GitHub Actions lint/typecheck/test/build
@@ -285,6 +286,7 @@ Leyenda:
 | SPEC-015 | Accesibilidad por perfil (barrido/modos/texto/voz) | implementado | owner | 2026-09-30 |
 | SPEC-016 | Auditoría WCAG 2.2 AA, ISO 17549-3 y declaración | implementado | owner | 2026-09-30 |
 | SPEC-017 | Infra de tests: MSW + cobertura + E2E | implementado | owner | 2026-09-30 |
+| SPEC-018 | Tests críticos, i18n guard y E2E de flujo | implementado | owner | 2026-09-30 |
 | … | … | … | … | … |
 
 ## Notas
@@ -393,3 +395,8 @@ Leyenda:
   `backendBooks`; `test:coverage` con umbral no decreciente
   (35/34/32/36 sobre 36.7/36.1/33.8/38.1 medido). Bug de abort ya-señalado
   corregido en `followJob`/`delay`. 66 tests frontend.
+- SPEC-018: tests de TTS por defecto, diccionario i18n tipado (`t()` lanza en
+  claves desconocidas) con textos críticos migrados (controles, scan, wizard,
+  login, biblioteca, lector) y E2E de flujo completo con interceptación de
+  Supabase REST + API Nest (11 E2E passed / 1 skip). Umbral de cobertura subido
+  a 36/35/33/37 (medido 37.6/37.5/34.6/39). 72 tests frontend.
