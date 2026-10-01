@@ -12,7 +12,8 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
-    "check:supabase": "node scripts/check-supabase-imports.mjs"
+    "check:supabase": "node scripts/check-supabase-imports.mjs",
+    "prepare": "husky"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.93.3",
@@ -21,6 +22,8 @@
     "react-dom": "^19.3.0"
   },
   "devDependencies": {
+    "@commitlint/cli": "^21.2.3",
+    "@commitlint/config-conventional": "^21.2.3",
     "@playwright/test": "^1.63.0",
     "@testing-library/dom": "^10.4.2",
     "@testing-library/jest-dom": "^7.0.1",
@@ -32,6 +35,7 @@
     "@vitejs/plugin-react": "^5.0.0",
     "@vitest/coverage-v8": "^5.0.3",
     "axe-core": "^4.13.0",
+    "husky": "^9.1.7",
     "jsdom": "^30.1.1",
     "msw": "^2.15.0",
     "typescript": "~5.8.2",
