@@ -56,6 +56,26 @@ export const TRANSLATIONS = {
   'login.signUp': 'Crear Cuenta',
   'login.email': 'Correo electrónico',
   'login.password': 'Contraseña',
+
+  'credentials.title': 'Clave de IA (Gemini)',
+  'credentials.tab': 'Clave IA',
+  'credentials.hint':
+    'Se guarda cifrada en el servidor y nunca se muestra completa.',
+  'credentials.loading': 'Cargando credenciales...',
+  'credentials.status': 'Estado',
+  'credentials.active': 'Activa',
+  'credentials.hintLabel': 'Terminación',
+  'credentials.updated': 'Actualizada',
+  'credentials.none': 'Sin clave configurada',
+  'credentials.save': 'Guardar clave',
+  'credentials.rotate': 'Rotar clave',
+  'credentials.revoke': 'Revocar clave',
+  'credentials.placeholder': 'Pegá la API key de Gemini',
+  'credentials.saved': 'Clave guardada y activa',
+  'credentials.revoked': 'Clave revocada',
+  'credentials.signInRequired': 'Iniciá sesión para gestionar la clave',
+  'credentials.disabled':
+    'La gestión de claves está deshabilitada en el servidor',
 } as const;
 
 export type MessageKey = keyof typeof TRANSLATIONS;

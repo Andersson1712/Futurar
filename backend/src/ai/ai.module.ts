@@ -29,13 +29,25 @@ import type { JobRepository } from '../jobs/job.repository';
 import { resolveQueueDriver } from '../jobs/queue-driver';
 import { SupabaseJobRepository } from '../jobs/supabase-job.repository';
 import { EnvSecretProvider } from './secrets/env-secret.provider';
-import { SecretProvider } from './secrets/secret-provider';
-import { createGeminiClient } from './infrastructure/gemini/gemini-client.factory';
+import { CredentialSecretProvider } from './secrets/credential-secret.provider';
+import { CredentialResolver } from './secrets/credential-resolver';
+import { CREDENTIAL_REPOSITORY } from './secrets/credential.repository';
+import type { CredentialRepository } from './secrets/credential.repository';
+import { InMemoryCredentialRepository } from './secrets/in-memory-credential.repository';
+import { SupabaseCredentialRepository } from './secrets/supabase-credential.repository';
+import {
+  CRYPTO_SERVICE,
+  CryptoService,
+  parseMasterKey,
+} from './secrets/crypto.service';
+import type { CryptoServiceLike } from './secrets/crypto.service';
+import { GeminiClientProvider } from './infrastructure/gemini/gemini-client.provider';
 import { GeminiImageAdapter } from './infrastructure/gemini/gemini-image.adapter';
 import { GeminiTextAdapter } from './infrastructure/gemini/gemini-text.adapter';
 import { GeminiTtsAdapter } from './infrastructure/gemini/gemini-tts.adapter';
+import { AiCredentialsController } from './ai-credentials.controller';
+import { AiCredentialsService } from './ai-credentials.service';
 import {
-  GEMINI_CLIENT,
   IMAGE_GENERATOR,
   SECRET_PROVIDER,
   TEXT_GENERATOR,
@@ -44,14 +56,47 @@ import {
 
 @Module({
   imports: [SupabaseModule, RedisModule, BooksModule],
-  controllers: [AiController],
+  controllers: [AiController, AiCredentialsController],
   providers: [
-    { provide: SECRET_PROVIDER, useClass: EnvSecretProvider },
+    EnvSecretProvider,
+    InMemoryCredentialRepository,
     {
-      provide: GEMINI_CLIENT,
-      useFactory: (secrets: SecretProvider) => createGeminiClient(secrets),
-      inject: [SECRET_PROVIDER],
+      provide: CREDENTIAL_REPOSITORY,
+      useFactory: (
+        supabaseService: SupabaseService,
+        memory: InMemoryCredentialRepository,
+      ): CredentialRepository =>
+        supabaseService.getClient()
+          ? new SupabaseCredentialRepository(supabaseService)
+          : memory,
+      inject: [SupabaseService, InMemoryCredentialRepository],
     },
+    {
+      provide: CRYPTO_SERVICE,
+      useFactory: (configService: ConfigService): CryptoServiceLike => {
+        const key = parseMasterKey(
+          configService.get<string>('AI_SECRETS_MASTER_KEY'),
+        );
+
+        return key ? new CryptoService(key) : null;
+      },
+      inject: [ConfigService],
+    },
+    CredentialResolver,
+    {
+      provide: SECRET_PROVIDER,
+      useFactory: (
+        configService: ConfigService,
+        resolver: CredentialResolver,
+      ) =>
+        new CredentialSecretProvider(
+          resolver,
+          new EnvSecretProvider(configService),
+        ),
+      inject: [ConfigService, CredentialResolver],
+    },
+    GeminiClientProvider,
+    AiCredentialsService,
     { provide: TEXT_GENERATOR, useClass: GeminiTextAdapter },
     { provide: IMAGE_GENERATOR, useClass: GeminiImageAdapter },
     { provide: TTS_GENERATOR, useClass: GeminiTtsAdapter },

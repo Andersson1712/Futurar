@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Modality } from '@google/genai';
 import { AiProviderError, toProviderError } from '../../ai.errors';
@@ -7,9 +7,7 @@ import {
   SpeechSynthesisResult,
   TtsPort,
 } from '../../domain/ports/tts.port';
-import { GEMINI_CLIENT } from '../../tokens';
-import { requireGeminiClient } from './gemini-client.factory';
-import type { GeminiClient } from './gemini-client.factory';
+import { GeminiClientProvider } from './gemini-client.provider';
 import { GEMINI_DEFAULTS, resolveGeminiConfigValue } from './gemini.config';
 
 export const MAX_TTS_INPUT_CHARS = 32_000;
@@ -17,7 +15,7 @@ export const MAX_TTS_INPUT_CHARS = 32_000;
 @Injectable()
 export class GeminiTtsAdapter implements TtsPort {
   constructor(
-    @Inject(GEMINI_CLIENT) private readonly client: GeminiClient,
+    private readonly clientProvider: GeminiClientProvider,
     private readonly configService: ConfigService,
   ) {}
 
@@ -38,7 +36,7 @@ export class GeminiTtsAdapter implements TtsPort {
       );
     }
 
-    const client = requireGeminiClient(this.client);
+    const client = await this.clientProvider.getClient(request.tenantId);
     const model = resolveGeminiConfigValue(
       this.configService,
       'AI_MODEL_TTS',

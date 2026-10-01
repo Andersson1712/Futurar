@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Modality } from '@google/genai';
 import { AiProviderError, toProviderError } from '../../ai.errors';
@@ -7,22 +7,20 @@ import {
   ImageGenerationResult,
   ImageGeneratorPort,
 } from '../../domain/ports/image-generator.port';
-import { GEMINI_CLIENT } from '../../tokens';
-import { requireGeminiClient } from './gemini-client.factory';
-import type { GeminiClient } from './gemini-client.factory';
+import { GeminiClientProvider } from './gemini-client.provider';
 import { GEMINI_DEFAULTS, resolveGeminiConfigValue } from './gemini.config';
 
 @Injectable()
 export class GeminiImageAdapter implements ImageGeneratorPort {
   constructor(
-    @Inject(GEMINI_CLIENT) private readonly client: GeminiClient,
+    private readonly clientProvider: GeminiClientProvider,
     private readonly configService: ConfigService,
   ) {}
 
   async generate(
     request: ImageGenerationRequest,
   ): Promise<ImageGenerationResult> {
-    const client = requireGeminiClient(this.client);
+    const client = await this.clientProvider.getClient(request.tenantId);
     const model = resolveGeminiConfigValue(
       this.configService,
       'AI_MODEL_IMAGE',

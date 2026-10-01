@@ -97,4 +97,23 @@ export const handlers = [
   http.delete(`${API_BASE}/api/v1/books/:id`, () =>
     new HttpResponse(null, { status: 204 }),
   ),
+  http.get(`${API_BASE}/api/v1/ai/credentials`, () => HttpResponse.json([])),
+  http.put(
+    `${API_BASE}/api/v1/ai/credentials/:provider`,
+    async ({ request }) => {
+      const body = (await request.json()) as { apiKey?: string };
+      const key = body.apiKey ?? '';
+
+      return HttpResponse.json({
+        provider: 'gemini',
+        keyHint: key.slice(-4),
+        status: 'active',
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+      });
+    },
+  ),
+  http.delete(`${API_BASE}/api/v1/ai/credentials/:provider`, () =>
+    new HttpResponse(null, { status: 204 }),
+  ),
 ];

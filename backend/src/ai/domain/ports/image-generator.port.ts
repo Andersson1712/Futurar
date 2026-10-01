@@ -4,6 +4,7 @@ export interface ImageGenerationRequest {
   prompt: string;
   aspectRatio?: string;
   imageSize?: ImageSize;
+  tenantId?: string;
 }
 
 export interface ImageGenerationResult {

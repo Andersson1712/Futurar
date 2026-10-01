@@ -5,8 +5,8 @@ import { AiModule } from './ai.module';
 import { GeminiImageAdapter } from './infrastructure/gemini/gemini-image.adapter';
 import { GeminiTextAdapter } from './infrastructure/gemini/gemini-text.adapter';
 import { GeminiTtsAdapter } from './infrastructure/gemini/gemini-tts.adapter';
+import { GeminiClientProvider } from './infrastructure/gemini/gemini-client.provider';
 import {
-  GEMINI_CLIENT,
   IMAGE_GENERATOR,
   SECRET_PROVIDER,
   TEXT_GENERATOR,
@@ -14,7 +14,7 @@ import {
 } from './tokens';
 
 describe('AiModule', () => {
-  it('resolves the generator ports, secrets and client without an API key', async () => {
+  it('resolves the generator ports, secrets and client provider without an API key', async () => {
     const moduleRef = await Test.createTestingModule({
       imports: [
         ConfigModule.forRoot({
@@ -30,7 +30,9 @@ describe('AiModule', () => {
     expect(moduleRef.get(IMAGE_GENERATOR)).toBeInstanceOf(GeminiImageAdapter);
     expect(moduleRef.get(TTS_GENERATOR)).toBeInstanceOf(GeminiTtsAdapter);
     expect(moduleRef.get(SECRET_PROVIDER)).toBeDefined();
-    expect(moduleRef.get(GEMINI_CLIENT)).toBeNull();
+    expect(moduleRef.get(GeminiClientProvider)).toBeInstanceOf(
+      GeminiClientProvider,
+    );
 
     await moduleRef.close();
   });

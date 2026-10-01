@@ -1,6 +1,8 @@
 import { ConfigService } from '@nestjs/config';
 import { Modality, type GoogleGenAI } from '@google/genai';
 import { GeminiImageAdapter } from './gemini-image.adapter';
+import { AiProviderError } from '../../ai.errors';
+import { GeminiClientProvider } from './gemini-client.provider';
 
 function buildAdapter(
   generateContent: jest.Mock,
@@ -10,7 +12,11 @@ function buildAdapter(
     models: { generateContent },
   } as unknown as GoogleGenAI;
 
-  return new GeminiImageAdapter(client, new ConfigService(config));
+  const clientProvider = {
+    getClient: jest.fn().mockResolvedValue(client),
+  } as unknown as GeminiClientProvider;
+
+  return new GeminiImageAdapter(clientProvider, new ConfigService(config));
 }
 
 describe('GeminiImageAdapter', () => {
@@ -89,7 +95,17 @@ describe('GeminiImageAdapter', () => {
   });
 
   it('throws PROVIDER_UNAVAILABLE when no client is configured', async () => {
-    const adapter = new GeminiImageAdapter(null, new ConfigService({}));
+    const clientProvider = {
+      getClient: jest
+        .fn()
+        .mockRejectedValue(
+          new AiProviderError('PROVIDER_UNAVAILABLE', 'missing key'),
+        ),
+    } as unknown as GeminiClientProvider;
+    const adapter = new GeminiImageAdapter(
+      clientProvider,
+      new ConfigService({}),
+    );
 
     await expect(adapter.generate({ prompt: 'hi' })).rejects.toMatchObject({
       code: 'PROVIDER_UNAVAILABLE',
