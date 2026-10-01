@@ -17,9 +17,9 @@ Leyenda:
 ## Estado actual
 
 - Fase activa: **Fase 4 — Accesibilidad: bugs críticos**
-- Última tarea cerrada: SPEC-011 (implementado; runner de tests + clic gana al barrido)
-- Próxima tarea: SPEC-012 (scroll bloqueado en mobile/desktop)
-- Rama de integración: `dev` (todo SPEC-001→011); `main` se actualiza al cerrar fase.
+- Última tarea cerrada: SPEC-012 (implementado; scroll libre + E2E Playwright)
+- Próxima tarea: SPEC-013 (focus trap del menú "Más")
+- Rama de integración: `dev` (todo SPEC-001→012); `main` se actualiza al cerrar fase.
 
 ---
 
@@ -111,9 +111,9 @@ Leyenda:
 - [ ] SPEC-015: Modos por perfil (movido desde SPEC-011)
 
 ### EPIC 4.2 — Scroll bloqueado
-- [ ] SPEC-012: Quitar overflow:hidden global
-- [ ] SPEC-012: min-height:100dvh + touch-action:pan-y + passive listeners
-- [ ] SPEC-012: Test E2E scroll mobile/desktop
+- [x] SPEC-012: Quitar overflow:hidden global
+- [x] SPEC-012: min-height:100dvh + touch-action:pan-y + passive listeners
+- [x] SPEC-012: Test E2E scroll mobile/desktop
 
 ### EPIC 4.3 — Focus trap del menú "Más"
 - [ ] SPEC-013: Focus trap Continuar/Pausar/Volver
@@ -279,6 +279,7 @@ Leyenda:
 | SPEC-009 | Frontend genera vía backend (SSE + polling + biblioteca) | implementado | owner | 2026-09-30 |
 | SPEC-010 | Sesión (JWT/refresh/logout) y auditoría de acceso a datos | implementado | owner | 2026-09-30 |
 | SPEC-011 | Clic/pointerdown gana al foco del barrido + runner de tests | implementado | owner | 2026-09-30 |
+| SPEC-012 | Scroll libre mobile/desktop + E2E Playwright | implementado | owner | 2026-09-30 |
 | … | … | … | … | … |
 
 ## Notas
@@ -353,3 +354,8 @@ Leyenda:
   regresión). Modos por perfil movidos a SPEC-015. `dev` es la rama de
   integración (SPEC-001→011) y `main` se actualiza al cerrar fase; el dev
   legacy quedó respaldado en `dev-legacy-backup`.
+- SPEC-012: scroll desbloqueado (`overflow-x` only + `touch-action: pan-y` +
+  `min-h-[100dvh]` + helper `safe-center`), mains con `overflow-y-auto` y
+  pantallas de editor/reader/teacher con dvh. E2E con Playwright 1.63
+  (Chromium 1243 ya cacheado): 5 tests × desktop/Pixel 7 = 9 passed / 1 skip;
+  scripts `test:e2e`; `e2e/` excluido de Vitest.
