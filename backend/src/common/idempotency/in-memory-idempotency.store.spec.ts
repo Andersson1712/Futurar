@@ -18,38 +18,38 @@ describe('InMemoryIdempotencyStore', () => {
     jest.useRealTimers();
   });
 
-  it('stores and retrieves entries', () => {
+  it('stores and retrieves entries', async () => {
     const store = new InMemoryIdempotencyStore();
     const entry = buildEntry(Date.now() + 1_000);
 
-    store.set('user-1:key', entry);
+    await store.set('user-1:key', entry);
 
-    expect(store.get('user-1:key')).toEqual(entry);
+    await expect(store.get('user-1:key')).resolves.toEqual(entry);
   });
 
-  it('returns undefined for unknown scopes', () => {
+  it('returns undefined for unknown scopes', async () => {
     const store = new InMemoryIdempotencyStore();
 
-    expect(store.get('user-1:missing')).toBeUndefined();
+    await expect(store.get('user-1:missing')).resolves.toBeUndefined();
   });
 
-  it('evicts expired entries on read', () => {
+  it('evicts expired entries on read', async () => {
     const store = new InMemoryIdempotencyStore();
-    store.set('user-1:key', buildEntry(Date.now() + 1_000));
+    await store.set('user-1:key', buildEntry(Date.now() + 1_000));
 
     jest.setSystemTime(Date.now() + 2_000);
 
-    expect(store.get('user-1:key')).toBeUndefined();
+    await expect(store.get('user-1:key')).resolves.toBeUndefined();
   });
 
-  it('evicts expired entries when setting a new one', () => {
+  it('evicts expired entries when setting a new one', async () => {
     const store = new InMemoryIdempotencyStore();
-    store.set('user-1:old', buildEntry(Date.now() + 1_000));
+    await store.set('user-1:old', buildEntry(Date.now() + 1_000));
 
     jest.setSystemTime(Date.now() + 2_000);
-    store.set('user-1:new', buildEntry(Date.now() + 1_000));
+    await store.set('user-1:new', buildEntry(Date.now() + 1_000));
 
-    expect(store.get('user-1:old')).toBeUndefined();
-    expect(store.get('user-1:new')).toBeDefined();
+    await expect(store.get('user-1:old')).resolves.toBeUndefined();
+    await expect(store.get('user-1:new')).resolves.toBeDefined();
   });
 });

@@ -8,22 +8,24 @@ import {
 export class InMemoryIdempotencyStore implements IdempotencyStore {
   private readonly entries = new Map<string, StoredIdempotentResponse>();
 
-  get(scope: string): StoredIdempotentResponse | undefined {
+  get(scope: string): Promise<StoredIdempotentResponse | undefined> {
     const entry = this.entries.get(scope);
 
-    if (!entry) return undefined;
+    if (!entry) return Promise.resolve(undefined);
 
     if (entry.expiresAt <= Date.now()) {
       this.entries.delete(scope);
-      return undefined;
+      return Promise.resolve(undefined);
     }
 
-    return entry;
+    return Promise.resolve(entry);
   }
 
-  set(scope: string, entry: StoredIdempotentResponse): void {
+  set(scope: string, entry: StoredIdempotentResponse): Promise<void> {
     this.removeExpired();
     this.entries.set(scope, entry);
+
+    return Promise.resolve();
   }
 
   private removeExpired(): void {

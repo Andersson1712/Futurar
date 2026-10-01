@@ -8,6 +8,6 @@ export interface StoredIdempotentResponse {
 }
 
 export interface IdempotencyStore {
-  get(scope: string): StoredIdempotentResponse | undefined;
-  set(scope: string, entry: StoredIdempotentResponse): void;
+  get(scope: string): Promise<StoredIdempotentResponse | undefined>;
+  set(scope: string, entry: StoredIdempotentResponse): Promise<void>;
 }

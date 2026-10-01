@@ -5,12 +5,15 @@ import {
   HttpCode,
   HttpStatus,
   Inject,
+  MessageEvent,
   Param,
   Post,
   Req,
+  Sse,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
+import { Observable } from 'rxjs';
 import {
   ApiAcceptedResponse,
   ApiBadGatewayResponse,
@@ -21,6 +24,7 @@ import {
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
+  ApiProduces,
   ApiServiceUnavailableResponse,
   ApiTags,
   ApiTooManyRequestsResponse,
@@ -38,6 +42,7 @@ import {
 } from '../common/interceptors/idempotency.interceptor';
 import { BOOK_GENERATION_USE_CASE } from './application/book-generation.use-case';
 import type { BookGenerationUseCase } from './application/book-generation.use-case';
+import { JobStatusStream } from './application/job-status.stream';
 import { GenerateBookRequestDto } from './dto/generate-book-request.dto';
 import {
   GenerateBookResponseDto,
@@ -52,6 +57,7 @@ export class AiController {
   constructor(
     @Inject(BOOK_GENERATION_USE_CASE)
     private readonly bookGeneration: BookGenerationUseCase,
+    private readonly jobStatusStream: JobStatusStream,
   ) {}
 
   @Post('books/generate')
@@ -93,5 +99,19 @@ export class AiController {
     @Req() request: AuthenticatedRequest,
   ): Promise<JobStatusDto> {
     return this.bookGeneration.getJobStatus(jobId, request.user?.id ?? '');
+  }
+
+  @Sse('jobs/:id/events')
+  @UseGuards(AiEndpointsEnabledGuard, SupabaseAuthGuard)
+  @ApiOperation({ summary: 'Stream job status events (SSE)' })
+  @ApiProduces('text/event-stream')
+  @ApiOkResponse({ type: JobStatusDto })
+  @ApiNotFoundResponse({ type: AiErrorDto })
+  @ApiServiceUnavailableResponse({ type: AiErrorDto })
+  async streamJob(
+    @Param('id') jobId: string,
+    @Req() request: AuthenticatedRequest,
+  ): Promise<Observable<MessageEvent>> {
+    return this.jobStatusStream.open(jobId, request.user?.id ?? '');
   }
 }

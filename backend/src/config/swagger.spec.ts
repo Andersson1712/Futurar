@@ -8,6 +8,7 @@ import { IDEMPOTENCY_STORE } from '../common/idempotency/idempotency-store';
 import { SupabaseService } from '../supabase/supabase.service';
 import { AiController } from '../ai/ai.controller';
 import { BOOK_GENERATION_USE_CASE } from '../ai/application/book-generation.use-case';
+import { JobStatusStream } from '../ai/application/job-status.stream';
 import { AiEndpointsEnabledGuard } from '../ai/guards/ai-endpoints-enabled.guard';
 import { isSwaggerEnabled } from './swagger';
 
@@ -39,6 +40,7 @@ describe('swagger', () => {
         ConfigService,
         SupabaseService,
         { provide: IDEMPOTENCY_STORE, useClass: InMemoryIdempotencyStore },
+        { provide: JobStatusStream, useValue: { open: jest.fn() } },
         {
           provide: BOOK_GENERATION_USE_CASE,
           useValue: { requestGeneration: jest.fn(), getJobStatus: jest.fn() },

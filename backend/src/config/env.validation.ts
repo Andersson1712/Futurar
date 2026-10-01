@@ -16,6 +16,9 @@ export type AiProvider = (typeof AI_PROVIDERS)[number];
 
 const NODE_ENVS = ['development', 'production', 'test'] as const;
 
+export const QUEUE_DRIVERS = ['inline', 'bullmq'] as const;
+export type QueueDriverOption = (typeof QUEUE_DRIVERS)[number];
+
 const toBoolean = ({ value }: { value: unknown }): unknown => {
   if (value === undefined || value === null || value === '') return undefined;
   if (typeof value === 'boolean') return value;
@@ -53,6 +56,15 @@ export class EnvironmentVariables {
   @IsInt()
   @Min(1)
   THROTTLE_LIMIT?: number;
+
+  @IsOptional()
+  @IsIn([...QUEUE_DRIVERS])
+  QUEUE_DRIVER?: QueueDriverOption;
+
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  REDIS_URL?: string;
 
   @IsOptional()
   @IsIn([...AI_PROVIDERS])
@@ -127,6 +139,10 @@ export function validateEnv(
         `AI_ENDPOINTS_ENABLED=true requires: ${missing.join(', ')}`,
       );
     }
+  }
+
+  if (validated.QUEUE_DRIVER === 'bullmq' && !validated.REDIS_URL?.trim()) {
+    throw new Error('QUEUE_DRIVER=bullmq requires: REDIS_URL');
   }
 
   return validated;

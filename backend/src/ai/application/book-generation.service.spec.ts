@@ -1,13 +1,9 @@
 import { AiErrorException } from '../../common/errors/ai-error.exception';
-import { AiProviderError } from '../ai.errors';
-import type { TextGenerationRequest } from '../domain/ports/text-generator.port';
-import type { TextGeneratorPort } from '../domain/ports/text-generator.port';
+import type { JobQueue } from '../../jobs/job-queue.port';
+import type { JobRecord, JobRepository } from '../../jobs/job.repository';
 import { BookGenerationService } from './book-generation.service';
-import { BookOutputParser } from './book-output.parser';
 import { BookOutputValidator } from './book-output.validator';
 import type { BookGenerationCommand } from './book-generation.use-case';
-import { InMemoryJobRegistry } from './in-memory-job.registry';
-import { PromptBuilderService } from './prompt-builder.service';
 
 const COMMAND: BookGenerationCommand = {
   protagonist: 'Un dragón curioso',
@@ -18,83 +14,65 @@ const COMMAND: BookGenerationCommand = {
   userId: 'user-1',
 };
 
-const VALID_BOOK_TEXT = JSON.stringify({
-  title: 'La aventura del dragón',
-  pages: [
-    { pageNumber: 1, content: 'Había una vez un dragón curioso.' },
-    { pageNumber: 2, content: 'Y encontró la estrella perdida.' },
-  ],
-});
+function buildJob(overrides: Partial<JobRecord> = {}): JobRecord {
+  return {
+    id: 'job-1',
+    userId: 'user-1',
+    status: 'queued',
+    request: COMMAND,
+    createdAt: new Date('2026-01-01T00:00:00.000Z'),
+    updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+    ...overrides,
+  };
+}
 
-function buildService(generate: jest.Mock) {
-  const textGenerator = { generate } as unknown as TextGeneratorPort;
+function buildService(
+  options: { current?: JobRecord; found?: JobRecord } = {},
+) {
+  const create = jest.fn().mockResolvedValue(buildJob());
+  const findById = jest
+    .fn()
+    .mockResolvedValue(options.current ?? buildJob({ status: 'completed' }));
+  const find = jest.fn().mockResolvedValue(options.found ?? buildJob());
+  const enqueue = jest.fn().mockResolvedValue(undefined);
+  const jobs = { create, findById, find } as unknown as JobRepository;
+  const queue = { enqueue } as unknown as JobQueue;
   const service = new BookGenerationService(
-    new PromptBuilderService(),
-    textGenerator,
-    new BookOutputParser(),
     new BookOutputValidator(),
-    new InMemoryJobRegistry(),
+    jobs,
+    queue,
   );
 
-  return { service, generate };
+  return { service, create, findById, find, enqueue };
 }
 
 describe('BookGenerationService', () => {
-  it('generates, validates and completes the job', async () => {
-    const generate = jest.fn().mockResolvedValue({
-      text: VALID_BOOK_TEXT,
-      model: 'gemini-test',
-    });
-    const { service } = buildService(generate);
+  it('creates the job, enqueues it and returns the current status', async () => {
+    const { service, create, enqueue } = buildService();
 
     const response = await service.requestGeneration(COMMAND);
 
-    expect(response.status).toBe('completed');
-
-    const calls = generate.mock.calls as unknown as Array<
-      [TextGenerationRequest]
-    >;
-    expect(calls[0][0].prompt).toContain('Un dragón curioso');
-    expect(calls[0][0].responseJsonSchema).toBeDefined();
-
-    const status = await service.getJobStatus(response.jobId, COMMAND.userId);
-    expect(status.status).toBe('completed');
-    expect(status.progress).toBe(100);
-    expect(status.book?.title).toBe('La aventura del dragón');
-    expect(status.book?.totalPages).toBe(2);
-  });
-
-  it('marks the job as failed when the provider fails and rethrows', async () => {
-    const generate = jest
-      .fn()
-      .mockRejectedValue(new AiProviderError('RATE_LIMITED', 'quota'));
-    const { service } = buildService(generate);
-
-    const error = await service
-      .requestGeneration(COMMAND)
-      .catch((caught: unknown) => caught);
-
-    expect(error).toBeInstanceOf(AiProviderError);
-    expect((error as AiProviderError).code).toBe('RATE_LIMITED');
-  });
-
-  it('fails the job with INVALID_OUTPUT when the provider returns junk', async () => {
-    const generate = jest.fn().mockResolvedValue({
-      text: 'No tengo JSON',
-      model: 'gemini-test',
+    expect(create).toHaveBeenCalledWith({
+      userId: 'user-1',
+      request: COMMAND,
     });
-    const { service } = buildService(generate);
-
-    const error = await service
-      .requestGeneration(COMMAND)
-      .catch((caught: unknown) => caught);
-
-    expect((error as AiProviderError).code).toBe('INVALID_OUTPUT');
+    expect(enqueue).toHaveBeenCalledWith('job-1');
+    expect(response).toEqual({ jobId: 'job-1', status: 'completed' });
   });
 
-  it('blocks inappropriate input before calling the provider', async () => {
-    const generate = jest.fn();
-    const { service } = buildService(generate);
+  it('returns queued status when the driver has not finished yet', async () => {
+    const { service } = buildService({
+      current: buildJob({ status: 'processing' }),
+    });
+
+    await expect(service.requestGeneration(COMMAND)).resolves.toEqual({
+      jobId: 'job-1',
+      status: 'processing',
+    });
+  });
+
+  it('blocks inappropriate input before creating a job', async () => {
+    const { service, create, enqueue } = buildService();
 
     await expect(
       service.requestGeneration({
@@ -102,28 +80,31 @@ describe('BookGenerationService', () => {
         mission: 'Quiere matar al ogro',
       }),
     ).rejects.toMatchObject({ code: 'INVALID_REQUEST' });
-    expect(generate).not.toHaveBeenCalled();
+    expect(create).not.toHaveBeenCalled();
+    expect(enqueue).not.toHaveBeenCalled();
   });
 
-  it('returns 404 for unknown jobs or other users', async () => {
-    const generate = jest.fn().mockResolvedValue({
-      text: VALID_BOOK_TEXT,
-      model: 'gemini-test',
-    });
-    const { service } = buildService(generate);
+  it('propagates queue failures', async () => {
+    const { service, enqueue } = buildService();
+    enqueue.mockRejectedValue(new Error('redis down'));
 
-    await expect(
-      service.getJobStatus('missing', 'user-1'),
-    ).rejects.toMatchObject({ code: 'NOT_FOUND' });
-
-    const response = await service.requestGeneration(COMMAND);
-    await expect(
-      service.getJobStatus(response.jobId, 'other-user'),
-    ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+    await expect(service.requestGeneration(COMMAND)).rejects.toThrow(
+      'redis down',
+    );
   });
 
-  it('returns AiErrorException with 404 status for unknown jobs', async () => {
-    const { service } = buildService(jest.fn());
+  it('returns the job status scoped to the user', async () => {
+    const { service, find } = buildService();
+
+    const status = await service.getJobStatus('job-1', 'user-1');
+
+    expect(find).toHaveBeenCalledWith('job-1', 'user-1');
+    expect(status).toMatchObject({ id: 'job-1', status: 'queued' });
+  });
+
+  it('rejects unknown jobs with 404', async () => {
+    const { service, find } = buildService();
+    find.mockResolvedValue(undefined);
 
     const error = await service
       .getJobStatus('missing', 'user-1')

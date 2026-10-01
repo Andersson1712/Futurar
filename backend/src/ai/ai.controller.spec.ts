@@ -10,6 +10,7 @@ import { IDEMPOTENCY_STORE } from '../common/idempotency/idempotency-store';
 import { SupabaseService } from '../supabase/supabase.service';
 import { AiController } from './ai.controller';
 import { BOOK_GENERATION_USE_CASE } from './application/book-generation.use-case';
+import { JobStatusStream } from './application/job-status.stream';
 import { AiEndpointsEnabledGuard } from './guards/ai-endpoints-enabled.guard';
 
 const VALID_BODY = {
@@ -28,6 +29,7 @@ describe('AiController', () => {
   let app: INestApplication<App>;
   const requestGeneration = jest.fn();
   const getJobStatus = jest.fn();
+  const openStream = jest.fn();
 
   beforeEach(async () => {
     jest.clearAllMocks();
@@ -38,6 +40,7 @@ describe('AiController', () => {
         ConfigService,
         SupabaseService,
         { provide: IDEMPOTENCY_STORE, useClass: InMemoryIdempotencyStore },
+        { provide: JobStatusStream, useValue: { open: openStream } },
         {
           provide: BOOK_GENERATION_USE_CASE,
           useValue: { requestGeneration, getJobStatus },
@@ -143,5 +146,16 @@ describe('AiController', () => {
       .expect(200);
 
     expect(response.body).toMatchObject({ id: 'job-1', status: 'queued' });
+  });
+
+  it('delegates SSE streams to JobStatusStream with the authenticated user', async () => {
+    const controller = app.get(AiController);
+    openStream.mockReturnValue({ subscribe: jest.fn() });
+
+    await controller.streamJob('job-1', {
+      user: { id: 'user-1' },
+    } as unknown as Parameters<AiController['streamJob']>[1]);
+
+    expect(openStream).toHaveBeenCalledWith('job-1', 'user-1');
   });
 });

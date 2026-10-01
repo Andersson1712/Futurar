@@ -6,7 +6,7 @@ import {
   NestInterceptor,
 } from '@nestjs/common';
 import { createHash } from 'node:crypto';
-import { Observable, of, tap } from 'rxjs';
+import { Observable, mergeMap, of } from 'rxjs';
 import type { Response } from 'express';
 import { AiErrorException } from '../errors/ai-error.exception';
 import type { AuthenticatedRequest } from '../guards/supabase-auth.guard';
@@ -27,10 +27,10 @@ export class IdempotencyInterceptor implements NestInterceptor<
     @Inject(IDEMPOTENCY_STORE) private readonly store: IdempotencyStore,
   ) {}
 
-  intercept(
+  async intercept(
     context: ExecutionContext,
     next: CallHandler<unknown>,
-  ): Observable<unknown> {
+  ): Promise<Observable<unknown>> {
     const http = context.switchToHttp();
     const request = http.getRequest<AuthenticatedRequest>();
     const response = http.getResponse<Response>();
@@ -38,7 +38,7 @@ export class IdempotencyInterceptor implements NestInterceptor<
     const key = this.readKey(request.headers[IDEMPOTENCY_KEY_HEADER]);
     const scope = `${request.user?.id ?? 'anonymous'}:${key}`;
     const requestHash = hashPayload(request.body);
-    const stored = this.store.get(scope);
+    const stored = await this.store.get(scope);
 
     if (stored) {
       if (stored.requestHash !== requestHash) {
@@ -54,13 +54,15 @@ export class IdempotencyInterceptor implements NestInterceptor<
     }
 
     return next.handle().pipe(
-      tap((body) => {
-        this.store.set(scope, {
+      mergeMap(async (body) => {
+        await this.store.set(scope, {
           statusCode: response.statusCode,
           body,
           requestHash,
           expiresAt: Date.now() + IDEMPOTENCY_TTL_MS,
         });
+
+        return body;
       }),
     );
   }

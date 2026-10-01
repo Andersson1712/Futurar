@@ -82,4 +82,20 @@ describe('validateEnv', () => {
       /Invalid environment configuration/,
     );
   });
+
+  it('rejects an invalid QUEUE_DRIVER', () => {
+    expect(() => validateEnv({ QUEUE_DRIVER: 'rabbitmq' })).toThrow(
+      /Invalid environment configuration/,
+    );
+  });
+
+  it('requires REDIS_URL when QUEUE_DRIVER=bullmq', () => {
+    expect(() => validateEnv({ QUEUE_DRIVER: 'bullmq' })).toThrow(/REDIS_URL/);
+
+    const result = validateEnv({
+      QUEUE_DRIVER: 'bullmq',
+      REDIS_URL: 'redis://localhost:6379',
+    });
+    expect(result.QUEUE_DRIVER).toBe('bullmq');
+  });
 });
