@@ -2,6 +2,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import FloatingControls from './FloatingControls';
 import { ScanSettingsProvider } from '../contexts/ScanSettingsContext';
+import { t } from '../utils/messages';
 
 vi.mock('../utils/speech', () => ({
   speak: vi.fn(),
@@ -47,6 +48,8 @@ describe('FloatingControls (SPEC-013)', () => {
     const dialog = openMenu();
 
     expect(dialog.contains(document.activeElement)).toBe(true);
+    expect(screen.getByRole('dialog', { name: t('controls.title') })).toBeInTheDocument();
+    expect(screen.getByText(t('controls.voice'))).toBeInTheDocument();
   });
 
   it('does not close when pressing outside the menu', () => {

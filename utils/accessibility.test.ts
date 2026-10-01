@@ -25,6 +25,14 @@ describe('accessibility (SPEC-015)', () => {
     expect(fromStudentSettings(undefined)).toEqual(DEFAULT_ACCESSIBILITY);
   });
 
+  it('keeps TTS enabled by default (SPEC-018)', () => {
+    expect(DEFAULT_ACCESSIBILITY.voiceFeedback).toBe(true);
+    expect(fromStudentSettings({}).voiceFeedback).toBe(true);
+    expect(fromStudentSettings({ voice_feedback: false }).voiceFeedback).toBe(
+      false,
+    );
+  });
+
   it('clamps intervals/columns and rejects unknown values', () => {
     expect(
       fromStudentSettings({

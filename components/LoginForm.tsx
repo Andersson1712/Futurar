@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { t } from '../utils/messages';
 
 interface LoginFormProps {
     onSuccess: () => void;
@@ -70,7 +71,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
                 {/* Formulario */}
                 <form onSubmit={handleSubmit} className="bg-surface-dark rounded-3xl p-8 border border-border-accent">
                     <h2 className="text-2xl font-bold mb-6">
-                        {isRegisterMode ? 'Crear Cuenta' : 'Iniciar Sesión'}
+                        {isRegisterMode ? t('login.signUp') : t('login.signIn')}
                     </h2>
 
                     {/* Mensajes de error */}
@@ -103,9 +104,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
 
                         {/* Email */}
                         <div>
-                            <label className="block text-sm font-medium text-gray-400 mb-2">
-                                Correo electrónico
-                            </label>
+                            <label className="block text-sm font-medium text-gray-400 mb-2">{t('login.email')}</label>
                             <input
                                 type="email"
                                 name="email"
@@ -119,9 +118,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
 
                         {/* Contraseña */}
                         <div>
-                            <label className="block text-sm font-medium text-gray-400 mb-2">
-                                Contraseña
-                            </label>
+                            <label className="block text-sm font-medium text-gray-400 mb-2">{t('login.password')}</label>
                             <input
                                 type="password"
                                 name="password"
@@ -167,7 +164,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
                                 <span className="material-symbols-outlined">
                                     {isRegisterMode ? 'person_add' : 'login'}
                                 </span>
-                                {isRegisterMode ? 'Crear Cuenta' : 'Iniciar Sesión'}
+                                {isRegisterMode ? t('login.signUp') : t('login.signIn')}
                             </>
                         )}
                     </button>

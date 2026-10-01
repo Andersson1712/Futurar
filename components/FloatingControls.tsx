@@ -7,6 +7,7 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { useScanSettings } from '../contexts/ScanSettingsContext';
 import { speak, speakOption, stopSpeaking } from '../utils/speech';
+import { t } from '../utils/messages';
 import { playSelectionSound } from '../utils/audio';
 
 interface FloatingControlsProps {
@@ -179,7 +180,7 @@ const FloatingControls: React.FC<FloatingControlsProps> = ({ onGoToMenu }) => {
         setIsOpen(prev => !prev);
         setShowSpeedMenu(false);
         if (!isOpen && voiceEnabled) {
-            speak('Controles de accesibilidad');
+            speak(t('controls.toggle'));
         }
     }, [isOpen, voiceEnabled, soundEnabled]);
 
@@ -187,7 +188,7 @@ const FloatingControls: React.FC<FloatingControlsProps> = ({ onGoToMenu }) => {
         if (soundEnabled) playSelectionSound();
         setShowSpeedMenu(prev => !prev);
         if (voiceEnabled) {
-            speak('Velocidad de barrido');
+            speak(t('controls.speedSpoken'));
         }
     }, [voiceEnabled, soundEnabled]);
 
@@ -265,7 +266,7 @@ const FloatingControls: React.FC<FloatingControlsProps> = ({ onGoToMenu }) => {
                             : 'bg-primary hover:bg-primary/90'
                     }
         `}
-                aria-label="Controles de accesibilidad"
+                aria-label={t('controls.toggle')}
                 aria-expanded={isOpen}
             >
                 <span className="material-symbols-outlined text-2xl md:text-3xl text-white">
@@ -286,7 +287,7 @@ const FloatingControls: React.FC<FloatingControlsProps> = ({ onGoToMenu }) => {
                     ref={dialogRef}
                     role="dialog"
                     aria-modal="true"
-                    aria-label="Controles"
+                    aria-label={t('controls.title')}
                     className={`
             absolute bottom-20 right-0 z-50 w-64 md:w-72
             bg-slate-900/95 backdrop-blur-xl rounded-2xl
@@ -299,7 +300,7 @@ const FloatingControls: React.FC<FloatingControlsProps> = ({ onGoToMenu }) => {
                     <div className="px-4 py-3 border-b border-white/10">
                         <h3 className="text-white font-bold text-sm flex items-center gap-2">
                             <span className="material-symbols-outlined text-lg text-primary">accessibility_new</span>
-                            Controles
+                            {t('controls.title')}
                         </h3>
                     </div>
 
@@ -315,7 +316,7 @@ const FloatingControls: React.FC<FloatingControlsProps> = ({ onGoToMenu }) => {
                                     <span className="material-symbols-outlined text-blue-400">speed</span>
                                 </div>
                                 <div className="flex-1 text-left">
-                                    <p className="text-white text-sm font-medium">Velocidad</p>
+                                    <p className="text-white text-sm font-medium">{t('controls.speed')}</p>
                                     <p className="text-gray-400 text-xs">{currentSpeedLabel}</p>
                                 </div>
                                 <span className={`material-symbols-outlined text-gray-400 transition-transform ${showSpeedMenu ? 'rotate-180' : ''}`}>
@@ -357,8 +358,8 @@ const FloatingControls: React.FC<FloatingControlsProps> = ({ onGoToMenu }) => {
                                 </span>
                             </div>
                             <div className="flex-1 text-left">
-                                <p className="text-white text-sm font-medium">Asistente de Voz</p>
-                                <p className="text-gray-400 text-xs">{voiceEnabled ? 'Activado' : 'Desactivado'}</p>
+                                <p className="text-white text-sm font-medium">{t('controls.voice')}</p>
+                                <p className="text-gray-400 text-xs">{voiceEnabled ? t('controls.voiceOn') : t('controls.voiceOff')}</p>
                             </div>
                             <div className={`w-10 h-6 rounded-full transition-colors ${voiceEnabled ? 'bg-green-500' : 'bg-gray-600'}`}>
                                 <div className={`size-5 rounded-full bg-white shadow transform transition-transform ${voiceEnabled ? 'translate-x-4.5' : 'translate-x-0.5'} translate-y-0.5`} />
@@ -377,10 +378,10 @@ const FloatingControls: React.FC<FloatingControlsProps> = ({ onGoToMenu }) => {
                             </div>
                             <div className="flex-1 text-left">
                                 <p className="text-white text-sm font-medium">
-                                    {isPaused ? 'Continuar' : 'Tomar un Descanso'}
+                                    {isPaused ? t('controls.resume') : t('controls.pause')}
                                 </p>
                                 <p className="text-gray-400 text-xs">
-                                    {isPaused ? 'Reanudar el barrido' : 'Pausar todo'}
+                                    {isPaused ? t('controls.resumeHint') : t('controls.pauseHint')}
                                 </p>
                             </div>
                         </button>
@@ -397,8 +398,8 @@ const FloatingControls: React.FC<FloatingControlsProps> = ({ onGoToMenu }) => {
                                 <span className="material-symbols-outlined text-red-400">home</span>
                             </div>
                             <div className="flex-1 text-left">
-                                <p className="text-white text-sm font-medium group-hover:text-red-400 transition-colors">Menú Principal</p>
-                                <p className="text-gray-400 text-xs">Regresar al inicio</p>
+                                <p className="text-white text-sm font-medium group-hover:text-red-400 transition-colors">{t('controls.menu')}</p>
+                                <p className="text-gray-400 text-xs">{t('controls.menuHint')}</p>
                             </div>
                         </button>
 
@@ -411,8 +412,8 @@ const FloatingControls: React.FC<FloatingControlsProps> = ({ onGoToMenu }) => {
                                 <span className="material-symbols-outlined text-slate-300">close</span>
                             </div>
                             <div className="flex-1 text-left">
-                                <p className="text-white text-sm font-medium">Cerrar</p>
-                                <p className="text-gray-400 text-xs">Seguir en esta pantalla</p>
+                                <p className="text-white text-sm font-medium">{t('controls.close')}</p>
+                                <p className="text-gray-400 text-xs">{t('controls.closeHint')}</p>
                             </div>
                         </button>
                     </div>

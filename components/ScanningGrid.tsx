@@ -4,6 +4,7 @@ import { useInputDevice } from '../hooks/useInputDevice';
 import { useScanSettingsOptional } from '../contexts/ScanSettingsContext';
 import { playSelectionSound } from '../utils/audio';
 import { speakOption, stopSpeaking } from '../utils/speech';
+import { t } from '../utils/messages';
 
 interface ScanningGridProps {
   options: ScanOption[];
@@ -221,7 +222,7 @@ const ScanningGrid: React.FC<ScanningGridProps> = ({
       {/* Indicador de soporte HID */}
       {!compact && isHIDSupported && !connectedDevice && (
         <p className="text-center text-gray-400 text-xs md:text-sm mt-4 md:mt-6">
-          Presiona <kbd className="px-1.5 py-0.5 bg-slate-800 rounded text-xs">Espacio</kbd> o <kbd className="px-1.5 py-0.5 bg-slate-800 rounded text-xs">Enter</kbd> para seleccionar
+          {t('scan.keyboardHint')}
         </p>
       )}
     </div>

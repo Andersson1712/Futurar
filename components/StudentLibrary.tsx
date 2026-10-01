@@ -7,7 +7,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../services/supabase';
 import { getStudentBook, listStudentBooks } from '../services/backendBooks';
 import { bookDetailToStory, bookSummaryToStory } from '../services/bookMappers';
-import { MESSAGES, messageForErrorCode } from '../utils/messages';
+import { MESSAGES, messageForErrorCode, t } from '../utils/messages';
 import { ApiError, NetworkError } from '../services/backendApi';
 import ScanningGrid from './ScanningGrid';
 import { speak, stopSpeaking } from '../utils/speech';
@@ -100,7 +100,7 @@ const StudentLibrary: React.FC<StudentLibraryProps> = ({
         // Add "Back to Menu" option at the end
         options.push({
             id: 'back',
-            label: 'Volver al Menú',
+            label: t('library.backToMenu'),
             icon: 'arrow_back',
         });
 
@@ -152,7 +152,7 @@ const StudentLibrary: React.FC<StudentLibraryProps> = ({
                     progress_activity
                 </span>
                 <p className="mt-4 text-lg text-gray-400">
-                    {openingId ? 'Abriendo tu cuento...' : 'Cargando tu biblioteca...'}
+                    {openingId ? t('library.openStory') : t('library.loading')}
                 </p>
             </div>
         );
@@ -168,7 +168,7 @@ const StudentLibrary: React.FC<StudentLibraryProps> = ({
                     onClick={onBack}
                     className="mt-6 px-6 py-3 min-h-11 bg-primary rounded-xl font-bold hover:bg-primary/80 transition-colors"
                 >
-                    Volver al Menú
+                    {t('library.backToMenu')}
                 </button>
             </div>
         );
@@ -184,17 +184,17 @@ const StudentLibrary: React.FC<StudentLibraryProps> = ({
                     </span>
                 </div>
                 <h2 className="text-2xl md:text-3xl font-black mb-4">
-                    Tu biblioteca está vacía
+                    {t('library.emptyTitle')}
                 </h2>
                 <p className="text-gray-400 text-lg mb-8">
-                    ¡Crea tu primer cuento y aparecerá aquí!
+                    {t('library.emptyHint')}
                 </p>
                 <button
                     onClick={onBack}
                     className="px-8 py-4 min-h-11 bg-primary rounded-2xl font-bold text-lg hover:bg-primary/80 transition-all hover:scale-105 flex items-center gap-3 mx-auto"
                 >
                     <span className="material-symbols-outlined">auto_stories</span>
-                    Crear mi primer cuento
+                    {t('library.createFirst')}
                 </button>
             </div>
         );

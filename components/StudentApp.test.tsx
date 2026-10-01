@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import StudentApp from './StudentApp';
+import { t } from '../utils/messages';
 import {
   clearProgress,
   loadProgress,
@@ -109,7 +110,7 @@ describe('StudentApp autosave (SPEC-014)', () => {
 
     await screen.findByText('Ana');
     fireEvent.pointerDown(optionContaining('Ana'));
-    await screen.findByText('¿Qué quieres hacer hoy?');
+    await screen.findByText(t('wizard.menuTitle'));
 
     await waitFor(() => {
       expect(loadProgress()?.studentId).toBe('student-1');
@@ -119,7 +120,7 @@ describe('StudentApp autosave (SPEC-014)', () => {
 
     render(<StudentApp onSwitchToTeacher={vi.fn()} />);
 
-    await screen.findByText('¿Qué quieres hacer hoy?');
+    await screen.findByText(t('wizard.menuTitle'));
     expect(screen.getAllByText('Ana').length).toBeGreaterThan(0);
   });
 
