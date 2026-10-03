@@ -16,10 +16,10 @@ Leyenda:
 
 ## Estado actual
 
-- Fase activa: **Fase 6 — Panel de administración**
-- Última tarea cerrada: SPEC-023 (implementado; catálogo de acciones/opciones por backend)
-- Próxima tarea: SPEC-023B (límites por pantalla/acción/página y paginación del barrido)
-- Rama de integración: `dev` (todo SPEC-001→023, protegida con CI); `main` congelada.
+- Fase activa: **Fase 7 — Proceso, gobernanza y open source**
+- Última tarea cerrada: SPEC-025 (documentación pública: README bilingüe, ADRs y guías)
+- Próxima tarea: SPEC-026 (licencia, versionado y publicación)
+- Rama de integración: `dev` (protegida con CI); `main` congelada y protegida.
 
 ---
 
@@ -205,13 +205,13 @@ Leyenda:
 - [ ] SPEC-024: Squash merge por defecto
 
 ### EPIC 7.2 — Documentación
-- [ ] SPEC-025: README.md (en) + README.es.md (es)
-- [ ] SPEC-025: CONTRIBUTING, SECURITY, CODE_OF_CONDUCT
-- [ ] SPEC-025: ADRs en docs/adr/
-- [ ] SPEC-025: Guías de usuario en español
-- [ ] SPEC-025: Guía de arquitectura
-- [ ] SPEC-025: Guía de accesibilidad
-- [ ] SPEC-025: Guía de i18n
+- [x] SPEC-025: README.md (en) + README.es.md (es)
+- [x] SPEC-025: CONTRIBUTING, SECURITY, CODE_OF_CONDUCT
+- [x] SPEC-025: ADRs en docs/adr/
+- [x] SPEC-025: Guías de usuario en español
+- [x] SPEC-025: Guía de arquitectura
+- [x] SPEC-025: Guía de accesibilidad
+- [x] SPEC-025: Guía de i18n
 
 ### EPIC 7.3 — Licencia y release
 - [ ] SPEC-026: LICENSE (definir)

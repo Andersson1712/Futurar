@@ -22,7 +22,7 @@ v3.2.1), and our internal target (WCAG 2.2 AA) is a superset.
 | 9.5.7 Dragging movements | WCAG 2.5.7 | N/A. |
 | 9.6.1 Status messages | WCAG 4.1.3 | Pass (role=status + TTS). |
 | 11 Software | — | N/A (web only). |
-| 12 Documentation/support | — | Pending: public documentation (SPEC-025). |
+| 12 Documentation/support | — | Pass: public docs in-repo (SPEC-025). |
 
 ## Notes
 - Argentina: IRAM/ISO references and Ley 26.653 (accesibilidad web) apply to
