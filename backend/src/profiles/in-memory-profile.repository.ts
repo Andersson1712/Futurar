@@ -26,6 +26,15 @@ export class InMemoryProfileRepository implements ProfileRepository {
     return Promise.resolve(list);
   }
 
+  listActive(): Promise<Profile[]> {
+    const list = [...this.profiles.values()]
+      .filter((profile) => profile.isActive)
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .map((profile) => this.withSettings(profile));
+
+    return Promise.resolve(list);
+  }
+
   findById(profileId: string, teacherId: string): Promise<Profile | undefined> {
     const profile = this.profiles.get(profileId);
 

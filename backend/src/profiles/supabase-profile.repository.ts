@@ -79,6 +79,19 @@ export class SupabaseProfileRepository implements ProfileRepository {
     return Promise.all(response.data.map((row) => this.mapWithSettings(row)));
   }
 
+  async listActive(): Promise<Profile[]> {
+    const client = this.requireClient();
+    const response = (await client
+      .from(STUDENTS_TABLE)
+      .select()
+      .eq('is_active', true)
+      .order('name')) as unknown as RowResponse<StudentRow[]>;
+
+    if (response.error || !response.data) return [];
+
+    return Promise.all(response.data.map((row) => this.mapWithSettings(row)));
+  }
+
   async findById(
     profileId: string,
     teacherId: string,

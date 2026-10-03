@@ -6,7 +6,9 @@ import { configureApp } from '../app.setup';
 import { ACTION_REPOSITORY } from '../actions/action.repository';
 import { InMemoryActionRepository } from '../actions/in-memory-action.repository';
 import { SupabaseAuthGuard } from '../common/guards/supabase-auth.guard';
+import { SupabaseService } from '../supabase/supabase.service';
 import { InMemoryProfileRepository } from './in-memory-profile.repository';
+import type { ProfileRepository } from './profile.repository';
 import { PROFILE_REPOSITORY } from './profile.repository';
 import { ProfilesController } from './profiles.controller';
 import { ProfilesService } from './profiles.service';
@@ -195,5 +197,48 @@ describe('ProfilesController (SPEC-021)', () => {
       .expect(404);
 
     expect(response.body).toMatchObject({ code: 'NOT_FOUND' });
+  });
+});
+
+describe('ProfilesController public entry (SPEC-024)', () => {
+  let app: INestApplication<App>;
+  let repository: ProfileRepository;
+
+  beforeEach(async () => {
+    const moduleRef = await Test.createTestingModule({
+      controllers: [ProfilesController],
+      providers: [
+        ProfilesService,
+        { provide: PROFILE_REPOSITORY, useClass: InMemoryProfileRepository },
+        { provide: ACTION_REPOSITORY, useClass: InMemoryActionRepository },
+        { provide: SupabaseService, useValue: { getClient: () => null } },
+      ],
+    }).compile();
+
+    app = moduleRef.createNestApplication();
+    configureApp(app);
+    await app.init();
+    repository = moduleRef.get(PROFILE_REPOSITORY);
+  });
+
+  afterEach(async () => {
+    await app.close();
+  });
+
+  it('serves GET /profiles/active without a Bearer token', async () => {
+    await repository.create('teacher-1', { name: 'Beto', notes: 'Private' });
+
+    const response = await request(app.getHttpServer())
+      .get('/api/v1/profiles/active')
+      .expect(200);
+
+    const body = response.body as Array<Record<string, unknown>>;
+    expect(body).toHaveLength(1);
+    expect(body[0]).toMatchObject({ name: 'Beto' });
+    expect(body[0]).not.toHaveProperty('notes');
+  });
+
+  it('keeps the teacher-scoped listing behind auth', async () => {
+    await request(app.getHttpServer()).get('/api/v1/profiles').expect(401);
   });
 });

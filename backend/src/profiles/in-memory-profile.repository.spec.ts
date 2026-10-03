@@ -40,6 +40,18 @@ describe('InMemoryProfileRepository (SPEC-021)', () => {
     );
   });
 
+  it('lists active profiles across teachers', async () => {
+    const repository = new InMemoryProfileRepository();
+
+    await repository.create('teacher-1', { name: 'Beto' });
+    const ana = await repository.create('teacher-2', { name: 'Ana' });
+    await repository.deactivate(ana.id, 'teacher-2');
+
+    const list = await repository.listActive();
+    expect(list.map((profile) => profile.name)).toEqual(['Beto']);
+    expect(list[0].settings).toEqual(DEFAULT_PROFILE_SETTINGS);
+  });
+
   it('merges and stores settings', async () => {
     const repository = new InMemoryProfileRepository();
     const created = await repository.create('teacher-1', { name: 'Ana' });
