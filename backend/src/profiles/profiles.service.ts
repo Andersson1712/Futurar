@@ -45,6 +45,16 @@ export class ProfilesService implements ProfileSettingsProvider {
     return this.repository.list(teacherId, activeOnly);
   }
 
+  /**
+   * Public kiosk listing (SPEC-024): active profiles across teachers.
+   * Teacher notes stay private and are stripped from the payload.
+   */
+  async listActivePublic(): Promise<Profile[]> {
+    const profiles = await this.repository.listActive();
+
+    return profiles.map((profile) => toPublicProfile(profile));
+  }
+
   async get(profileId: string, teacherId: string): Promise<Profile> {
     const profile = await this.repository.findById(profileId, teacherId);
 
@@ -200,6 +210,34 @@ function stripUndefined<T extends object>(value: T): Partial<T> {
   return Object.fromEntries(
     Object.entries(value).filter(([, entry]) => entry !== undefined),
   ) as Partial<T>;
+}
+
+function toPublicProfile(profile: Profile): Profile {
+  const {
+    id,
+    teacherId,
+    name,
+    age,
+    birthdate,
+    avatarIcon,
+    isActive,
+    createdAt,
+    updatedAt,
+    settings,
+  } = profile;
+
+  return {
+    id,
+    teacherId,
+    name,
+    age,
+    birthdate,
+    avatarIcon,
+    isActive,
+    createdAt,
+    updatedAt,
+    settings,
+  };
 }
 
 function profileNotFound(): AiErrorException {

@@ -156,6 +156,20 @@ describe('ProfilesService (SPEC-021)', () => {
     ).resolves.toHaveLength(2);
   });
 
+  it('lists active profiles publicly without teacher notes', async () => {
+    const { service } = buildService();
+
+    await service.create('teacher-1', { name: 'Beto', notes: 'Private note' });
+    const ana = await service.create('teacher-2', { name: 'Ana' });
+    await service.deactivate(ana.id, 'teacher-2');
+
+    const list = await service.listActivePublic();
+    expect(list).toHaveLength(1);
+    expect(list[0]).toMatchObject({ name: 'Beto', teacherId: 'teacher-1' });
+    expect(list[0]).not.toHaveProperty('notes');
+    expect(list[0].settings).toBeDefined();
+  });
+
   it('rejects updates and deletes for foreign profiles', async () => {
     const { service } = buildService();
     const created = await service.create('teacher-1', { name: 'Ana' });

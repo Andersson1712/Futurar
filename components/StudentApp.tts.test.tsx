@@ -34,7 +34,7 @@ vi.mock('../services/backendProfiles', async (importOriginal) => {
 
   return {
     ...actual,
-    listProfiles: vi.fn(async () => [PROFILE]),
+    listActiveProfiles: vi.fn(async () => [PROFILE]),
     listProfileOptions: vi.fn(async () => ({
       protagonists: [
         { id: 'p1', label: 'Un dragón', icon: 'pets', isEnabled: true },

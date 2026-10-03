@@ -33,7 +33,7 @@
 - Swagger before app.listen; BullMQ needs Redis ping + `maxRetriesPerRequest: null`; raw bullmq.
 - Supabase JS is untyped here: cast responses; storage paths use the job id; signed URLs never persisted.
 - Gemini TTS lacks es-AR (default es-419); models gemini-3.8-flash / gemini-3.1-flash-image / gemini-3.8-flash-tts.
-- Input contract: pointerdown on `[data-option]` wins over scan focus; never act on release.
+- Input contract: pointerdown on `[data-option]` wins over scan focus; never act on release. Rule: frontend/student decisions are accessibility-first (scan stops, deterministic timing, semantic pages, loud config errors); page changes always show + speak `Página X de Y` (aria-live).
 - Scroll: vertical scroll allowed (`overflow-x` only, `pan-y`, dvh, `safe-center`); never global `overflow: hidden`.
 - Menus/modals: trapped dialog + backdrop (`isModalOpen` pauses grids); capture-phase keydown.
 - Autosave: `futurar_progress_v1` per student (whitelisted steps, empty config valid); clears on profile switch/new story/logout.
@@ -43,8 +43,8 @@
 - Credentials: `ai_credentials` + AES-256-GCM (`AI_SECRETS_MASTER_KEY`, base64 32B); async tenant-aware SecretProvider (DB → env); clients cached by key hash; flag `AI_CREDENTIALS_ENABLED` default false; API returns metadata only.
 - Profiles (SPEC-021): `ProfilesModule` CRUD scoped by JWT teacher, soft delete (`is_active=false`), `PUT /settings`, read-only `GET /options`; generation defaults from `book_story_size`/`book_audience` (fallback medium/child); frontend only via `services/backendProfiles.ts`.
 - Contacts/dedications (SPEC-022): `profile_contacts` (1:N, cascade) via `ProfilesModule`; book-level `dedication_to/reason/position` + `is_favorite` with PUT/DELETE `/books/:id/dedication` and PUT `/books/:id/favorite`; reader modal uses contacts, PDF prefills; legacy `stories` stay read-only.
-- Actions catalog (SPEC-023): `actions → action_options → action_option_items` per teacher + `profile_actions`/`profile_option_items`; `GET /profiles/:id/options` adapts level-1 enabled items; profile create seeds defaults and `modules` mirrors actions; editor reads the catalog; limits/pagination = SPEC-023B.
+- Actions catalog (SPEC-023); SPEC-023B verified on `feat/spec-023b-limits-pagination` (levels-as-pages, `max_per_page` migration 0008, 422 LIMIT_EXCEEDED, `optionPages` + Más opciones; commit fbb142a adds page indicator): full suites green, pending push + PR to dev.
 
 ## Next Steps
-- [ ] Owner: rotate Gemini key; apply migrations 0001→0007; create `book-images` bucket; set `AI_SECRETS_MASTER_KEY` when enabling credentials.
-- [ ] SPEC-023B: limits/pagination; SPEC-027: analytics; chore Vite/TS.
+- [ ] Owner: rotate key; migrations 0001→0008; `book-images` bucket; `AI_SECRETS_MASTER_KEY`; SPEC-027 analytics; chore Vite/TS.
+- [x] SPEC-024 verified (branch feat/spec-024-student-entry, commits b849ab0/1e630d6): public `GET /profiles/active` (notes stripped, 401 kept on scoped list); login-free entry (single fetch + abort); failure exits GENERATING; i18n errors; suites green (be 238+1, fe 108); pending push + PR to dev.

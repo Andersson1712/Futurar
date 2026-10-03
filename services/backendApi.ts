@@ -42,6 +42,18 @@ export async function getAccessToken(): Promise<string | undefined> {
   return data.session?.access_token;
 }
 
+/**
+ * Unauthenticated fetch for public kiosk endpoints (SPEC-024).
+ * Sends no Bearer token and never touches the Supabase session,
+ * so the student entry works without a teacher login.
+ */
+export async function apiFetchPublic<T>(
+  path: string,
+  init: RequestInit = {},
+): Promise<T> {
+  return parse<T>(await send(path, init, undefined));
+}
+
 export async function apiFetch<T>(
   path: string,
   init: RequestInit = {},

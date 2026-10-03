@@ -68,6 +68,15 @@ export class ProfilesController {
     return this.profiles.list(request.user?.id ?? '', query.active ?? true);
   }
 
+  @Get('active')
+  @ApiOperation({
+    summary: 'List active profiles for the student kiosk entry (no auth)',
+  })
+  @ApiOkResponse()
+  async listActive(): Promise<Profile[]> {
+    return this.profiles.listActivePublic();
+  }
+
   @Post()
   @UseGuards(SupabaseAuthGuard)
   @ApiCreatedResponse()

@@ -83,6 +83,10 @@ export async function mockBackend(page: Page): Promise<void> {
   await page.route(/\/api\/v1\/profiles\?active=/, (route) =>
     route.fulfill({ json: [PROFILE] }),
   );
+  // SPEC-024: public kiosk entry for students (no login required).
+  await page.route('**/api/v1/profiles/active', (route) =>
+    route.fulfill({ json: [PROFILE] }),
+  );
   await page.route('**/api/v1/profiles/student-1/options', (route) =>
     route.fulfill({ json: PROFILE_OPTIONS }),
   );

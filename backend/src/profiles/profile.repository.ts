@@ -103,6 +103,11 @@ export const DEFAULT_PROFILE_SETTINGS: ProfileSettings = {
 
 export interface ProfileRepository {
   list(teacherId: string, activeOnly: boolean): Promise<Profile[]>;
+  /**
+   * Lists active profiles across teachers for the student kiosk entry
+   * (SPEC-024). The service layer strips private fields before responding.
+   */
+  listActive(): Promise<Profile[]>;
   findById(profileId: string, teacherId: string): Promise<Profile | undefined>;
   create(teacherId: string, input: CreateProfileInput): Promise<Profile>;
   update(

@@ -1,4 +1,4 @@
-import { apiFetch } from './backendApi';
+import { apiFetch, apiFetchPublic } from './backendApi';
 import type { Student, StudentSettings } from '../types/database';
 
 export interface ProfileSettingsPayload {
@@ -126,6 +126,18 @@ export async function listProfiles(
   return apiFetch<ProfilePayload[]>(
     `/api/v1/profiles?active=${activeOnly ? 'true' : 'false'}`,
   );
+}
+
+/**
+ * Public kiosk listing for the student entry (SPEC-024).
+ * Needs no teacher login; the backend omits private fields.
+ */
+export async function listActiveProfiles(
+  signal?: AbortSignal,
+): Promise<ProfilePayload[]> {
+  return apiFetchPublic<ProfilePayload[]>('/api/v1/profiles/active', {
+    signal,
+  });
 }
 
 export async function getProfile(profileId: string): Promise<ProfilePayload> {

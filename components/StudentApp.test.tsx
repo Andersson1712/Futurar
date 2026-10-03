@@ -1,7 +1,10 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import StudentApp from './StudentApp';
-import { t } from '../utils/messages';
+import { ApiError } from '../services/backendApi';
+import { listActiveProfiles } from '../services/backendProfiles';
+import { requestBookGeneration } from '../services/bookGeneration';
+import { messageForErrorCode, t } from '../utils/messages';
 import {
   clearProgress,
   loadProgress,
@@ -20,6 +23,11 @@ vi.mock('../utils/speech', () => ({
 
 vi.mock('../utils/audio', () => ({
   playSelectionSound: vi.fn(),
+}));
+
+vi.mock('../services/bookGeneration', () => ({
+  requestBookGeneration: vi.fn(),
+  followJob: vi.fn(),
 }));
 
 vi.mock('../services/backendProfiles', async (importOriginal) => {
@@ -54,7 +62,7 @@ vi.mock('../services/backendProfiles', async (importOriginal) => {
 
   return {
     ...actual,
-    listProfiles: vi.fn(async () => [PROFILE]),
+    listActiveProfiles: vi.fn(async () => [PROFILE]),
     listProfileOptions: vi.fn(async () => ({
       protagonists: [
         { id: 'p1', label: 'Un dragón', icon: 'pets', isEnabled: true },
@@ -128,5 +136,55 @@ describe('StudentApp autosave (SPEC-014)', () => {
     render(<StudentApp onSwitchToTeacher={vi.fn()} />);
 
     await screen.findByText('Elige el Estilo Visual');
+  });
+});
+
+describe('StudentApp public entry (SPEC-024)', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    vi.clearAllMocks();
+  });
+
+  it('shows a localized error instead of raw backend text on failure', async () => {
+    vi.mocked(listActiveProfiles).mockRejectedValueOnce(
+      new ApiError({ statusCode: 500, code: 'INTERNAL', message: 'boom' }),
+    );
+
+    render(<StudentApp onSwitchToTeacher={vi.fn()} />);
+
+    await screen.findByText(messageForErrorCode('INTERNAL'));
+    expect(screen.queryByText('boom')).not.toBeInTheDocument();
+  });
+
+  it('leaves the GENERATING spinner and returns to style selection on failure', async () => {
+    vi.mocked(requestBookGeneration).mockRejectedValueOnce(
+      new ApiError({ statusCode: 500, code: 'INTERNAL', message: 'boom' }),
+    );
+
+    render(<StudentApp onSwitchToTeacher={vi.fn()} />);
+
+    await screen.findByText('Ana');
+    fireEvent.pointerDown(optionContaining('Ana'));
+    await screen.findByText(t('wizard.menuTitle'));
+
+    fireEvent.pointerDown(optionContaining(t('wizard.createStory')));
+    await screen.findByText(t('wizard.protagonistTitle'));
+    fireEvent.pointerDown(optionContaining('Un dragón'));
+    await screen.findByText(t('wizard.sceneryTitle'));
+    fireEvent.pointerDown(optionContaining('Un bosque'));
+    await screen.findByText(t('wizard.missionTitle'));
+    fireEvent.pointerDown(optionContaining('Una estrella'));
+    await screen.findByText(t('wizard.styleTitle'));
+    fireEvent.pointerDown(optionContaining('Acuarela'));
+
+    await screen.findByText(t('wizard.generatingTitle'));
+
+    await waitFor(() => {
+      expect(
+        screen.queryByText(t('wizard.generatingTitle')),
+      ).not.toBeInTheDocument();
+    });
+    await screen.findByText(t('wizard.styleTitle'));
+    await screen.findByText(messageForErrorCode('INTERNAL'));
   });
 });
