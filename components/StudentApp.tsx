@@ -393,7 +393,9 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
 
     const handleWizardSelect = (opt: ScanOption) => {
         if (opt.id === MORE_OPTIONS_ID) {
-            setOptionPage(nextPageIndex(safePage, pageCount));
+            const next = nextPageIndex(safePage, pageCount);
+            setOptionPage(next);
+            speakWithState(t('wizard.pageIndicator', { current: next + 1, total: pageCount }));
             return;
         }
 
@@ -856,6 +858,12 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
                             {step === 'SELECT_MISSION' && t('wizard.missionTitle')}
                             {step === 'SELECT_STYLE' && t('wizard.styleTitle')}
                         </h2>
+
+                        {pageCount > 1 && (
+                            <p aria-live="polite" className="text-sm md:text-base font-bold text-gray-300 mb-4">
+                                {t('wizard.pageIndicator', { current: safePage + 1, total: pageCount })}
+                            </p>
+                        )}
 
                         <ScanningGrid
                             options={pageOptions}

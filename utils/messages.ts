@@ -38,6 +38,7 @@ export const TRANSLATIONS = {
   'wizard.design': 'Diseñar',
   'wizard.retry': 'Intentar de nuevo',
   'wizard.moreOptions': 'Más opciones',
+  'wizard.pageIndicator': 'Página {current} de {total}',
 
   'library.loading': 'Cargando tu biblioteca...',
   'library.emptyTitle': 'Tu biblioteca está vacía',
@@ -137,14 +138,19 @@ export const TRANSLATIONS = {
 
 export type MessageKey = keyof typeof TRANSLATIONS;
 
-export function t(key: MessageKey): string {
+export function t(key: MessageKey, params?: Record<string, string | number>): string {
   const value = TRANSLATIONS[key];
 
   if (!value) {
     throw new Error(`Missing translation for key: ${key}`);
   }
 
-  return value;
+  if (!params) return value;
+
+  return Object.entries(params).reduce(
+    (text, [name, param]) => text.replaceAll(`{${name}}`, String(param)),
+    value,
+  );
 }
 
 const ERROR_MESSAGES: Record<string, string> = {

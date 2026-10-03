@@ -96,6 +96,9 @@ describe('StudentApp scan pagination (SPEC-023B)', () => {
 
     expect(screen.getByText('Un dragón')).toBeInTheDocument();
     expect(screen.queryByText('Un robot')).not.toBeInTheDocument();
+    expect(
+      screen.getByText(t('wizard.pageIndicator', { current: 1, total: 2 })),
+    ).toBeInTheDocument();
 
     fireEvent.pointerDown(optionContaining(t('wizard.moreOptions')));
 
@@ -103,5 +106,18 @@ describe('StudentApp scan pagination (SPEC-023B)', () => {
       expect(screen.getByText('Un robot')).toBeInTheDocument();
     });
     expect(screen.getByText(t('wizard.moreOptions'))).toBeInTheDocument();
+    expect(
+      screen.getByText(t('wizard.pageIndicator', { current: 2, total: 2 })),
+    ).toBeInTheDocument();
+  });
+
+  it('hides the page indicator when everything fits on one page', async () => {
+    render(<StudentApp onSwitchToTeacher={vi.fn()} />);
+
+    await screen.findByText('Ana');
+    fireEvent.pointerDown(optionContaining('Ana'));
+    await screen.findByText(t('wizard.menuTitle'));
+
+    expect(screen.queryByText(/Página \d+ de \d+/)).not.toBeInTheDocument();
   });
 });
