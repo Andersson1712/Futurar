@@ -47,4 +47,4 @@
 
 ## Next Steps
 - [ ] Owner: rotate key; migrations 0001→0008; `book-images` bucket; `AI_SECRETS_MASTER_KEY`; `LOG_LEVEL=info` in `backend/.env.example`; chore Vite/TS.
-- [x] SPEC-023B/024/027 merged to dev (#29/#33/#34). SPEC-025 refresh (024/027 coverage) pending PR #31; next SPEC-026 release.
+- [x] SPEC-023B/024/025/027 merged to dev (#29/#33/#31/#34). Next: SPEC-026 release (LICENSE, versioning).
