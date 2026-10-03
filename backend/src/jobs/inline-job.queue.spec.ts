@@ -19,8 +19,16 @@ describe('InlineJobQueue', () => {
 
     await queue.enqueue('job-1');
 
-    expect(run).toHaveBeenCalledWith('job-1');
+    expect(run).toHaveBeenCalledWith('job-1', undefined);
     expect(fail).not.toHaveBeenCalled();
+  });
+
+  it('forwards the correlation id to the runner (SPEC-027)', async () => {
+    const { queue, run } = buildQueue(jest.fn().mockResolvedValue(undefined));
+
+    await queue.enqueue('job-1', 'corr-1');
+
+    expect(run).toHaveBeenCalledWith('job-1', 'corr-1');
   });
 
   it('marks the job failed and rethrows when generation fails', async () => {

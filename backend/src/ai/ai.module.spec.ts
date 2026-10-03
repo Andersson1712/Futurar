@@ -1,6 +1,8 @@
 import { Test } from '@nestjs/testing';
 import { ConfigModule } from '@nestjs/config';
+import { PinoLogger } from 'nestjs-pino';
 import { validateEnv } from '../config/env.validation';
+import { fakePinoLogger } from '../observability/fake-pino-logger';
 import { AiModule } from './ai.module';
 import { GeminiImageAdapter } from './infrastructure/gemini/gemini-image.adapter';
 import { GeminiTextAdapter } from './infrastructure/gemini/gemini-text.adapter';
@@ -24,7 +26,10 @@ describe('AiModule', () => {
         }),
         AiModule,
       ],
-    }).compile();
+    })
+      .overrideProvider(PinoLogger)
+      .useValue(fakePinoLogger())
+      .compile();
 
     expect(moduleRef.get(TEXT_GENERATOR)).toBeInstanceOf(GeminiTextAdapter);
     expect(moduleRef.get(IMAGE_GENERATOR)).toBeInstanceOf(GeminiImageAdapter);

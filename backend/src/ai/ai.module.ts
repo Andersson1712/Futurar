@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { PinoLogger } from 'nestjs-pino';
 import { AiController } from './ai.controller';
 import { BookGenerationService } from './application/book-generation.service';
 import { BookOutputParser } from './application/book-output.parser';
@@ -19,6 +20,7 @@ import { REDIS_CLIENT } from '../common/redis/redis-client';
 import type { RedisClient } from '../common/redis/redis-client';
 import { RedisModule } from '../common/redis/redis.module';
 import { SupabaseModule } from '../supabase/supabase.module';
+import { ObservabilityModule } from '../observability/observability.module';
 import { SupabaseService } from '../supabase/supabase.service';
 import { BullMqJobQueue } from '../jobs/bullmq-job.queue';
 import { InlineJobQueue } from '../jobs/inline-job.queue';
@@ -56,7 +58,13 @@ import {
 } from './tokens';
 
 @Module({
-  imports: [SupabaseModule, RedisModule, BooksModule, ProfilesModule],
+  imports: [
+    SupabaseModule,
+    RedisModule,
+    ObservabilityModule,
+    BooksModule,
+    ProfilesModule,
+  ],
   controllers: [AiController, AiCredentialsController],
   providers: [
     EnvSecretProvider,
@@ -133,18 +141,25 @@ import {
         redis: RedisClient,
         runner: GenerationRunner,
         jobs: JobRepository,
+        logger: PinoLogger,
       ): JobQueue => {
         if (resolveQueueDriver(configService) === 'bullmq') {
           if (!redis) {
             throw new Error('REDIS_URL is required for QUEUE_DRIVER=bullmq');
           }
 
-          return new BullMqJobQueue(redis, runner, jobs);
+          return new BullMqJobQueue(redis, runner, jobs, logger);
         }
 
         return new InlineJobQueue(runner, jobs);
       },
-      inject: [ConfigService, REDIS_CLIENT, GenerationRunner, JOB_REPOSITORY],
+      inject: [
+        ConfigService,
+        REDIS_CLIENT,
+        GenerationRunner,
+        JOB_REPOSITORY,
+        PinoLogger,
+      ],
     },
     JobStatusStream,
     {

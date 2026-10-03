@@ -34,7 +34,7 @@ export class BookGenerationService implements BookGenerationUseCase {
       request: command,
     });
 
-    await this.queue.enqueue(job.id);
+    await this.queue.enqueue(job.id, command.correlationId);
 
     const current = (await this.jobs.findById(job.id)) ?? job;
 

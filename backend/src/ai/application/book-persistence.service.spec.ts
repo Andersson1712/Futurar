@@ -1,4 +1,5 @@
 import { ConfigService } from '@nestjs/config';
+import { fakePinoLogger } from '../../observability/fake-pino-logger';
 import type { ImageGeneratorPort } from '../domain/ports/image-generator.port';
 import type {
   BookRepository,
@@ -87,6 +88,7 @@ function buildService(
     storage,
     imageGenerator,
     configService,
+    fakePinoLogger(),
   );
 
   return { service, save, upload, signedUrl, generate };
