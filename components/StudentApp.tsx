@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { listProfileOptions, listProfiles, mapProfileSettings, mapProfileToStudent } from '../services/backendProfiles';
+import { listActiveProfiles, listProfileOptions, mapProfileSettings, mapProfileToStudent } from '../services/backendProfiles';
 import ScanningGrid from './ScanningGrid';
 import StoryReader from './StoryReader';
 import StoryDetails from './StoryDetails';
@@ -60,6 +60,17 @@ interface StudentAppProps {
     onSwitchToTeacher: () => void;
 }
 
+// Localized copy for entry failures (SPEC-024): never surface raw backend text.
+function profileListErrorMessage(err: unknown): string {
+    if (err instanceof ApiError) {
+        return messageForErrorCode(err.code);
+    }
+    if (err instanceof NetworkError) {
+        return MESSAGES.errors.network;
+    }
+    return MESSAGES.errors.generic;
+}
+
 // Inner component that uses the context
 const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
     const [step, setStep] = useState<AppStep>('PROFILE');
@@ -116,11 +127,16 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
         });
     }, [currentStudent, accessibility, applyProfileSettings]);
 
-    // Cargar estudiantes (SPEC-021: solo vía backend)
+    // Cargar estudiantes (SPEC-024: entrada pública del quiosco, sin login)
     useEffect(() => {
+        const controller = new AbortController();
+        let cancelled = false;
+
         const loadStudents = async () => {
             try {
-                const profiles = await listProfiles(true);
+                const profiles = await listActiveProfiles(controller.signal);
+
+                if (cancelled) return;
 
                 const processedData = profiles.map(profile => ({
                     ...mapProfileToStudent(profile),
@@ -128,14 +144,25 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
                 })) as StudentWithSettings[];
 
                 setStudents(processedData);
-            } catch (err: any) {
+            } catch (err) {
+                if (cancelled) return;
+                if (err instanceof DOMException && err.name === 'AbortError') {
+                    return;
+                }
                 console.error('Error cargando estudiantes:', err);
-                setError(err.message);
+                setError(profileListErrorMessage(err));
             } finally {
-                setIsLoading(false);
+                if (!cancelled) {
+                    setIsLoading(false);
+                }
             }
         };
         loadStudents();
+
+        return () => {
+            cancelled = true;
+            controller.abort();
+        };
     }, []);
 
     // Restore wizard/viewer progress (SPEC-014)
@@ -487,6 +514,9 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
                 });
                 setError(message);
                 speakWithState(message);
+                // SPEC-024: never park the UI on the GENERATING spinner.
+                // Back to style selection so the student can retry.
+                setStep('SELECT_STYLE');
             }
         };
 
