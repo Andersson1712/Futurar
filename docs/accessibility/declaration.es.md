@@ -33,8 +33,9 @@ los criterios evaluados están en:
 - La voz **es-AR** no está disponible en la mayoría de los dispositivos; se usa
   `es-US` como respaldo hasta evaluar voces en la nube (SPEC-030).
 - La generación de imágenes del cuento es opcional y puede estar desactivada.
-- La declaración es un documento del repositorio; su publicación en el sitio
-  público se realiza con SPEC-025.
+- La declaración se publica como documentación del repositorio (enlazada desde
+  `README.md`/`README.es.md` y la [guía de accesibilidad](guide.es.md)); una
+  página web dedicada queda pendiente.
 - Falta validación con personas usuarias y tecnologías de asistencia reales.
 
 ## Contacto y comentarios
