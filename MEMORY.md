@@ -43,8 +43,8 @@
 - Credentials: `ai_credentials` + AES-256-GCM (`AI_SECRETS_MASTER_KEY`, base64 32B); async tenant-aware SecretProvider (DB → env); clients cached by key hash; flag `AI_CREDENTIALS_ENABLED` default false; API returns metadata only.
 - Profiles (SPEC-021): `ProfilesModule` CRUD scoped by JWT teacher, soft delete (`is_active=false`), `PUT /settings`, read-only `GET /options`; generation defaults from `book_story_size`/`book_audience` (fallback medium/child); frontend only via `services/backendProfiles.ts`.
 - Contacts/dedications (SPEC-022): `profile_contacts` (1:N, cascade) via `ProfilesModule`; book-level `dedication_to/reason/position` + `is_favorite` with PUT/DELETE `/books/:id/dedication` and PUT `/books/:id/favorite`; reader modal uses contacts, PDF prefills; legacy `stories` stay read-only.
-- Actions catalog (SPEC-023); SPEC-023B verified on `feat/spec-023b-limits-pagination` (levels-as-pages, `max_per_page` migration 0008, 422 LIMIT_EXCEEDED, `optionPages` + Más opciones; commit fbb142a adds page indicator): full suites green, pending push + PR to dev.
+- Actions catalog (SPEC-023); SPEC-023B merged to dev (#29: levels-as-pages, `max_per_page` migration 0008, 422 LIMIT_EXCEEDED, `optionPages` + Más opciones + page indicator).
 
 ## Next Steps
-- [ ] Owner: rotate key; migrations 0001→0008; `book-images` bucket; `AI_SECRETS_MASTER_KEY`; SPEC-027 analytics; chore Vite/TS.
-- [x] SPEC-024 verified (branch feat/spec-024-student-entry, commits b849ab0/1e630d6): public `GET /profiles/active` (notes stripped, 401 kept on scoped list); login-free entry (single fetch + abort); failure exits GENERATING; i18n errors; suites green (be 238+1, fe 108); pending push + PR to dev.
+- [ ] Owner: rotate key; migrations 0001→0008; `book-images` bucket; `AI_SECRETS_MASTER_KEY`; chore Vite/TS.
+- [x] SPEC-024 merged to dev (#33: public `GET /profiles/active`, login-free entry, retryable generation). SPEC-027 verified (suites 265+1), pending PR #34.

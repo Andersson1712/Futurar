@@ -1,11 +1,14 @@
 import { NestFactory } from '@nestjs/core';
+import { Logger } from 'nestjs-pino';
 import { AppModule } from './app.module';
 import { configureApp } from './app.setup';
 import { setupSwagger } from './config/swagger';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, { bufferLogs: true });
+  const logger = app.get(Logger);
 
+  app.useLogger(logger);
   configureApp(app);
 
   // Enable CORS for the frontend.
@@ -27,7 +30,7 @@ async function bootstrap() {
 
   await app.listen(port);
 
-  console.log(`🚀 Backend API running on http://localhost:${port}/api/v1`);
+  logger.log(`Backend API running on http://localhost:${port}/api/v1`);
 }
 
 void bootstrap();

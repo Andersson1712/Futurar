@@ -11,6 +11,8 @@ import type {
 import { CircuitBreaker } from './circuit-breaker';
 import { GenerationRunner } from './generation-runner';
 import { PromptBuilderService } from './prompt-builder.service';
+import { MetricsService } from '../../observability/metrics.service';
+import { fakePinoLogger } from '../../observability/fake-pino-logger';
 import type { ProfileSettingsProvider } from '../../profiles/profile-settings.provider';
 
 const REQUEST: GenerateBookRequestDto = {
@@ -58,6 +60,7 @@ function buildRunner(job: JobRecord | null = JOB) {
   const profileSettings = {
     getBookDefaults,
   } as unknown as ProfileSettingsProvider;
+  const metrics = new MetricsService();
   const runner = new GenerationRunner(
     jobs,
     new PromptBuilderService(),
@@ -67,6 +70,8 @@ function buildRunner(job: JobRecord | null = JOB) {
     persistence,
     profileSettings,
     textGenerator,
+    fakePinoLogger(),
+    metrics,
   );
 
   return {
@@ -77,6 +82,7 @@ function buildRunner(job: JobRecord | null = JOB) {
     generate,
     persist,
     getBookDefaults,
+    metrics,
   };
 }
 
@@ -174,5 +180,38 @@ describe('GenerationRunner', () => {
       code: 'INVALID_OUTPUT',
     });
     expect(complete).not.toHaveBeenCalled();
+  });
+
+  it('records generation metrics with token usage (SPEC-027)', async () => {
+    const { runner, generate, metrics } = buildRunner();
+    generate.mockResolvedValue({
+      text: VALID_BOOK_TEXT,
+      model: 'gemini-test',
+      usage: { inputTokens: 10, outputTokens: 20 },
+    });
+
+    await runner.run('job-1', 'corr-1');
+
+    expect(metrics.snapshot().generation).toMatchObject({
+      jobs: 1,
+      succeeded: 1,
+      failed: 0,
+      inputTokens: 10,
+      outputTokens: 20,
+    });
+  });
+
+  it('records failed generations in metrics (SPEC-027)', async () => {
+    const { runner, generate, metrics } = buildRunner();
+    generate.mockRejectedValue(new AiProviderError('RATE_LIMITED', 'quota'));
+
+    await expect(runner.run('job-1', 'corr-1')).rejects.toMatchObject({
+      code: 'RATE_LIMITED',
+    });
+    expect(metrics.snapshot().generation).toMatchObject({
+      jobs: 1,
+      succeeded: 0,
+      failed: 1,
+    });
   });
 });

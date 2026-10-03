@@ -1,5 +1,6 @@
 import { Queue, Worker } from 'bullmq';
 import type { Redis } from 'ioredis';
+import { fakePinoLogger } from '../observability/fake-pino-logger';
 import { AiProviderError } from '../ai/ai.errors';
 import type { GenerationRunner } from '../ai/application/generation-runner';
 import type { JobRepository } from './job.repository';
@@ -50,7 +51,7 @@ function buildQueue() {
   const fail = jest.fn().mockResolvedValue(undefined);
   const runner = { run } as unknown as GenerationRunner;
   const jobs = { fail } as unknown as JobRepository;
-  const queue = new BullMqJobQueue(redis, runner, jobs);
+  const queue = new BullMqJobQueue(redis, runner, jobs, fakePinoLogger());
 
   return { queue, redis, workerRedis, ping, duplicate, run, fail };
 }
@@ -134,7 +135,28 @@ describe('BullMqJobQueue', () => {
       attemptsMade: 0,
     });
 
-    expect(run).toHaveBeenCalledWith('job-1');
+    expect(run).toHaveBeenCalledWith('job-1', undefined);
+  });
+
+  it('carries the correlation id from payload to runner (SPEC-027)', async () => {
+    const { queue, run } = buildQueue();
+    await queue.onModuleInit();
+
+    await queue.enqueue('job-1', 'corr-1');
+
+    expect(lastQueueMock().add).toHaveBeenCalledWith(
+      'generate',
+      { jobId: 'job-1', correlationId: 'corr-1' },
+      expect.anything(),
+    );
+
+    await lastProcessor()({
+      data: { jobId: 'job-1', correlationId: 'corr-1' },
+      opts: { attempts: DEFAULT_JOB_ATTEMPTS },
+      attemptsMade: 0,
+    });
+
+    expect(run).toHaveBeenCalledWith('job-1', 'corr-1');
   });
 
   it('keeps the job pending on a transient failure', async () => {

@@ -12,9 +12,9 @@ export class InlineJobQueue implements JobQueue {
     @Inject(JOB_REPOSITORY) private readonly jobs: JobRepository,
   ) {}
 
-  async enqueue(jobId: string): Promise<void> {
+  async enqueue(jobId: string, correlationId?: string): Promise<void> {
     try {
-      await this.runner.run(jobId);
+      await this.runner.run(jobId, correlationId);
     } catch (error) {
       await this.jobs.fail(jobId, toAiErrorDto(error));
       throw error;

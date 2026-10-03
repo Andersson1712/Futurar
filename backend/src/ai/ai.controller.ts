@@ -31,6 +31,7 @@ import {
   ApiUnprocessableEntityResponse,
 } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
+import { requestCorrelationId } from '../observability/correlation-id';
 import { AiErrorDto } from '../common/dto/ai-error.dto';
 import {
   SupabaseAuthGuard,
@@ -85,6 +86,7 @@ export class AiController {
     return this.bookGeneration.requestGeneration({
       ...dto,
       userId: request.user?.id ?? '',
+      correlationId: requestCorrelationId(request),
     });
   }
 

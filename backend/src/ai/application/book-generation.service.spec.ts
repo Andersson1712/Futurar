@@ -56,8 +56,16 @@ describe('BookGenerationService', () => {
       userId: 'user-1',
       request: COMMAND,
     });
-    expect(enqueue).toHaveBeenCalledWith('job-1');
+    expect(enqueue).toHaveBeenCalledWith('job-1', undefined);
     expect(response).toEqual({ jobId: 'job-1', status: 'completed' });
+  });
+
+  it('propagates the correlation id to the queue (SPEC-027)', async () => {
+    const { service, enqueue } = buildService();
+
+    await service.requestGeneration({ ...COMMAND, correlationId: 'corr-1' });
+
+    expect(enqueue).toHaveBeenCalledWith('job-1', 'corr-1');
   });
 
   it('returns queued status when the driver has not finished yet', async () => {

@@ -1,12 +1,12 @@
 import {
   Inject,
   Injectable,
-  Logger,
   OnModuleDestroy,
   OnModuleInit,
 } from '@nestjs/common';
 import { Job, Queue, Worker } from 'bullmq';
 import type { Redis } from 'ioredis';
+import { PinoLogger } from 'nestjs-pino';
 import { GenerationRunner } from '../ai/application/generation-runner';
 import { toAiErrorDto } from '../common/errors/to-ai-error';
 import {
@@ -24,7 +24,6 @@ export const WORKER_CONCURRENCY = 1;
 
 @Injectable()
 export class BullMqJobQueue implements JobQueue, OnModuleInit, OnModuleDestroy {
-  private readonly logger = new Logger(BullMqJobQueue.name);
   private queue?: Queue<BookJobPayload>;
   private worker?: Worker<BookJobPayload>;
   private workerConnection?: Redis;
@@ -33,7 +32,10 @@ export class BullMqJobQueue implements JobQueue, OnModuleInit, OnModuleDestroy {
     @Inject(REDIS_CLIENT) private readonly redis: Redis,
     private readonly runner: GenerationRunner,
     @Inject(JOB_REPOSITORY) private readonly jobs: JobRepository,
-  ) {}
+    private readonly logger: PinoLogger,
+  ) {
+    this.logger.setContext(BullMqJobQueue.name);
+  }
 
   async onModuleInit(): Promise<void> {
     await assertRedisAvailable(this.redis);
@@ -52,17 +54,21 @@ export class BullMqJobQueue implements JobQueue, OnModuleInit, OnModuleDestroy {
     );
     this.worker.on('failed', (job, error) => {
       this.logger.warn(
-        `Generation job ${job?.data.jobId ?? 'unknown'} failed: ${error.message}`,
+        {
+          jobId: job?.data.jobId ?? 'unknown',
+          correlationId: job?.data.correlationId,
+        },
+        `Generation job failed: ${error.message}`,
       );
     });
   }
 
-  async enqueue(jobId: string): Promise<void> {
+  async enqueue(jobId: string, correlationId?: string): Promise<void> {
     const queue = this.requireQueue();
 
     await queue.add(
       'generate',
-      { jobId },
+      { jobId, ...(correlationId ? { correlationId } : {}) },
       {
         jobId,
         attempts: DEFAULT_JOB_ATTEMPTS,
@@ -80,10 +86,10 @@ export class BullMqJobQueue implements JobQueue, OnModuleInit, OnModuleDestroy {
   }
 
   private async process(job: Job<BookJobPayload>): Promise<void> {
-    const { jobId } = job.data;
+    const { jobId, correlationId } = job.data;
 
     try {
-      await this.runner.run(jobId);
+      await this.runner.run(jobId, correlationId);
     } catch (error) {
       const attempts = job.opts.attempts ?? 1;
 

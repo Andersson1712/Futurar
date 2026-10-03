@@ -1,5 +1,6 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { PinoLogger } from 'nestjs-pino';
 import type { GeneratedBookDto } from '../dto/generated-book.dto';
 import type { TextGenerationUsage } from '../domain/ports/text-generator.port';
 import type { ImageGeneratorPort } from '../domain/ports/image-generator.port';
@@ -32,15 +33,16 @@ export interface PersistBookInput {
 
 @Injectable()
 export class BookPersistenceService {
-  private readonly logger = new Logger(BookPersistenceService.name);
-
   constructor(
     @Inject(BOOK_REPOSITORY) private readonly books: BookRepository,
     @Inject(BOOK_STORAGE) private readonly storage: BookStorage,
     @Inject(IMAGE_GENERATOR)
     private readonly imageGenerator: ImageGeneratorPort,
     private readonly configService: ConfigService,
-  ) {}
+    private readonly logger: PinoLogger,
+  ) {
+    this.logger.setContext(BookPersistenceService.name);
+  }
 
   async persist(input: PersistBookInput): Promise<GeneratedBookDto> {
     const imagesEnabled =
@@ -73,6 +75,7 @@ export class BookPersistenceService {
         } catch (error) {
           imagePath = undefined;
           this.logger.warn(
+            { pageNumber: page.pageNumber },
             `Image generation failed for page ${page.pageNumber}: ${describeError(error)}`,
           );
         }

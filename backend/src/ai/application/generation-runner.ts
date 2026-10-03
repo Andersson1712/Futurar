@@ -1,7 +1,9 @@
 import { Inject, Injectable } from '@nestjs/common';
+import { PinoLogger } from 'nestjs-pino';
 import { AiErrorException } from '../../common/errors/ai-error.exception';
 import { JOB_REPOSITORY } from '../../jobs/job.repository';
 import type { JobRepository } from '../../jobs/job.repository';
+import { MetricsService } from '../../observability/metrics.service';
 import { PROFILE_SETTINGS_PROVIDER } from '../../profiles/profile-settings.provider';
 import type { ProfileSettingsProvider } from '../../profiles/profile-settings.provider';
 import type { TextGeneratorPort } from '../domain/ports/text-generator.port';
@@ -28,9 +30,45 @@ export class GenerationRunner {
     @Inject(PROFILE_SETTINGS_PROVIDER)
     private readonly profileSettings: ProfileSettingsProvider,
     @Inject(TEXT_GENERATOR) private readonly textGenerator: TextGeneratorPort,
-  ) {}
+    private readonly logger: PinoLogger,
+    private readonly metrics: MetricsService,
+  ) {
+    this.logger.setContext(GenerationRunner.name);
+  }
 
-  async run(jobId: string): Promise<void> {
+  async run(jobId: string, correlationId?: string): Promise<void> {
+    const startedAt = Date.now();
+    const context = {
+      jobId,
+      ...(correlationId ? { correlationId } : {}),
+    };
+    this.logger.info(context, 'Running book generation');
+
+    try {
+      const usage = await this.execute(jobId);
+
+      const latencyMs = Date.now() - startedAt;
+      this.metrics.recordGeneration({
+        success: true,
+        latencyMs,
+        inputTokens: usage.inputTokens,
+        outputTokens: usage.outputTokens,
+      });
+      this.logger.info({ ...context, latencyMs }, 'Book generation completed');
+    } catch (error) {
+      const latencyMs = Date.now() - startedAt;
+      this.metrics.recordGeneration({ success: false, latencyMs });
+      this.logger.error(
+        { ...context, latencyMs, err: error },
+        'Book generation failed',
+      );
+      throw error;
+    }
+  }
+
+  private async execute(
+    jobId: string,
+  ): Promise<{ inputTokens?: number; outputTokens?: number }> {
     const job = await this.jobs.findById(jobId);
 
     if (!job) {
@@ -82,5 +120,10 @@ export class GenerationRunner {
     });
 
     await this.jobs.complete(jobId, storedBook);
+
+    return {
+      inputTokens: result.usage?.inputTokens,
+      outputTokens: result.usage?.outputTokens,
+    };
   }
 }
