@@ -100,6 +100,7 @@ export const SAMPLE_ACTION_OPTION = {
   icon: 'face',
   optionType: 'list',
   maxEnabled: 4,
+  maxPerPage: 6,
   sortOrder: 1,
   isActive: true,
   createdAt: '2026-01-01T00:00:00.000Z',
@@ -150,16 +151,16 @@ export const SAMPLE_PROFILE = {
 
 export const SAMPLE_PROFILE_OPTIONS = {
   protagonists: [
-    { id: 'p1', label: 'Un dragón', icon: 'pets', isEnabled: true },
+    { id: 'p1', label: 'Un dragón', icon: 'pets', isEnabled: true, level: 1 },
   ],
   scenarios: [
-    { id: 's1', label: 'Un bosque', icon: 'forest', isEnabled: true },
+    { id: 's1', label: 'Un bosque', icon: 'forest', isEnabled: true, level: 1 },
   ],
   missions: [
-    { id: 'm1', label: 'Una estrella', icon: 'star', isEnabled: true },
+    { id: 'm1', label: 'Una estrella', icon: 'star', isEnabled: true, level: 1 },
   ],
   styles: [
-    { id: 'st1', label: 'Acuarela', icon: 'brush', isEnabled: true },
+    { id: 'st1', label: 'Acuarela', icon: 'brush', isEnabled: true, level: 1 },
   ],
 };
 

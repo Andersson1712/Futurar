@@ -17,6 +17,7 @@ import {
     type ProfileContactPayload,
 } from '../services/backendContacts';
 import type { Student, StudentSettings } from '../types/database';
+import { ApiError } from '../services/backendApi';
 import { t } from '../utils/messages';
 
 interface StudentWithSettings extends Student {
@@ -90,6 +91,7 @@ interface ElementEntry {
     label: string;
     icon: string;
     isEnabled: boolean;
+    level: number;
 }
 
 interface ElementSectionProps {
@@ -100,6 +102,7 @@ interface ElementSectionProps {
     onDelete: (id: string) => void;
     onAdd: (label: string) => void;
     maxEnabled: number;
+    maxPerPage: number;
 }
 
 const ElementSection: React.FC<ElementSectionProps> = ({
@@ -109,13 +112,18 @@ const ElementSection: React.FC<ElementSectionProps> = ({
     onToggle,
     onDelete,
     onAdd,
-    maxEnabled
+    maxEnabled,
+    maxPerPage
 }) => {
     const [newLabel, setNewLabel] = useState('');
     const [showAddForm, setShowAddForm] = useState(false);
 
     const enabledCount = elements.filter(e => e.isEnabled).length;
-    const canEnableMore = enabledCount < maxEnabled;
+    const levelCount = (level: number) =>
+        elements.filter(e => e.isEnabled && e.level === level).length;
+    const canEnable = (element: ElementEntry) =>
+        element.isEnabled ||
+        (enabledCount < maxEnabled && levelCount(element.level) < maxPerPage);
 
     const handleAdd = () => {
         if (newLabel.trim()) {
@@ -136,7 +144,7 @@ const ElementSection: React.FC<ElementSectionProps> = ({
                 </h3>
                 <span className={`text-sm font-bold px-2 py-1 rounded-full ${enabledCount >= maxEnabled ? 'bg-amber-500/20 text-amber-400' : 'bg-primary/20 text-primary'
                     }`}>
-                    {enabledCount}/{maxEnabled} habilitados
+                    {enabledCount}/{maxEnabled} habilitados · {maxPerPage}/página
                 </span>
             </div>
 
@@ -163,8 +171,12 @@ const ElementSection: React.FC<ElementSectionProps> = ({
                                 type="button"
                                 aria-label={`${element.label}: ${element.isEnabled ? t('editor.disable') : t('editor.enable')}`}
                                 onClick={() => {
-                                    if (!element.isEnabled && !canEnableMore) {
-                                        alert(`Solo puedes tener ${maxEnabled} elementos habilitados. Deshabilita uno primero.`);
+                                    if (!canEnable(element)) {
+                                        alert(
+                                            enabledCount >= maxEnabled
+                                                ? t('editor.limitOption')
+                                                : t('editor.limitPage'),
+                                        );
                                         return;
                                     }
                                     onToggle(element.id, !element.isEnabled);
@@ -291,6 +303,7 @@ const StudentEditor: React.FC<StudentEditorProps> = ({
     // Elements Data (SPEC-023 catalog)
     const [catalogOptions, setCatalogOptions] = useState<ActionOptionPayload[]>([]);
     const [profileItems, setProfileItems] = useState<Record<string, ProfileItemPayload>>({});
+    const [elementsMessage, setElementsMessage] = useState<string | null>(null);
 
     // Contacts Data (SPEC-022)
     const [contacts, setContacts] = useState<ProfileContactPayload[]>([]);
@@ -418,6 +431,7 @@ const StudentEditor: React.FC<StudentEditorProps> = ({
     const handleToggleElement = async (itemId: string, enabled: boolean) => {
         if (!student?.id) return;
 
+        setElementsMessage(null);
         try {
             const saved = await saveProfileItems(student.id, [
                 { itemId, isEnabled: enabled }
@@ -427,6 +441,9 @@ const StudentEditor: React.FC<StudentEditorProps> = ({
             );
         } catch (err) {
             console.error('Error toggling element:', err);
+            if (err instanceof ApiError && err.code === 'LIMIT_EXCEEDED') {
+                setElementsMessage(t('editor.limitExceeded'));
+            }
         }
     };
 
@@ -1000,16 +1017,28 @@ const StudentEditor: React.FC<StudentEditorProps> = ({
                                         </p>
                                     </div>
 
+                                    {elementsMessage && (
+                                        <div
+                                            role="alert"
+                                            className="p-4 bg-red-500/20 border border-red-500/50 rounded-xl mb-6 text-red-300 flex items-center gap-2"
+                                        >
+                                            <span className="material-symbols-outlined">error</span>
+                                            {elementsMessage}
+                                        </div>
+                                    )}
+
                                     {catalogOptions.map((option) => (
                                         <ElementSection
                                             key={option.id}
                                             title={option.label}
                                             icon={option.icon}
                                             maxEnabled={option.maxEnabled}
+                                            maxPerPage={option.maxPerPage}
                                             elements={option.items.map((item) => ({
                                                 id: item.id,
                                                 label: item.label,
                                                 icon: item.icon,
+                                                level: item.level,
                                                 isEnabled:
                                                     profileItems[item.id]?.isEnabled ??
                                                     item.isActive

@@ -4,6 +4,7 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { configureApp } from '../app.setup';
 import { ACTION_REPOSITORY } from '../actions/action.repository';
+import { ActionsService } from '../actions/actions.service';
 import { InMemoryActionRepository } from '../actions/in-memory-action.repository';
 import { SupabaseAuthGuard } from '../common/guards/supabase-auth.guard';
 import { CONTACT_REPOSITORY } from './contacts.repository';
@@ -29,6 +30,7 @@ describe('ContactsController (SPEC-022)', () => {
       providers: [
         ContactsService,
         ProfilesService,
+        ActionsService,
         { provide: PROFILE_REPOSITORY, useClass: InMemoryProfileRepository },
         { provide: ACTION_REPOSITORY, useClass: InMemoryActionRepository },
         { provide: CONTACT_REPOSITORY, useClass: InMemoryContactRepository },

@@ -37,6 +37,8 @@ export const TRANSLATIONS = {
   'wizard.library': 'Mi Biblioteca',
   'wizard.design': 'Diseñar',
   'wizard.retry': 'Intentar de nuevo',
+  'wizard.moreOptions': 'Más opciones',
+  'wizard.pageIndicator': 'Página {current} de {total}',
 
   'library.loading': 'Cargando tu biblioteca...',
   'library.emptyTitle': 'Tu biblioteca está vacía',
@@ -97,6 +99,9 @@ export const TRANSLATIONS = {
   'editor.catalogEmpty': 'Todavía no hay opciones en el catálogo.',
   'editor.enable': 'habilitar',
   'editor.disable': 'deshabilitar',
+  'editor.limitOption': 'Límite de elementos habilitados alcanzado.',
+  'editor.limitPage': 'Límite de elementos por página alcanzado.',
+  'editor.limitExceeded': 'Se superó un límite. Deshabilitá algunos elementos.',
   'editor.contactName': 'Nombre',
   'editor.contactRelationship': 'Relación',
   'editor.contactReason': 'Motivo de dedicatoria (opcional)',
@@ -133,14 +138,19 @@ export const TRANSLATIONS = {
 
 export type MessageKey = keyof typeof TRANSLATIONS;
 
-export function t(key: MessageKey): string {
+export function t(key: MessageKey, params?: Record<string, string | number>): string {
   const value = TRANSLATIONS[key];
 
   if (!value) {
     throw new Error(`Missing translation for key: ${key}`);
   }
 
-  return value;
+  if (!params) return value;
+
+  return Object.entries(params).reduce(
+    (text, [name, param]) => text.replaceAll(`{${name}}`, String(param)),
+    value,
+  );
 }
 
 const ERROR_MESSAGES: Record<string, string> = {

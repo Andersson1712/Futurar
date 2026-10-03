@@ -6,6 +6,7 @@ import type {
   ProfileActionEntry,
   ProfileItemEntry,
 } from '../actions/action.repository';
+import { ActionsService } from '../actions/actions.service';
 import {
   DEFAULT_PROFILE_SETTINGS,
   PROFILE_REPOSITORY,
@@ -37,6 +38,7 @@ export class ProfilesService implements ProfileSettingsProvider {
     private readonly repository: ProfileRepository,
     @Inject(ACTION_REPOSITORY)
     private readonly actions: ActionRepository,
+    private readonly actionsService: ActionsService,
   ) {}
 
   list(teacherId: string, activeOnly = true): Promise<Profile[]> {
@@ -181,7 +183,7 @@ export class ProfilesService implements ProfileSettingsProvider {
   ): Promise<ProfileItemEntry[]> {
     await this.get(profileId, teacherId);
 
-    const saved = await this.actions.saveProfileItems(
+    const saved = await this.actionsService.saveProfileItems(
       profileId,
       teacherId,
       dto.items,

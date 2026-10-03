@@ -103,6 +103,13 @@ export class CreateOptionDto {
   @Max(12)
   maxEnabled?: number;
 
+  @ApiPropertyOptional({ minimum: 1, maximum: 12 })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(12)
+  maxPerPage?: number;
+
   @ApiPropertyOptional({ minimum: 0, maximum: 999 })
   @IsOptional()
   @IsInt()
@@ -136,6 +143,13 @@ export class UpdateOptionDto {
   @Min(1)
   @Max(12)
   maxEnabled?: number;
+
+  @ApiPropertyOptional({ minimum: 1, maximum: 12 })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(12)
+  maxPerPage?: number;
 
   @ApiPropertyOptional({ minimum: 0, maximum: 999 })
   @IsOptional()

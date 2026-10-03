@@ -1,12 +1,17 @@
 import { AiErrorException } from '../common/errors/ai-error.exception';
 import { InMemoryActionRepository } from '../actions/in-memory-action.repository';
+import { ActionsService } from '../actions/actions.service';
 import { InMemoryProfileRepository } from './in-memory-profile.repository';
 import { ProfilesService } from './profiles.service';
 
 function buildService() {
   const repository = new InMemoryProfileRepository();
   const actions = new InMemoryActionRepository();
-  const service = new ProfilesService(repository, actions);
+  const service = new ProfilesService(
+    repository,
+    actions,
+    new ActionsService(actions),
+  );
 
   return { service, repository, actions };
 }

@@ -132,6 +132,7 @@ export class InMemoryActionRepository implements ActionRepository {
       icon: input.icon ?? 'category',
       optionType: input.optionType ?? 'list',
       maxEnabled: input.maxEnabled ?? 4,
+      maxPerPage: input.maxPerPage ?? 6,
       sortOrder: input.sortOrder ?? 0,
       isActive: true,
       createdAt: now,
@@ -449,13 +450,13 @@ export class InMemoryActionRepository implements ActionRepository {
     const options: StudentOptions['protagonists'] = [];
 
     for (const action of this.actions.values()) {
-      if (!action.isActive) continue;
+      if (!action.isActive || action.code !== 'create') continue;
 
       for (const option of this.optionsForAction(action.id)) {
         if (option.code !== optionCode || !option.isActive) continue;
 
         for (const item of option.items) {
-          if (!item.isActive || item.level !== 1) continue;
+          if (!item.isActive) continue;
 
           const profileItem = state.get(item.id);
 
@@ -466,6 +467,8 @@ export class InMemoryActionRepository implements ActionRepository {
             label: item.label,
             icon: item.icon,
             isEnabled: true,
+            level: item.level,
+            sortOrder: item.sortOrder,
           });
         }
       }

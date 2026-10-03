@@ -21,8 +21,12 @@ import {
 import { ApiError, NetworkError } from '../services/backendApi';
 import { followJob, requestBookGeneration } from '../services/bookGeneration';
 import { bookToStory } from '../services/bookMappers';
+import { buildOptionPages, nextPageIndex } from '../utils/optionPages';
 import type { Student, StudentSettings, Story } from '../types/database';
 import type { ScanOption } from '../types';
+
+// SPEC-023B: synthetic scan target that advances to the next options page.
+const MORE_OPTIONS_ID = '__more_options__';
 
 // Tipos locales
 interface StoryConfig {
@@ -303,10 +307,10 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
             try {
                 const options = await listProfileOptions(currentStudent.id);
 
-                setStudentProtagonists(options.protagonists.map(p => ({ id: p.id, label: p.label, icon: p.icon })));
-                setStudentScenarios(options.scenarios.map(s => ({ id: s.id, label: s.label, icon: s.icon })));
-                setStudentMissions(options.missions.map(m => ({ id: m.id, label: m.label, icon: m.icon })));
-                setStudentStyles(options.styles.map(st => ({ id: st.id, label: st.label, icon: st.icon })));
+                setStudentProtagonists(options.protagonists.map(p => ({ id: p.id, label: p.label, icon: p.icon, level: p.level })));
+                setStudentScenarios(options.scenarios.map(s => ({ id: s.id, label: s.label, icon: s.icon, level: s.level })));
+                setStudentMissions(options.missions.map(m => ({ id: m.id, label: m.label, icon: m.icon, level: m.level })));
+                setStudentStyles(options.styles.map(st => ({ id: st.id, label: st.label, icon: st.icon, level: st.level })));
                 setElementsLoaded(true);
             } catch (err) {
                 console.error('Error loading student elements:', err);
@@ -346,6 +350,27 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
     const sceneryOptions: ScanOption[] = studentScenarios;
     const missionOptions: ScanOption[] = studentMissions;
     const styleOptions: ScanOption[] = studentStyles;
+
+    // SPEC-023B: split the wizard options into scan pages by level.
+    const [optionPage, setOptionPage] = useState(0);
+    const wizardRawOptions: ScanOption[] =
+        step === 'MENU' ? menuOptions :
+            step === 'SELECT_PROTAGONIST' ? protagonistOptions :
+                step === 'SELECT_SCENERY' ? sceneryOptions :
+                    step === 'SELECT_MISSION' ? missionOptions :
+                        step === 'SELECT_STYLE' ? styleOptions :
+                            [];
+    const wizardPages = buildOptionPages(wizardRawOptions);
+    const pageCount = wizardPages.length;
+    const safePage = pageCount === 0 ? 0 : Math.min(optionPage, pageCount - 1);
+    const currentPageOptions = wizardPages[safePage]?.options ?? [];
+    const pageOptions: ScanOption[] = pageCount > 1
+        ? [...currentPageOptions, { id: MORE_OPTIONS_ID, label: t('wizard.moreOptions'), icon: 'more_horiz' }]
+        : currentPageOptions;
+
+    useEffect(() => {
+        setOptionPage(0);
+    }, [step, currentStudent?.id]);
 
     // Handlers
     const handleProfileSelect = (opt: ScanOption) => {
@@ -391,6 +416,21 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
     const handleStyleSelect = (opt: ScanOption) => {
         setConfig(prev => ({ ...prev, style: opt.label }));
         setStep('GENERATING');
+    };
+
+    const handleWizardSelect = (opt: ScanOption) => {
+        if (opt.id === MORE_OPTIONS_ID) {
+            const next = nextPageIndex(safePage, pageCount);
+            setOptionPage(next);
+            speakWithState(t('wizard.pageIndicator', { current: next + 1, total: pageCount }));
+            return;
+        }
+
+        if (step === 'MENU') handleMenuSelect(opt);
+        else if (step === 'SELECT_PROTAGONIST') handleProtagonistSelect(opt);
+        else if (step === 'SELECT_SCENERY') handleScenerySelect(opt);
+        else if (step === 'SELECT_MISSION') handleMissionSelect(opt);
+        else if (step === 'SELECT_STYLE') handleStyleSelect(opt);
     };
 
     const handleBackToProfile = () => {
@@ -849,21 +889,15 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
                             {step === 'SELECT_STYLE' && t('wizard.styleTitle')}
                         </h2>
 
+                        {pageCount > 1 && (
+                            <p aria-live="polite" className="text-sm md:text-base font-bold text-gray-300 mb-4">
+                                {t('wizard.pageIndicator', { current: safePage + 1, total: pageCount })}
+                            </p>
+                        )}
+
                         <ScanningGrid
-                            options={
-                                step === 'MENU' ? menuOptions :
-                                    step === 'SELECT_PROTAGONIST' ? protagonistOptions :
-                                        step === 'SELECT_SCENERY' ? sceneryOptions :
-                                            step === 'SELECT_MISSION' ? missionOptions :
-                                                styleOptions
-                            }
-                            onSelect={
-                                step === 'MENU' ? handleMenuSelect :
-                                    step === 'SELECT_PROTAGONIST' ? handleProtagonistSelect :
-                                        step === 'SELECT_SCENERY' ? handleScenerySelect :
-                                            step === 'SELECT_MISSION' ? handleMissionSelect :
-                                                handleStyleSelect
-                            }
+                            options={pageOptions}
+                            onSelect={handleWizardSelect}
                             columns={step === 'MENU' ? 2 : Math.min(3, scanColumns + 1)}
                             scanInterval={scanInterval}
                             soundEnabled={soundEnabled}
