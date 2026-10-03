@@ -34,6 +34,7 @@ export interface ActionOptionPayload {
   icon: string;
   optionType: OptionType;
   maxEnabled: number;
+  maxPerPage: number;
   sortOrder: number;
   isActive: boolean;
   createdAt: string;
@@ -82,6 +83,7 @@ export interface OptionInput {
   icon?: string;
   optionType?: OptionType;
   maxEnabled?: number;
+  maxPerPage?: number;
   sortOrder?: number;
 }
 
@@ -90,6 +92,7 @@ export interface OptionPatch {
   icon?: string;
   optionType?: OptionType;
   maxEnabled?: number;
+  maxPerPage?: number;
   sortOrder?: number;
   isActive?: boolean;
 }

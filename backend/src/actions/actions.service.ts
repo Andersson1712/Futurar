@@ -6,7 +6,14 @@ import type {
   ActionOption,
   ActionOptionItem,
   ActionRepository,
+  ProfileItemEntry,
+  ProfileItemInput,
 } from './action.repository';
+import {
+  findProfileItemLimitViolations,
+  formatLimitViolation,
+  toOptionLimitInfo,
+} from './limits';
 import {
   CreateActionDto,
   CreateItemDto,
@@ -136,6 +143,50 @@ export class ActionsService {
     const deactivated = await this.repository.deactivateItem(itemId, teacherId);
 
     if (!deactivated) throw itemNotFound();
+  }
+
+  /**
+   * SPEC-023B: enforce `max_enabled` (per option) and `max_per_page` (per level)
+   * before persisting per-profile item enablement.
+   */
+  async saveProfileItems(
+    profileId: string,
+    teacherId: string,
+    inputs: ProfileItemInput[],
+  ): Promise<ProfileItemEntry[] | undefined> {
+    const [actions, current] = await Promise.all([
+      this.repository.listActions(teacherId),
+      this.repository.getProfileItems(profileId, teacherId),
+    ]);
+
+    const optionsByAction = new Map<string, ActionOption[]>();
+
+    for (const action of actions) {
+      optionsByAction.set(
+        action.id,
+        (await this.repository.listOptions(action.id, teacherId)) ?? [],
+      );
+    }
+
+    const currentEnabled = new Map(
+      current.map((entry) => [entry.itemId, entry.isEnabled]),
+    );
+    const violations = findProfileItemLimitViolations(
+      toOptionLimitInfo(actions, optionsByAction),
+      currentEnabled,
+      inputs,
+    );
+
+    if (violations.length > 0) {
+      throw new AiErrorException(
+        422,
+        'LIMIT_EXCEEDED',
+        'Profile item limits exceeded',
+        violations.map(formatLimitViolation),
+      );
+    }
+
+    return this.repository.saveProfileItems(profileId, teacherId, inputs);
   }
 }
 

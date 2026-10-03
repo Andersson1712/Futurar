@@ -20,6 +20,12 @@ describe('messages (SPEC-018)', () => {
     }
   });
 
+  it('interpolates {placeholders} when params are given', () => {
+    expect(t('wizard.pageIndicator', { current: 2, total: 3 })).toBe(
+      'Página 2 de 3',
+    );
+  });
+
   it('throws for unknown keys', () => {
     expect(() => t('nope' as MessageKey)).toThrow(/Missing translation/);
   });

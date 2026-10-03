@@ -128,13 +128,14 @@ describe('InMemoryActionRepository (SPEC-023)', () => {
     expect(items[0]).toMatchObject({ itemId: item.id, isEnabled: true });
   });
 
-  it('saves profile items and serves only enabled level-1 options', async () => {
+  it('saves profile items and serves enabled options across levels', async () => {
     const repository = new InMemoryActionRepository();
-    const { item } = await seedCatalog(repository);
+    const { item, hidden } = await seedCatalog(repository);
     await repository.seedProfileDefaults('student-1', 'teacher-1');
 
     const saved = await repository.saveProfileItems('student-1', 'teacher-1', [
       { itemId: item.id, isEnabled: false },
+      { itemId: hidden.id, isEnabled: false },
     ]);
     expect(saved?.[0].isEnabled).toBe(false);
 
@@ -144,7 +145,13 @@ describe('InMemoryActionRepository (SPEC-023)', () => {
 
     const defaults = await repository.getStudentOptions('student-2');
     expect(defaults.protagonists).toEqual([
-      expect.objectContaining({ label: 'Un dragón', icon: 'pets' }),
+      expect.objectContaining({
+        label: 'Un dragón',
+        icon: 'pets',
+        level: 1,
+        sortOrder: 1,
+      }),
+      expect.objectContaining({ label: 'Nivel 2', level: 2 }),
     ]);
 
     await expect(
@@ -152,5 +159,32 @@ describe('InMemoryActionRepository (SPEC-023)', () => {
         { itemId: item.id, isEnabled: true },
       ]),
     ).resolves.toBeUndefined();
+  });
+
+  it('only derives student options from the create action (SPEC-023B parity)', async () => {
+    const repository = new InMemoryActionRepository();
+    const { option } = await seedCatalog(repository);
+    const library = await repository.createAction('teacher-1', {
+      code: 'library',
+      label: 'Biblioteca',
+    });
+    const libraryOption = await repository.createOption(
+      library.id,
+      'teacher-1',
+      {
+        code: 'protagonist',
+        label: 'Protagonista biblioteca',
+      },
+    );
+    await repository.createItem(libraryOption?.id ?? option.id, 'teacher-1', {
+      label: 'No debería aparecer',
+    });
+
+    const options = await repository.getStudentOptions('student-1');
+
+    expect(options.protagonists.map((entry) => entry.label)).toEqual([
+      'Un dragón',
+      'Nivel 2',
+    ]);
   });
 });

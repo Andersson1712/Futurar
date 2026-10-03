@@ -37,6 +37,8 @@ export interface ProfileOptionPayload {
   label: string;
   icon: string;
   isEnabled: boolean;
+  level?: number;
+  sortOrder?: number;
 }
 
 export interface ProfileOptionsPayload {

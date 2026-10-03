@@ -10,4 +10,5 @@ export type AiErrorCode =
   | 'AI_ENDPOINTS_DISABLED'
   | 'NOT_IMPLEMENTED'
   | 'VALIDATION_FAILED'
+  | 'LIMIT_EXCEEDED'
   | 'INTERNAL';

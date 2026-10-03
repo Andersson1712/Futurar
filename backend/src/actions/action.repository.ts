@@ -35,6 +35,7 @@ export interface ActionOption {
   icon: string;
   optionType: OptionType;
   maxEnabled: number;
+  maxPerPage: number;
   sortOrder: number;
   isActive: boolean;
   createdAt: Date;
@@ -74,6 +75,8 @@ export interface StudentOption {
   label: string;
   icon: string;
   isEnabled: boolean;
+  level: number;
+  sortOrder: number;
 }
 
 export interface StudentOptions {
@@ -103,6 +106,7 @@ export interface CreateOptionInput {
   icon?: string;
   optionType?: OptionType;
   maxEnabled?: number;
+  maxPerPage?: number;
   sortOrder?: number;
 }
 
@@ -111,6 +115,7 @@ export interface UpdateOptionInput {
   icon?: string;
   optionType?: OptionType;
   maxEnabled?: number;
+  maxPerPage?: number;
   sortOrder?: number;
   isActive?: boolean;
 }
