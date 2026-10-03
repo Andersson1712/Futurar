@@ -36,5 +36,8 @@ injectable PinoLogger). No prom-client yet; no OTel SDK (follow-up).
 Delegated-direct unavailable in this runtime (provider refused on earlier
 SPECs); proceeding direct-inline in bounded batches, disclosed here.
 
-## Commits
-- (pending)
+## Commits (feat/spec-027-observability)
+- b84fc69 feat(obs): structured JSON logging + correlation id
+- a38b2d5 feat(obs): generation metrics, health probe, metrics endpoint
+- d4a162a docs(obs): SPEC-027 spec + alert thresholds (+ odd task doc)
+- (memory commit) docs(memory): record SPEC-027 verification state
