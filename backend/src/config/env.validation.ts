@@ -20,6 +20,9 @@ const NODE_ENVS = ['development', 'production', 'test'] as const;
 export const QUEUE_DRIVERS = ['inline', 'bullmq'] as const;
 export type QueueDriverOption = (typeof QUEUE_DRIVERS)[number];
 
+export const LOG_LEVELS = ['debug', 'info', 'warn', 'error'] as const;
+export type LogLevelOption = (typeof LOG_LEVELS)[number];
+
 const toBoolean = ({ value }: { value: unknown }): unknown => {
   if (value === undefined || value === null || value === '') return undefined;
   if (typeof value === 'boolean') return value;
@@ -35,6 +38,10 @@ export class EnvironmentVariables {
   @IsOptional()
   @IsIn([...NODE_ENVS])
   NODE_ENV?: string;
+
+  @IsOptional()
+  @IsIn([...LOG_LEVELS])
+  LOG_LEVEL?: LogLevelOption;
 
   @IsOptional()
   @Transform(toBoolean)

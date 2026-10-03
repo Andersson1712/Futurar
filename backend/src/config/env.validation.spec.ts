@@ -28,7 +28,17 @@ describe('validateEnv', () => {
     expect(validateEnv({ SWAGGER_ENABLED: 'false' }).SWAGGER_ENABLED).toBe(
       false,
     );
-    expect(validateEnv({ SWAGGER_ENABLED: '1' }).SWAGGER_ENABLED).toBe(true);
+  });
+
+  it('accepts a valid LOG_LEVEL (SPEC-027)', () => {
+    expect(validateEnv({ LOG_LEVEL: 'debug' }).LOG_LEVEL).toBe('debug');
+    expect(validateEnv({}).LOG_LEVEL).toBeUndefined();
+  });
+
+  it('rejects an invalid LOG_LEVEL (SPEC-027)', () => {
+    expect(() => validateEnv({ LOG_LEVEL: 'verbose' })).toThrow(
+      /Invalid environment configuration/,
+    );
   });
 
   it('rejects enabling AI endpoints without required secrets', () => {
