@@ -77,10 +77,19 @@ required backend variables are set.
 - **Frontend** (`.env`): `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`,
   `VITE_API_URL`. Auth only — **never** put an AI key here.
 - **Backend** (`backend/.env`): `PORT`, `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`,
-  `GEMINI_API_KEY`, `AI_ENDPOINTS_ENABLED`, `QUEUE_DRIVER`, and the optional
+  `GEMINI_API_KEY`, `AI_ENDPOINTS_ENABLED`, `QUEUE_DRIVER`, `LOG_LEVEL`, and the optional
   credential/queue/book variables. See `backend/.env.example` for the full,
   documented list.
 - Never commit `.env*` or any secret. See [`SECURITY.md`](SECURITY.md).
+
+## Observability
+
+- Structured JSON logs with an end-to-end correlation id (`x-correlation-id`
+  honored, UUID fallback, echoed on every response, redacted credentials).
+- `GET /api/v1/health` is public (liveness, degraded instead of crash);
+  `GET /api/v1/metrics` needs teacher auth (in-memory counters, reset on restart).
+- `GET /api/v1/profiles/active` is public (student kiosk entry, no teacher notes).
+- Suggested alert thresholds: [`docs/ops/alerts.md`](docs/ops/alerts.md).
 
 ## Commands
 

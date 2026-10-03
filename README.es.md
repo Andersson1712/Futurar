@@ -77,10 +77,20 @@ proyecto Supabase. Los endpoints de IA quedan apagados hasta poner
 - **Frontend** (`.env`): `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`,
   `VITE_API_URL`. Solo Auth — **nunca** pongas una clave de IA acá.
 - **Backend** (`backend/.env`): `PORT`, `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`,
-  `GEMINI_API_KEY`, `AI_ENDPOINTS_ENABLED`, `QUEUE_DRIVER` y las variables
+  `GEMINI_API_KEY`, `AI_ENDPOINTS_ENABLED`, `QUEUE_DRIVER`, `LOG_LEVEL` y las variables
   opcionales de credenciales/cola/imágenes. Ver `backend/.env.example` para la
   lista completa y documentada.
 - Nunca commitees `.env*` ni secretos. Ver [`SECURITY.md`](SECURITY.md).
+
+## Observabilidad
+
+- Logs JSON estructurados con correlation id de punta a punta (se respeta
+  `x-correlation-id`, si no llega se genera UUID, se devuelve en cada
+  respuesta y las credenciales se redactan).
+- `GET /api/v1/health` es público (liveness, degradado en vez de caerse);
+  `GET /api/v1/metrics` exige auth docente (contadores en memoria, se reinician).
+- `GET /api/v1/profiles/active` es público (entrada del quiosco, sin notas del docente).
+- Umbrales de alerta sugeridos: [`docs/ops/alerts.md`](docs/ops/alerts.md).
 
 ## Comandos
 

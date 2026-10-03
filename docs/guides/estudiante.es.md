@@ -8,9 +8,10 @@ resaltada.
 
 ## Elegir quién sos
 
-Al entrar aparece la lista de perfiles. El barrido recorre cada tarjeta; activá
-cuando esté resaltada la tuya. Con toque o mouse, tocar una tarjeta la elige al
-instante (aunque el foco del barrido esté en otra).
+Al entrar aparece la lista de perfiles, sin contraseña: es tu quiosco. El
+barrido recorre cada tarjeta; activá cuando esté resaltada la tuya. Con toque
+o mouse, tocar una tarjeta la elige al instante (aunque el foco del barrido
+esté en otra).
 
 ## Menú principal
 
@@ -30,8 +31,9 @@ El asistente te guía paso a paso. Elegís:
 4. **Estilo Visual**
 
 En cada paso el barrido recorre las opciones. Si hay muchas, aparece
-**"Más opciones"**: activala para ver la siguiente página. Cuando terminás, la
-aplicación crea el cuento y te avisa cuando está listo.
+**"Más opciones"**: activala para ver la siguiente página. Arriba del tablero
+siempre ves en qué página estás ("Página 2 de 3") y la voz también lo anuncia.
+Cuando terminás, la aplicación crea el cuento y te avisa cuando está listo.
 
 ## Controles
 

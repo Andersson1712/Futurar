@@ -57,6 +57,23 @@ Supabase Auth  ─────────────────────�
 - Envoltura de error `AiError`: `{ statusCode, code, message, details? }`.
 - Códigos relevantes: `UNAUTHORIZED`, `FORBIDDEN`, `NOT_FOUND`,
   `VALIDATION_FAILED`, `LIMIT_EXCEEDED`, `PROVIDER_UNAVAILABLE`, etc.
+- Endpoints públicos (sin auth): `GET /profiles/active` (quiosco de
+  estudiantes; `notes` del docente excluidas por whitelist) y
+  `GET /health` (liveness). Todo lo demás exige JWT del docente.
+
+## Observabilidad
+
+- Logs JSON estructurados (`nestjs-pino`); nivel por `LOG_LEVEL`
+  (`debug|info|warn|error`, default `info`).
+- Correlation ID de punta a punta: se respeta `x-correlation-id`, si no llega
+  se genera UUID, se devuelve en cada respuesta y viaja
+  `controller → comando → cola → runner` a todos los logs del job.
+  Los headers de credenciales se redactan en los logs.
+- Métricas en memoria en `GET /metrics` (solo docente; se reinician con cada
+  deploy): requests por familia de estado + latencia, jobs de generación
+  (éxito/fallo, latencia, tokens de entrada/salida).
+- Umbrales de alerta sugeridos en [`../ops/alerts.md`](../ops/alerts.md)
+  (sin infraestructura de envío todavía).
 
 ## Accesibilidad en la arquitectura
 
