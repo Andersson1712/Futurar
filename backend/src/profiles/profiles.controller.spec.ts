@@ -211,6 +211,7 @@ describe('ProfilesController public entry (SPEC-024)', () => {
       controllers: [ProfilesController],
       providers: [
         ProfilesService,
+        ActionsService,
         { provide: PROFILE_REPOSITORY, useClass: InMemoryProfileRepository },
         { provide: ACTION_REPOSITORY, useClass: InMemoryActionRepository },
         { provide: SupabaseService, useValue: { getClient: () => null } },
