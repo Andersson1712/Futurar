@@ -17,8 +17,8 @@ Leyenda:
 ## Estado actual
 
 - Fase activa: **Fase 8 — Observabilidad y operación**
-- Última tarea cerrada: SPEC-033 (OpenRouter multi-modelo)
-- Próxima tarea: SPEC-029B Presentaciones (spec pendiente) — SPEC-026 en pausa per owner
+- Última tarea cerrada: CORS PATCH + templates rescatados (PR #43/#44 a dev)
+- Próxima tarea: SPEC-029B Presentaciones (spec pendiente) — SPEC-026 en pausa per owner; PR #39 (dev→main) pendiente de review humana
 - Rama de integración: `dev` (protegida con CI); `main` congelada y protegida.
 
 ---
