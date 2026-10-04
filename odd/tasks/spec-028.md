@@ -95,4 +95,17 @@ contract change; `InMemoryJobRepository` semantics untouched):
   10 passed; `npm run build` clean; `npm run lint` clean.
 
 ## Next
-PR #37 open to `dev` (https://github.com/Andersson1712/Futurar/pull/37) — awaiting review/merge.
+PR #37 open to `dev` (https://github.com/Andersson1712/Futurar/pull/37) — CI red on backend E2E (fix below, pushed for re-run).
+
+## CI incident: kill-switch 503 without local `.env` (fixed)
+- CI ran 9 failed / 1 passed: every `POST /ai/books/generate` → 503
+  `AI_ENDPOINTS_DISABLED`, while local runs were 10/10 green.
+- Root cause: `ConfigModule.forRoot()` executes at module-import time, before
+  the E2E `beforeAll` sets `process.env`. Locally the `backend/.env` file
+  masked it (validated store held boolean `true`); in CI (no `.env` file) the
+  store held `undefined` and `ConfigService.get` fell back to the raw
+  `'true'` string at request time, which the strict `!== true` guard rejected.
+- Fix: tolerant flag read in `AiEndpointsEnabledGuard` (`true`/`'true'`/`'1'`),
+  same pattern as 029's `isDesignFlagEnabled`. Guard spec extended (6 tests).
+  Proven by running the E2E suite with `backend/.env` temporarily moved away
+  (CI condition): 2 suites / 10 passed; `.env` restored byte-identical.
