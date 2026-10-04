@@ -1,0 +1,59 @@
+name: Bug report
+description: Report something that is broken or inaccessible.
+title: "[Bug]: "
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping make Futurar better. Please do not include secrets or
+        personal data of students.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Describe the bug and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. ...
+        2. ...
+        3. ...
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Accessibility / single-switch
+        - Scanner / wizard
+        - Book generation
+        - Library / reader
+        - Teacher panel / profiles
+        - Backend / API
+        - Other
+    validations:
+      required: true
+  - type: dropdown
+    id: input
+    attributes:
+      label: Input method
+      options:
+        - Single switch / scanning
+        - Direct touch / mouse
+        - Keyboard
+        - Screen reader / assistive tech
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: Browser, OS, device/switch model.
+    validations:
+      required: false
