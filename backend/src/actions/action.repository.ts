@@ -203,6 +203,7 @@ export interface ActionRepository {
     inputs: ProfileItemInput[],
   ): Promise<ProfileItemEntry[] | undefined>;
   getStudentOptions(profileId: string): Promise<StudentOptions>;
+  ensureTeacherCatalog(teacherId: string): Promise<void>;
   seedProfileDefaults(profileId: string, teacherId: string): Promise<void>;
   syncProfileActions(
     profileId: string,

@@ -18,6 +18,11 @@ import {
   UpdateItemInput,
   UpdateOptionInput,
 } from './action.repository';
+import {
+  INTRO_ACTIONS,
+  INTRO_ITEMS,
+  INTRO_OPTIONS,
+} from './intro-catalog.seed';
 
 interface ProfileItemState {
   isEnabled: boolean;
@@ -361,7 +366,65 @@ export class InMemoryActionRepository implements ActionRepository {
     });
   }
 
-  seedProfileDefaults(profileId: string, teacherId: string): Promise<void> {
+  async ensureTeacherCatalog(teacherId: string): Promise<void> {
+    const existing = await this.listActions(teacherId);
+
+    if (existing.length > 0) return;
+
+    const created: Action[] = [];
+
+    for (const seed of INTRO_ACTIONS) {
+      created.push(
+        await this.createAction(teacherId, {
+          code: seed.code,
+          label: seed.label,
+          icon: seed.icon,
+          sortOrder: seed.sortOrder,
+        }),
+      );
+    }
+
+    const create = created.find((action) => action.code === 'create');
+
+    if (!create) return;
+
+    const optionIds = new Map<string, string>();
+
+    for (const seed of INTRO_OPTIONS) {
+      const option = await this.createOption(create.id, teacherId, {
+        code: seed.code,
+        label: seed.label,
+        icon: seed.icon,
+        sortOrder: seed.sortOrder,
+      });
+
+      if (option) optionIds.set(seed.code, option.id);
+    }
+
+    for (const seed of INTRO_ITEMS) {
+      const optionId = optionIds.get(seed.optionCode);
+
+      if (!optionId) continue;
+
+      const siblings = this.itemsForOption(optionId);
+
+      if (siblings.some((sibling) => sibling.label === seed.label)) continue;
+
+      await this.createItem(optionId, teacherId, {
+        label: seed.label,
+        icon: seed.icon,
+        level: seed.level,
+        sortOrder: seed.sortOrder,
+      });
+    }
+  }
+
+  async seedProfileDefaults(
+    profileId: string,
+    teacherId: string,
+  ): Promise<void> {
+    await this.ensureTeacherCatalog(teacherId);
+
     const actionState =
       this.profileActions.get(profileId) ?? new Map<string, boolean>();
     const itemState =
@@ -373,18 +436,30 @@ export class InMemoryActionRepository implements ActionRepository {
       if (!actionState.has(action.id)) actionState.set(action.id, true);
 
       for (const option of this.optionsForAction(action.id)) {
-        for (const item of this.itemsForOption(option.id)) {
+        // SPEC-023C quota seeding: each profile starts with exactly
+        // `maxEnabled` items enabled per option — first by `level`, then
+        // `sortOrder`, ties broken by label for determinism — and every
+        // other item explicitly disabled. Explicit rows (never implicit
+        // enablement) keep later saves within quota from day one.
+        const ranked = [...this.itemsForOption(option.id)].sort(
+          (a, b) =>
+            a.level - b.level ||
+            a.sortOrder - b.sortOrder ||
+            a.label.localeCompare(b.label),
+        );
+
+        ranked.forEach((item, index) => {
           if (!itemState.has(item.id)) {
-            itemState.set(item.id, { isEnabled: true });
+            itemState.set(item.id, {
+              isEnabled: index < option.maxEnabled,
+            });
           }
-        }
+        });
       }
     }
 
     this.profileActions.set(profileId, actionState);
     this.profileItems.set(profileId, itemState);
-
-    return Promise.resolve();
   }
 
   syncProfileActions(

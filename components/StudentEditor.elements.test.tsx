@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import StudentEditor from './StudentEditor';
 import { t } from '../utils/messages';
+import { expectNoA11yViolations } from '../test/a11y';
 import type { Student } from '../types/database';
 
 const ACTION = {
@@ -72,6 +73,13 @@ const createActionItem = vi.fn(
   }),
 );
 const deleteActionItem = vi.fn(async (_itemId: string) => undefined);
+const updateOption = vi.fn(
+  async (optionId: string, patch: { maxEnabled?: number; maxPerPage?: number }) => ({
+    ...OPTION,
+    id: optionId,
+    ...patch,
+  }),
+);
 
 vi.mock('../services/backendActions', () => ({
   listActions: () => listActions(),
@@ -88,6 +96,8 @@ vi.mock('../services/backendActions', () => ({
   deleteAction: vi.fn(),
   createActionOption: vi.fn(),
   updateActionOption: vi.fn(),
+  updateOption: (optionId: string, patch: never) =>
+    updateOption(optionId, patch),
   deleteActionOption: vi.fn(),
   listProfileActions: vi.fn(),
   saveProfileActions: vi.fn(),
@@ -159,5 +169,38 @@ describe('StudentEditor elements tab (SPEC-023)', () => {
         icon: 'smart_toy',
       });
     });
+  });
+
+  it('edits per-option quotas through the quota editor (SPEC-023C)', async () => {
+    renderEditor();
+
+    fireEvent.click(screen.getByText('Elementos de Creación'));
+    await screen.findByText('Un dragón');
+
+    const maxEnabledInput = screen.getByLabelText(t('editor.quotaMaxEnabled'));
+    const maxPerPageInput = screen.getByLabelText(t('editor.quotaMaxPerPage'));
+
+    expect(maxEnabledInput).toHaveValue(4);
+    expect(maxPerPageInput).toHaveValue(6);
+
+    fireEvent.change(maxEnabledInput, { target: { value: '6' } });
+    fireEvent.click(screen.getByText(t('editor.quotaSave')));
+
+    await waitFor(() => {
+      expect(updateOption).toHaveBeenCalledWith('option-1', {
+        maxEnabled: 6,
+        maxPerPage: 6,
+      });
+    });
+  });
+
+  it('has no axe violations on the elements tab with the quota editor', async () => {
+    const { container } = renderEditor();
+
+    fireEvent.click(screen.getByText('Elementos de Creación'));
+    await screen.findByText('Un dragón');
+    await screen.findByText(t('editor.quotaSave'));
+
+    await expectNoA11yViolations(container);
   });
 });

@@ -6,7 +6,9 @@ import {
     listActions,
     listProfileItems,
     saveProfileItems,
+    updateOption,
     type ActionOptionPayload,
+    type OptionPatch,
     type ProfileItemPayload,
 } from '../services/backendActions';
 import {
@@ -103,6 +105,8 @@ interface ElementSectionProps {
     onAdd: (label: string) => void;
     maxEnabled: number;
     maxPerPage: number;
+    optionId: string;
+    onSaveQuota: (optionId: string, patch: OptionPatch) => void;
 }
 
 const ElementSection: React.FC<ElementSectionProps> = ({
@@ -113,10 +117,16 @@ const ElementSection: React.FC<ElementSectionProps> = ({
     onDelete,
     onAdd,
     maxEnabled,
-    maxPerPage
+    maxPerPage,
+    optionId,
+    onSaveQuota
 }) => {
     const [newLabel, setNewLabel] = useState('');
     const [showAddForm, setShowAddForm] = useState(false);
+    // SPEC-023C quota editor: local draft follows the stored quota and is
+    // only pushed through onSaveQuota (PATCH options/:id) on explicit save.
+    const [quotaMaxEnabled, setQuotaMaxEnabled] = useState(String(maxEnabled));
+    const [quotaMaxPerPage, setQuotaMaxPerPage] = useState(String(maxPerPage));
 
     const enabledCount = elements.filter(e => e.isEnabled).length;
     const levelCount = (level: number) =>
@@ -133,19 +143,83 @@ const ElementSection: React.FC<ElementSectionProps> = ({
         }
     };
 
+    const handleSaveQuota = () => {
+        const parsedMaxEnabled = Number.parseInt(quotaMaxEnabled, 10);
+        const parsedMaxPerPage = Number.parseInt(quotaMaxPerPage, 10);
+
+        if (
+            !Number.isInteger(parsedMaxEnabled) ||
+            !Number.isInteger(parsedMaxPerPage)
+        ) {
+            return;
+        }
+
+        onSaveQuota(optionId, {
+            // Server clamps to 1-12 (UpdateOptionDto); mirror the range here
+            // so an out-of-range draft never leaves the editor.
+            maxEnabled: Math.min(12, Math.max(1, parsedMaxEnabled)),
+            maxPerPage: Math.min(12, Math.max(1, parsedMaxPerPage)),
+        });
+    };
+
     return (
         <div className="bg-background-dark rounded-xl p-4 border border-border-accent">
             <div className="flex items-center justify-between mb-4">
-                <h3 className="font-bold text-lg flex items-center gap-2">
+                {/* h2 under the page h1: axe heading-order stays clean. */}
+                <h2 className="font-bold text-lg flex items-center gap-2">
                     <span className="material-symbols-outlined text-primary">
                         {icon}
                     </span>
                     {title}
-                </h3>
+                </h2>
                 <span className={`text-sm font-bold px-2 py-1 rounded-full ${enabledCount >= maxEnabled ? 'bg-amber-500/20 text-amber-400' : 'bg-primary/20 text-primary'
                     }`}>
                     {enabledCount}/{maxEnabled} habilitados · {maxPerPage}/página
                 </span>
+            </div>
+
+            {/* SPEC-023C quota editor: raising the quota lets the teacher
+                enable more items; the client-side toggle/add caps stay. */}
+            <div className="flex flex-wrap items-end gap-2 mb-4">
+                <label
+                    htmlFor={`quota-max-enabled-${optionId}`}
+                    className="flex flex-col gap-1 text-sm font-medium text-gray-400"
+                >
+                    {t('editor.quotaMaxEnabled')}
+                    <input
+                        id={`quota-max-enabled-${optionId}`}
+                        type="number"
+                        min={1}
+                        max={12}
+                        value={quotaMaxEnabled}
+                        onChange={(e) => setQuotaMaxEnabled(e.target.value)}
+                        aria-label={t('editor.quotaMaxEnabled')}
+                        className="w-20 min-h-11 bg-surface-dark border border-border-accent rounded-lg px-3 py-2 text-white focus:border-primary focus:outline-none"
+                    />
+                </label>
+                <label
+                    htmlFor={`quota-max-per-page-${optionId}`}
+                    className="flex flex-col gap-1 text-sm font-medium text-gray-400"
+                >
+                    {t('editor.quotaMaxPerPage')}
+                    <input
+                        id={`quota-max-per-page-${optionId}`}
+                        type="number"
+                        min={1}
+                        max={12}
+                        value={quotaMaxPerPage}
+                        onChange={(e) => setQuotaMaxPerPage(e.target.value)}
+                        aria-label={t('editor.quotaMaxPerPage')}
+                        className="w-20 min-h-11 bg-surface-dark border border-border-accent rounded-lg px-3 py-2 text-white focus:border-primary focus:outline-none"
+                    />
+                </label>
+                <button
+                    type="button"
+                    onClick={handleSaveQuota}
+                    className="min-h-11 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg font-bold transition-colors"
+                >
+                    {t('editor.quotaSave')}
+                </button>
             </div>
 
             <div className="space-y-2 mb-4">
@@ -468,6 +542,22 @@ const StudentEditor: React.FC<StudentEditorProps> = ({
             await loadElements();
         } catch (err) {
             console.error('Error adding element:', err);
+        }
+    };
+
+    // SPEC-023C: teacher-facing quota editor backed by PATCH options/:id.
+    const handleSaveQuota = async (optionId: string, patch: OptionPatch) => {
+        setElementsMessage(null);
+        try {
+            const updated = await updateOption(optionId, patch);
+            setCatalogOptions((prev) =>
+                prev.map((option) =>
+                    option.id === optionId ? { ...option, ...updated } : option,
+                ),
+            );
+        } catch (err) {
+            console.error('Error saving quota:', err);
+            setElementsMessage(t('editor.quotaError'));
         }
     };
 
@@ -1034,6 +1124,8 @@ const StudentEditor: React.FC<StudentEditorProps> = ({
                                             icon={option.icon}
                                             maxEnabled={option.maxEnabled}
                                             maxPerPage={option.maxPerPage}
+                                            optionId={option.id}
+                                            onSaveQuota={(id, patch) => void handleSaveQuota(id, patch)}
                                             elements={option.items.map((item) => ({
                                                 id: item.id,
                                                 label: item.label,

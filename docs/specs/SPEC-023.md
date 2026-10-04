@@ -1,6 +1,6 @@
 # SPEC-023 — Dynamic actions and options: catalog, CRUD and per-profile permissions
 
-- Status: **implemented** (2026-10-01; pending owner: apply migration 0007)
+- Status: **implemented** (2026-10-01; migration 0007 applied, verified 2026-10-03)
 - Phase: 6 / EPIC 6.4
 - Depends on: SPEC-021 (profiles), SPEC-022 (contacts)
 - Blocks: SPEC-023B (limits/pagination), SPEC-027 (analytics), SPEC-010 audit closure
