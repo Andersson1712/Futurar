@@ -188,3 +188,111 @@ describe('InMemoryActionRepository (SPEC-023)', () => {
     ]);
   });
 });
+
+describe('InMemoryActionRepository.ensureTeacherCatalog (SPEC-023C)', () => {
+  it('seeds the full introductory catalog for a new teacher on first profile', async () => {
+    const repository = new InMemoryActionRepository();
+
+    await repository.seedProfileDefaults('profile-1', 'new-teacher');
+
+    const actions = await repository.listActions('new-teacher');
+    expect(actions.map((action) => action.code)).toEqual([
+      'create',
+      'library',
+      'design',
+    ]);
+
+    const create = actions.find((action) => action.code === 'create');
+    const options = await repository.listOptions(
+      create?.id ?? '',
+      'new-teacher',
+    );
+    expect(options?.map((option) => option.code)).toEqual([
+      'protagonist',
+      'scenario',
+      'mission',
+      'style',
+    ]);
+
+    const items = await repository.getProfileItems('profile-1', 'new-teacher');
+    expect(items).toHaveLength(79);
+
+    const studentOptions = await repository.getStudentOptions('profile-1');
+    expect(studentOptions.protagonists.length).toBeGreaterThan(0);
+    expect(studentOptions.scenarios.length).toBeGreaterThan(0);
+    expect(studentOptions.missions.length).toBeGreaterThan(0);
+    expect(studentOptions.styles.length).toBeGreaterThan(0);
+  });
+
+  it('inserts zero rows on the second profile for the same teacher', async () => {
+    const repository = new InMemoryActionRepository();
+
+    await repository.seedProfileDefaults('profile-1', 'new-teacher');
+    const actionsBefore = await repository.listActions('new-teacher');
+    const itemsBefore = await repository.getProfileItems(
+      'profile-1',
+      'new-teacher',
+    );
+
+    await repository.seedProfileDefaults('profile-2', 'new-teacher');
+
+    const actionsAfter = await repository.listActions('new-teacher');
+    const itemsAfter = await repository.getProfileItems(
+      'profile-2',
+      'new-teacher',
+    );
+    expect(actionsAfter).toHaveLength(actionsBefore.length);
+    expect(itemsAfter).toHaveLength(itemsBefore.length);
+  });
+
+  it('leaves an existing teacher catalog untouched', async () => {
+    const repository = new InMemoryActionRepository();
+    await seedCatalog(repository);
+
+    await repository.seedProfileDefaults('student-1', 'teacher-1');
+
+    await expect(repository.listActions('teacher-1')).resolves.toHaveLength(1);
+    const items = await repository.getProfileItems('student-1', 'teacher-1');
+    expect(items).toHaveLength(2);
+  });
+
+  it('seeds exactly maxEnabled enabled items per option (SPEC-023C quota)', async () => {
+    const repository = new InMemoryActionRepository();
+
+    await repository.seedProfileDefaults('profile-1', 'new-teacher');
+
+    const items = await repository.getProfileItems('profile-1', 'new-teacher');
+    expect(items).toHaveLength(79);
+
+    const byOption = new Map<string, typeof items>();
+
+    for (const item of items) {
+      const list = byOption.get(item.optionId) ?? [];
+
+      list.push(item);
+      byOption.set(item.optionId, list);
+    }
+
+    expect(byOption.size).toBe(4);
+
+    for (const entries of byOption.values()) {
+      const enabled = entries.filter((entry) => entry.isEnabled);
+      const ranked = [...entries].sort(
+        (a, b) =>
+          a.level - b.level ||
+          a.sortOrder - b.sortOrder ||
+          a.label.localeCompare(b.label),
+      );
+
+      // Intro options default to maxEnabled 4; every other item is
+      // explicitly disabled so later saves start within quota.
+      expect(enabled).toHaveLength(4);
+      expect(entries).toHaveLength(ranked.length);
+      expect(new Set(enabled.map((entry) => entry.itemId))).toEqual(
+        new Set(ranked.slice(0, 4).map((entry) => entry.itemId)),
+      );
+    }
+
+    expect(items.filter((item) => !item.isEnabled)).toHaveLength(79 - 4 * 4);
+  });
+});

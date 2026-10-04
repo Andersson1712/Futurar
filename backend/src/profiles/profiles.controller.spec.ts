@@ -151,32 +151,50 @@ describe('ProfilesController (SPEC-021)', () => {
     const listedActions = await request(app.getHttpServer())
       .get(`/api/v1/profiles/${profileId}/actions`)
       .expect(200);
-    expect(listedActions.body).toEqual([
-      expect.objectContaining({ code: 'create', isEnabled: true }),
-    ]);
+    // SPEC-023C: profile creation seeds the 3-action intro catalog, so the
+    // created action is one entry among the seeded rows.
+    expect(listedActions.body).toHaveLength(4);
+    expect(listedActions.body).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: 'create', isEnabled: true }),
+      ]),
+    );
 
     const savedActions = await request(app.getHttpServer())
       .put(`/api/v1/profiles/${profileId}/actions`)
       .send({ actions: [{ actionId: action.id, isEnabled: false }] })
       .expect(200);
-    expect(savedActions.body).toEqual([
-      expect.objectContaining({ code: 'create', isEnabled: false }),
-    ]);
+    expect(savedActions.body).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: 'create',
+          actionId: action.id,
+          isEnabled: false,
+        }),
+      ]),
+    );
 
     const listedItems = await request(app.getHttpServer())
       .get(`/api/v1/profiles/${profileId}/items`)
       .expect(200);
-    expect(listedItems.body).toEqual([
-      expect.objectContaining({ itemId: item.id, isEnabled: true }),
-    ]);
+    // SPEC-023C: 79 seeded items (exactly maxEnabled enabled per option)
+    // plus the created one.
+    expect(listedItems.body).toHaveLength(80);
+    expect(listedItems.body).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ itemId: item.id, isEnabled: true }),
+      ]),
+    );
 
     const savedItems = await request(app.getHttpServer())
       .put(`/api/v1/profiles/${profileId}/items`)
       .send({ items: [{ itemId: item.id, isEnabled: false }] })
       .expect(200);
-    expect(savedItems.body).toEqual([
-      expect.objectContaining({ itemId: item.id, isEnabled: false }),
-    ]);
+    expect(savedItems.body).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ itemId: item.id, isEnabled: false }),
+      ]),
+    );
   });
 
   it('rejects unknown catalog ids for a profile', async () => {
@@ -186,6 +204,8 @@ describe('ProfilesController (SPEC-021)', () => {
       .expect(201);
     const profileId = (created.body as { id: string }).id;
 
+    // Within quota (SPEC-023C seeds exactly maxEnabled enabled per
+    // option), an unknown id surfaces as 404.
     const response = await request(app.getHttpServer())
       .put(`/api/v1/profiles/${profileId}/items`)
       .send({
@@ -199,6 +219,53 @@ describe('ProfilesController (SPEC-021)', () => {
       .expect(404);
 
     expect(response.body).toMatchObject({ code: 'NOT_FOUND' });
+  });
+
+  it('rejects over-quota enables with 422 even for unknown ids', async () => {
+    const created = await request(app.getHttpServer())
+      .post('/api/v1/profiles')
+      .send({ name: 'Ana' })
+      .expect(201);
+    const profileId = (created.body as { id: string }).id;
+
+    const listed = await request(app.getHttpServer())
+      .get(`/api/v1/profiles/${profileId}/items`)
+      .expect(200);
+    const entries = listed.body as Array<{
+      itemId: string;
+      optionId: string;
+      isEnabled: boolean;
+    }>;
+    const disabled = entries.find((entry) => !entry.isEnabled);
+
+    expect(disabled).toBeDefined();
+
+    // Enabling one item above the seeded quota exceeds max_enabled.
+    const overQuota = await request(app.getHttpServer())
+      .put(`/api/v1/profiles/${profileId}/items`)
+      .send({
+        items: [{ itemId: disabled?.itemId, isEnabled: true }],
+      })
+      .expect(422);
+
+    expect(overQuota.body).toMatchObject({ code: 'LIMIT_EXCEEDED' });
+
+    // Limit enforcement runs before catalog lookup: an over-quota save
+    // with an unknown id is still a 422, never a 404.
+    const overQuotaUnknown = await request(app.getHttpServer())
+      .put(`/api/v1/profiles/${profileId}/items`)
+      .send({
+        items: [
+          { itemId: disabled?.itemId, isEnabled: true },
+          {
+            itemId: '123e4567-e89b-42d3-a456-426614174000',
+            isEnabled: true,
+          },
+        ],
+      })
+      .expect(422);
+
+    expect(overQuotaUnknown.body).toMatchObject({ code: 'LIMIT_EXCEEDED' });
   });
 });
 
