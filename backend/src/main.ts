@@ -12,6 +12,9 @@ async function bootstrap() {
   configureApp(app);
 
   // Enable CORS for the frontend.
+  // NOTE: every method the frontend sends (GET/POST/PUT/PATCH/DELETE) must be
+  // listed here, otherwise the preflight fails and the browser blocks the
+  // call (seen with PATCH /profiles/:id from the teacher panel).
   app.enableCors({
     origin: [
       'http://localhost:5173', // Vite dev
@@ -19,7 +22,13 @@ async function bootstrap() {
       'http://localhost:4173', // Vite preview
       /\.vercel\.app$/, // Any Vercel domain
     ],
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'Idempotency-Key',
+      'x-correlation-id',
+    ],
     credentials: true,
   });
 
