@@ -41,6 +41,9 @@ interface BookVersionRow {
   model: string;
   input_tokens: number | null;
   output_tokens: number | null;
+  // SPEC-033: `cost_usd` (migration 0010). Optional on read so rows from
+  // before the migration still map; writes require the migrated column.
+  cost_usd?: number | null;
   image_count: number;
   generation_job_id: string | null;
   created_by: string;
@@ -99,6 +102,7 @@ export class SupabaseBookRepository implements BookRepository {
         model: input.audit.model,
         input_tokens: input.audit.inputTokens ?? null,
         output_tokens: input.audit.outputTokens ?? null,
+        cost_usd: input.audit.costUsd ?? null,
         image_count: input.audit.imageCount,
         generation_job_id: input.audit.generationJobId ?? null,
         created_by: input.audit.createdBy,
@@ -330,6 +334,7 @@ function toVersion(row: BookVersionRow): StoredBookVersion {
       model: row.model,
       inputTokens: row.input_tokens ?? undefined,
       outputTokens: row.output_tokens ?? undefined,
+      costUsd: row.cost_usd ?? undefined,
       imageCount: row.image_count,
       generationJobId: row.generation_job_id ?? undefined,
       createdBy: row.created_by,

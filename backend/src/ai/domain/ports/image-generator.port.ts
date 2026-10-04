@@ -7,10 +7,17 @@ export interface ImageGenerationRequest {
   tenantId?: string;
 }
 
+export interface ImageGenerationUsage {
+  // SPEC-033: per-response provider cost in USD. Absent for providers
+  // that report no cost (Gemini default path).
+  costUsd?: number;
+}
+
 export interface ImageGenerationResult {
   data: Buffer;
   mimeType: string;
   model: string;
+  usage?: ImageGenerationUsage;
 }
 
 export interface ImageGeneratorPort {

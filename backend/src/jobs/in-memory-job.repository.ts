@@ -55,6 +55,14 @@ export class InMemoryJobRepository implements JobRepository {
     return Promise.resolve();
   }
 
+  recordCost(jobId: string, costUsd: number): Promise<void> {
+    this.update(jobId, (job) => {
+      job.costUsd = costUsd;
+    });
+
+    return Promise.resolve();
+  }
+
   findById(jobId: string): Promise<JobRecord | undefined> {
     return Promise.resolve(this.get(jobId));
   }

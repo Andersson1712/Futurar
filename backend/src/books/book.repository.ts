@@ -37,6 +37,9 @@ export interface BookAudit {
   model: string;
   inputTokens?: number;
   outputTokens?: number;
+  // SPEC-033: per-response provider cost in USD (OpenRouter `usage.cost`).
+  // Absent for providers that report no cost (Gemini default path).
+  costUsd?: number;
   imageCount: number;
   generationJobId?: string;
   createdBy: string;

@@ -11,7 +11,7 @@ import { CRYPTO_SERVICE } from './secrets/crypto.service';
 import type { CryptoServiceLike } from './secrets/crypto.service';
 import { CredentialMetadataDto } from './dto/credential.dto';
 
-export const CREDENTIAL_PROVIDERS = ['gemini'] as const;
+export const CREDENTIAL_PROVIDERS = ['gemini', 'openrouter'] as const;
 export const API_KEY_PATTERN = /^[A-Za-z0-9_-]{20,200}$/;
 
 @Injectable()

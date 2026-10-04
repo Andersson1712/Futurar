@@ -46,5 +46,5 @@
 - Docs (SPEC-025): README EN + `README.es.md`, CONTRIBUTING/SECURITY/CODE_OF_CONDUCT, `docs/adr/` (6 ADRs), `docs/{guides,architecture,accessibility}` guides + `docs/i18n.md`; plain Markdown, no site generator.
 
 ## Next Steps
-- [ ] Owner: rotate key; migrations 0001→0008; `book-images` bucket; `AI_SECRETS_MASTER_KEY`; `LOG_LEVEL=info` in `backend/.env.example`; chore Vite/TS.
-- [x] SPEC-028/029 merged (#37/#38). SPEC-023C on branch pending PR; next 029B, 026 on hold.
+- [ ] Owner: rotate key; `book-images` bucket; `AI_SECRETS_MASTER_KEY`; `LOG_LEVEL=info` in `backend/.env.example`; chore Vite/TS.
+- [x] SPEC-028/029/023C merged (#37/#38/#40). SPEC-033 on branch (PR #41); next 029B.

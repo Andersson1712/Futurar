@@ -53,6 +53,7 @@ export class GenerationRunner {
         latencyMs,
         inputTokens: usage.inputTokens,
         outputTokens: usage.outputTokens,
+        costUsd: usage.costUsd,
       });
       this.logger.info({ ...context, latencyMs }, 'Book generation completed');
     } catch (error) {
@@ -66,9 +67,11 @@ export class GenerationRunner {
     }
   }
 
-  private async execute(
-    jobId: string,
-  ): Promise<{ inputTokens?: number; outputTokens?: number }> {
+  private async execute(jobId: string): Promise<{
+    inputTokens?: number;
+    outputTokens?: number;
+    costUsd?: number;
+  }> {
     const job = await this.jobs.findById(jobId);
 
     if (!job) {
@@ -121,9 +124,16 @@ export class GenerationRunner {
 
     await this.jobs.complete(jobId, storedBook);
 
+    // SPEC-033: failures record no cost (run() catch path); only a
+    // provider-reported cost reaches the job row.
+    if (result.usage?.costUsd !== undefined) {
+      await this.jobs.recordCost(jobId, result.usage.costUsd);
+    }
+
     return {
       inputTokens: result.usage?.inputTokens,
       outputTokens: result.usage?.outputTokens,
+      costUsd: result.usage?.costUsd,
     };
   }
 }

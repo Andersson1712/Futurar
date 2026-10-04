@@ -61,6 +61,10 @@ import { GeminiClientProvider } from './infrastructure/gemini/gemini-client.prov
 import { GeminiImageAdapter } from './infrastructure/gemini/gemini-image.adapter';
 import { GeminiTextAdapter } from './infrastructure/gemini/gemini-text.adapter';
 import { GeminiTtsAdapter } from './infrastructure/gemini/gemini-tts.adapter';
+import { OpenRouterClient } from './infrastructure/openrouter/openrouter-client';
+import { OpenRouterImageAdapter } from './infrastructure/openrouter/openrouter-image.adapter';
+import { OpenRouterTextAdapter } from './infrastructure/openrouter/openrouter-text.adapter';
+import { isOpenRouterEnabled } from './infrastructure/openrouter/openrouter.config';
 import { AiCredentialsController } from './ai-credentials.controller';
 import { AiCredentialsService } from './ai-credentials.service';
 import {
@@ -119,9 +123,33 @@ import {
       inject: [ConfigService, CredentialResolver],
     },
     GeminiClientProvider,
+    GeminiTextAdapter,
+    GeminiImageAdapter,
+    OpenRouterClient,
+    OpenRouterTextAdapter,
+    OpenRouterImageAdapter,
     AiCredentialsService,
-    { provide: TEXT_GENERATOR, useClass: GeminiTextAdapter },
-    { provide: IMAGE_GENERATOR, useClass: GeminiImageAdapter },
+    {
+      // Privacy gate (owner review, blocks activation): OpenRouter stays
+      // off unless OPENROUTER_ENABLED=true (dev-only until reviewed).
+      // TTS always stays on Gemini (out of scope for SPEC-033).
+      provide: TEXT_GENERATOR,
+      useFactory: (
+        configService: ConfigService,
+        gemini: GeminiTextAdapter,
+        openRouter: OpenRouterTextAdapter,
+      ) => (isOpenRouterEnabled(configService) ? openRouter : gemini),
+      inject: [ConfigService, GeminiTextAdapter, OpenRouterTextAdapter],
+    },
+    {
+      provide: IMAGE_GENERATOR,
+      useFactory: (
+        configService: ConfigService,
+        gemini: GeminiImageAdapter,
+        openRouter: OpenRouterImageAdapter,
+      ) => (isOpenRouterEnabled(configService) ? openRouter : gemini),
+      inject: [ConfigService, GeminiImageAdapter, OpenRouterImageAdapter],
+    },
     { provide: TTS_GENERATOR, useClass: GeminiTtsAdapter },
     InMemoryIdempotencyStore,
     {

@@ -150,6 +150,44 @@ export class EnvironmentVariables {
   @IsNotEmpty()
   GEMINI_API_KEY?: string;
 
+  // Privacy gate (owner review, blocks activation): children's content flows
+  // through an aggregator with third-party retention policies. Keep
+  // OPENROUTER_ENABLED=true to dev until that review is documented.
+  @IsOptional()
+  @Transform(toBoolean)
+  @IsBoolean()
+  OPENROUTER_ENABLED?: boolean;
+
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  OPENROUTER_API_KEY?: string;
+
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  OPENROUTER_API_BASE_URL?: string;
+
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  OPENROUTER_BOOK_TEXT_MODEL?: string;
+
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  OPENROUTER_BOOK_IMAGE_MODEL?: string;
+
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  OPENROUTER_DESIGN_TEXT_MODEL?: string;
+
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  OPENROUTER_DESIGN_IMAGE_MODEL?: string;
+
   @IsOptional()
   @IsString()
   @IsNotEmpty()

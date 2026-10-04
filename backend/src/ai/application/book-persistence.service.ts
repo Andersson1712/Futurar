@@ -27,7 +27,9 @@ export interface PersistBookInput {
   dedication?: BookDedication;
   model: string;
   promptVersion: string;
-  usage?: TextGenerationUsage;
+  // SPEC-033: OpenRouter per-response cost (USD) rides on usage; the
+  // port type has no cost slot yet, so it is read tolerantly.
+  usage?: TextGenerationUsage & { costUsd?: number };
   generationJobId: string;
 }
 
@@ -98,11 +100,18 @@ export class BookPersistenceService {
         config: input.storyConfig,
         pages,
       },
+      // SPEC-033: costUsd has no column mapping in the TS audit type yet
+      // (migration 0010 adds `cost_usd`; repository mappings are widened
+      // by the owner). Carried at runtime so stores that persist the audit
+      // object keep it; no behavior change otherwise.
       audit: {
         promptVersion: input.promptVersion,
         model: input.model,
         inputTokens: input.usage?.inputTokens,
         outputTokens: input.usage?.outputTokens,
+        ...(input.usage?.costUsd !== undefined
+          ? { costUsd: input.usage.costUsd }
+          : {}),
         imageCount,
         generationJobId: input.generationJobId,
         createdBy: input.userId,
