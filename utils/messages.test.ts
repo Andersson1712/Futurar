@@ -30,6 +30,22 @@ describe('messages (SPEC-018)', () => {
     expect(() => t('nope' as MessageKey)).toThrow(/Missing translation/);
   });
 
+  it('exposes the diseños wizard copy in es-AR (SPEC-029)', () => {
+    expect(t('wizard.designOccasionTitle')).toBe('Elegí el motivo');
+    expect(t('wizard.designMessageTitle')).toBe('Escribí tu mensaje');
+    expect(t('wizard.designStyleTitle')).toBe('Elegí el estilo del diseño');
+    expect(t('wizard.generatingDesignTitle')).toBe('Creando tu diseño...');
+    expect(t('wizard.designOccasionBirthday')).toBe('Cumpleaños');
+    expect(
+      t('wizard.designMessageCount', { current: 12, total: 140 }),
+    ).toBe('12 de 140 caracteres');
+    expect(t('wizard.designReady', { title: 'Mi fiesta' })).toBe(
+      'Tu diseño Mi fiesta está listo',
+    );
+    expect(MESSAGES.designGeneration.processing).toMatch(/diseño/);
+    expect(MESSAGES.designGeneration.failed).toBeTruthy();
+  });
+
   it('maps known error codes and falls back to the generic message', () => {
     expect(messageForErrorCode('RATE_LIMITED')).toMatch(/demanda/);
     expect(messageForErrorCode('NOPE')).toBe(MESSAGES.errors.generic);

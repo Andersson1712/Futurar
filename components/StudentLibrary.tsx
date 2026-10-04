@@ -7,6 +7,12 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../services/supabase';
 import { getStudentBook, listStudentBooks } from '../services/backendBooks';
 import { bookDetailToStory, bookSummaryToStory } from '../services/bookMappers';
+import {
+    designDetailToStory,
+    designSummaryToStory,
+    getStudentDesign,
+    listStudentDesigns,
+} from '../services/backendDesigns';
 import { MESSAGES, messageForErrorCode, t } from '../utils/messages';
 import { ApiError, NetworkError } from '../services/backendApi';
 import ScanningGrid from './ScanningGrid';
@@ -28,6 +34,7 @@ interface StudentLibraryProps {
 interface LibraryEntry {
     story: Story;
     isBackend: boolean;
+    kind: 'book' | 'design' | 'legacy';
 }
 
 const StudentLibrary: React.FC<StudentLibraryProps> = ({
@@ -84,9 +91,33 @@ const StudentLibrary: React.FC<StudentLibraryProps> = ({
                 console.warn('Backend library unavailable:', e);
             }
 
+            // Diseños (SPEC-029) merge read-only alongside books.
+            let designStories: Story[] = [];
+            try {
+                const summaries = await listStudentDesigns(studentId);
+                designStories = summaries.map((summary) =>
+                    designSummaryToStory(summary, studentId),
+                );
+            } catch (e) {
+                console.warn('Backend designs unavailable:', e);
+            }
+
             setEntries([
-                ...backendStories.map((story) => ({ story, isBackend: true })),
-                ...legacyStories.map((story) => ({ story, isBackend: false })),
+                ...backendStories.map((story) => ({
+                    story,
+                    isBackend: true,
+                    kind: 'book' as const,
+                })),
+                ...designStories.map((story) => ({
+                    story,
+                    isBackend: true,
+                    kind: 'design' as const,
+                })),
+                ...legacyStories.map((story) => ({
+                    story,
+                    isBackend: false,
+                    kind: 'legacy' as const,
+                })),
             ]);
             setIsLoading(false);
         };
@@ -101,9 +132,12 @@ const StudentLibrary: React.FC<StudentLibraryProps> = ({
             label: story.title,
             icon: story.type === 'design' ? 'brush' : 'auto_stories',
             image: story.image_url || undefined,
-            description: story.protagonist
-                ? `${story.protagonist} en ${story.scenery}`
-                : 'Cuento guardado',
+            description:
+                story.type === 'design'
+                    ? story.content || t('library.designDescription')
+                    : story.protagonist
+                      ? `${story.protagonist} en ${story.scenery}`
+                      : 'Cuento guardado',
         }));
 
         // Add "Back to Menu" option at the end
@@ -138,8 +172,13 @@ const StudentLibrary: React.FC<StudentLibraryProps> = ({
 
         setOpeningId(entry.story.id);
         try {
-            const book = await getStudentBook(entry.story.id);
-            onSelectStory(bookDetailToStory(book, studentId));
+            if (entry.kind === 'design') {
+                const design = await getStudentDesign(entry.story.id);
+                onSelectStory(designDetailToStory(design, studentId));
+            } else {
+                const book = await getStudentBook(entry.story.id);
+                onSelectStory(bookDetailToStory(book, studentId));
+            }
         } catch (e) {
             const message =
                 e instanceof ApiError
@@ -153,6 +192,10 @@ const StudentLibrary: React.FC<StudentLibraryProps> = ({
         }
     };
 
+    const openingEntry = openingId
+        ? entries.find((item) => item.story.id === openingId)
+        : undefined;
+
     // Loading state
     if (isLoading || openingId) {
         return (
@@ -161,7 +204,11 @@ const StudentLibrary: React.FC<StudentLibraryProps> = ({
                     progress_activity
                 </span>
                 <p className="mt-4 text-lg text-gray-400">
-                    {openingId ? t('library.openStory') : t('library.loading')}
+                    {openingId
+                        ? openingEntry?.kind === 'design'
+                            ? t('library.openDesign')
+                            : t('library.openStory')
+                        : t('library.loading')}
                 </p>
             </div>
         );
