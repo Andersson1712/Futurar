@@ -16,6 +16,7 @@ import {
   listProfileItems,
   saveProfileItems,
   updateActionItem,
+  updateOption,
 } from './backendActions';
 
 vi.mock('./supabase', () => ({
@@ -72,5 +73,18 @@ describe('backendActions (SPEC-023)', () => {
     expect(saved).toEqual([
       expect.objectContaining({ itemId: 'item-1', isEnabled: false }),
     ]);
+  });
+
+  it('updates option quotas via PATCH options/:id (SPEC-023C)', async () => {
+    const updated = await updateOption('option-1', {
+      maxEnabled: 6,
+      maxPerPage: 8,
+    });
+
+    expect(updated).toMatchObject({
+      id: 'option-1',
+      maxEnabled: 6,
+      maxPerPage: 8,
+    });
   });
 });

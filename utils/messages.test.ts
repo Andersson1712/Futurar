@@ -46,6 +46,13 @@ describe('messages (SPEC-018)', () => {
     expect(MESSAGES.designGeneration.failed).toBeTruthy();
   });
 
+  it('exposes the quota editor copy in es-AR (SPEC-023C)', () => {
+    expect(t('editor.quotaMaxEnabled')).toBe('Máx. habilitados');
+    expect(t('editor.quotaMaxPerPage')).toBe('Máx. por página');
+    expect(t('editor.quotaSave')).toBe('Guardar cupo');
+    expect(t('editor.quotaError')).toBe('No pudimos guardar el cupo');
+  });
+
   it('maps known error codes and falls back to the generic message', () => {
     expect(messageForErrorCode('RATE_LIMITED')).toMatch(/demanda/);
     expect(messageForErrorCode('NOPE')).toBe(MESSAGES.errors.generic);

@@ -170,7 +170,7 @@ export async function createActionOption(
   );
 }
 
-export async function updateActionOption(
+export async function updateOption(
   optionId: string,
   patch: OptionPatch,
 ): Promise<ActionOptionPayload> {
@@ -178,6 +178,13 @@ export async function updateActionOption(
     `/api/v1/options/${encodeURIComponent(optionId)}`,
     { method: 'PATCH', body: JSON.stringify(patch) },
   );
+}
+
+export async function updateActionOption(
+  optionId: string,
+  patch: OptionPatch,
+): Promise<ActionOptionPayload> {
+  return updateOption(optionId, patch);
 }
 
 export async function deleteActionOption(optionId: string): Promise<void> {
