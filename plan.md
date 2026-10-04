@@ -18,7 +18,7 @@ Leyenda:
 
 - Fase activa: **Fase 8 — Observabilidad y operación**
 - Última tarea cerrada: SPEC-027 (observabilidad backend: correlation id, pino, métricas, health)
-- Próxima tarea: SPEC-029 (diseños/flyers, propuesto, pendiente aprobación) — merge del PR #37 (SPEC-028) sigue primero — SPEC-026 en pausa per owner
+- Próxima tarea: push + PR de SPEC-029 a `dev` (rama `feat/spec-029-designs` lista, stacked sobre 028; rebase tras merge del PR #37) — SPEC-026 en pausa per owner
 - Rama de integración: `dev` (protegida con CI); `main` congelada y protegida.
 
 ---
@@ -240,7 +240,7 @@ Leyenda:
 ## Fase 9 — Post-MVP / norte
 
 ### EPIC 9.1 — Nuevos verticales
-- [~] SPEC-029: Diseños (flyers) — framework de verticales + primer vertical (propuesto, pendiente aprobación)
+- [x] SPEC-029: Diseños (flyers) — framework de verticales + primer vertical (rama lista, pendiente PR)
 - [ ] SPEC-029: Presentaciones (follow-up 029B)
 - [ ] SPEC-029: Comunicación (cómo me siento, pedir ayuda, etc.) (follow-up 029C)
 
@@ -298,7 +298,7 @@ Leyenda:
 | SPEC-026 | Licencia, versionado y publicación | en pausa per owner | — | — |
 | SPEC-027 | Observabilidad backend (correlation, pino, métricas, health) | implementado (#34) | owner | 2026-10-03 |
 | SPEC-028 | Integración + E2E backend con proveedor mockeado | implementado en rama, pendiente PR | owner | 2026-10-03 |
-| SPEC-029 | Verticales: framework + Diseños (flyers) | propuesto, pendiente aprobación | — | — |
+| SPEC-029 | Verticales: framework + Diseños (flyers) | implementado en rama, pendiente PR | owner | 2026-10-03 |
 
 ## Notas
 
