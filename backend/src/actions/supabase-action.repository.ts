@@ -2,6 +2,11 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { AiErrorException } from '../common/errors/ai-error.exception';
 import type { SupabaseService } from '../supabase/supabase.service';
 import {
+  INTRO_ACTIONS,
+  INTRO_ITEMS,
+  INTRO_OPTIONS,
+} from './intro-catalog.seed';
+import {
   Action,
   ActionModules,
   ActionOption,
@@ -568,10 +573,97 @@ export class SupabaseActionRepository implements ActionRepository {
     return options;
   }
 
+  async ensureTeacherCatalog(teacherId: string): Promise<void> {
+    const existing = await this.listActions(teacherId);
+
+    if (existing.length > 0) return;
+
+    const client = this.requireClient();
+    const actionResponse = (await client.from(ACTIONS_TABLE).upsert(
+      INTRO_ACTIONS.map((action) => ({
+        teacher_id: teacherId,
+        code: action.code,
+        label: action.label,
+        icon: action.icon,
+        sort_order: action.sortOrder,
+      })),
+      { onConflict: 'teacher_id,code' },
+    )) as unknown as RowResponse<ActionRow[]>;
+
+    if (actionResponse.error) throw persistenceUnavailable();
+
+    const actionsResponse = (await client
+      .from(ACTIONS_TABLE)
+      .select('id,code')
+      .eq('teacher_id', teacherId)) as unknown as RowResponse<ActionRow[]>;
+    const actionIdByCode = new Map(
+      (actionsResponse.data ?? []).map((action) => [action.code, action.id]),
+    );
+    const createId = actionIdByCode.get('create');
+
+    if (!createId) return;
+
+    const optionResponse = (await client.from(ACTION_OPTIONS_TABLE).upsert(
+      INTRO_OPTIONS.map((option) => ({
+        action_id: createId,
+        code: option.code,
+        label: option.label,
+        icon: option.icon,
+        sort_order: option.sortOrder,
+      })),
+      { onConflict: 'action_id,code' },
+    )) as unknown as RowResponse<OptionRow[]>;
+
+    if (optionResponse.error) throw persistenceUnavailable();
+
+    const optionsResponse = (await client
+      .from(ACTION_OPTIONS_TABLE)
+      .select('id,code')
+      .eq('action_id', createId)) as unknown as RowResponse<OptionRow[]>;
+    const optionIdByCode = new Map(
+      (optionsResponse.data ?? []).map((option) => [option.code, option.id]),
+    );
+    const optionIds = [...optionIdByCode.values()];
+
+    if (optionIds.length === 0) return;
+
+    const existingResponse = (await client
+      .from(ACTION_ITEMS_TABLE)
+      .select('option_id,label')
+      .in('option_id', optionIds)) as unknown as RowResponse<ItemRow[]>;
+    const have = new Set(
+      (existingResponse.data ?? []).map(
+        (row) => `${row.option_id}|${row.label}`,
+      ),
+    );
+    const rows = INTRO_ITEMS.filter((item) => {
+      const optionId = optionIdByCode.get(item.optionCode);
+
+      return optionId !== undefined && !have.has(`${optionId}|${item.label}`);
+    }).map((item) => ({
+      option_id: optionIdByCode.get(item.optionCode),
+      label: item.label,
+      icon: item.icon,
+      level: item.level,
+      sort_order: item.sortOrder,
+      is_active: true,
+    }));
+
+    if (rows.length === 0) return;
+
+    const itemResponse = (await client
+      .from(ACTION_ITEMS_TABLE)
+      .insert(rows)) as unknown as RowResponse<ItemRow[]>;
+
+    if (itemResponse.error) throw persistenceUnavailable();
+  }
+
   async seedProfileDefaults(
     profileId: string,
     teacherId: string,
   ): Promise<void> {
+    await this.ensureTeacherCatalog(teacherId);
+
     const catalog = await this.catalogItems(teacherId);
     const actions = await this.listActions(teacherId);
 
@@ -591,14 +683,40 @@ export class SupabaseActionRepository implements ActionRepository {
 
     if (catalog.length === 0) return;
 
-    const itemResponse = (await client.from(PROFILE_ITEMS_TABLE).upsert(
-      catalog.map((entry) => ({
-        profile_id: profileId,
-        item_id: entry.item.id,
-        is_enabled: true,
-      })),
-      { onConflict: 'profile_id,item_id', ignoreDuplicates: true },
-    )) as unknown as RowResponse<ProfileItemRow[]>;
+    // SPEC-023C quota seeding: each profile starts with exactly
+    // `max_enabled` items enabled per option — first by `level`, then
+    // `sort_order`, ties broken by label for determinism — and every
+    // other item explicitly disabled. Explicit rows (never implicit
+    // enablement) keep later saves within quota from day one.
+    // `ignoreDuplicates` preserves pre-existing explicit choices.
+    const byOption = new Map<string, typeof catalog>();
+
+    for (const entry of catalog) {
+      const list = byOption.get(entry.option.id) ?? [];
+
+      list.push(entry);
+      byOption.set(entry.option.id, list);
+    }
+
+    const rows = [...byOption.values()].flatMap((entries) =>
+      [...entries]
+        .sort(
+          (a, b) =>
+            a.item.level - b.item.level ||
+            a.item.sortOrder - b.item.sortOrder ||
+            a.item.label.localeCompare(b.item.label),
+        )
+        .map((entry, index) => ({
+          profile_id: profileId,
+          item_id: entry.item.id,
+          is_enabled: index < entries[0].option.maxEnabled,
+        })),
+    );
+
+    const itemResponse = (await client.from(PROFILE_ITEMS_TABLE).upsert(rows, {
+      onConflict: 'profile_id,item_id',
+      ignoreDuplicates: true,
+    })) as unknown as RowResponse<ProfileItemRow[]>;
 
     if (itemResponse.error) throw persistenceUnavailable();
   }
