@@ -20,21 +20,50 @@ providers, so this is adapters + config, not a rewrite.
   model-specific prompt tuning, `n > 1`/streaming.
 
 ## Tasks
-- [ ] 033-1 Validate slugs against `/models` + Image discovery; pin allowlist
-- [ ] 033-2 Text adapter + spec (RED→GREEN, strict schema, error mapping)
-- [ ] 033-3 Image adapter + client + config validation + specs
-- [ ] 033-4 Migration 0010 + cost recording + metrics
-- [ ] 033-5 E2E (mocked HTTP) + full verification + docs + MEMORY.md
+- [x] 033-1 Slugs pinned against live catalog (parent): text
+  `google/gemini-3.8-flash`, image `google/gemini-3.1-flash-image`;
+  alternates `openai/gpt-image-2`, `qwen/qwen-image-3-pro`
+- [x] 033-2 Text adapter + spec (RED→GREEN)
+- [x] 033-3 Image adapter + client + config validation + specs
+- [x] 033-4 Migration 0010 + cost recording end-to-end (ports typed,
+  runners→metrics, job recordCost, audit mappings, credentials allowlist)
+- [x] 033-5 E2E (mocked HTTP) + full verification (see evidence)
 - [ ] 033-6 Push + PR to `dev` (needs user approval — publishing)
 
 ## Route
 Direct-inline or one bounded writer per ODD triggers at implementation.
 
-## Verification evidence
-- (pending)
+## Verification evidence (final)
+- `npm test` (backend/): 60 suites / 316 tests pass (incl. 16 openrouter +
+  cost-threading specs; Gemini default path green).
+- `npm run test:e2e` (backend/): 4 suites / 22 tests pass (incl. 4 new
+  `ai-openrouter.e2e-spec`: book text+cost, design text+image,
+  500→PROVIDER_UNAVAILABLE/503 no partial book, bad schema→INVALID_OUTPUT).
+- `npm run build` (backend/): clean (parent spot-checked).
+- `npm run lint` (backend/): clean; unrelated `--fix` hunk in
+  `ai-endpoints-enabled.guard.spec.ts` reverted by parent.
+- RED→GREEN: 3 openrouter suites failed pre-impl (`Cannot find module`),
+  16/16 post-impl; 2 cost tests failed pre-impl, green post-impl.
 
-## Commits
-- (pending) branch `feat/spec-033-openrouter`
+## Known gaps (residual, for 033B+)
+- Supabase `cost_usd` writes require migration 0010 applied (reads
+  tolerate via optional fields); owner applies 0010.
+- `CredentialProvider` nominal union type + controller enum stay
+  `gemini`-only (runtime passes openrouter through; widen in 033B).
+- Single shared adapter instance serves book-vertical models; design
+  entries boot-validated, selection deferred to 033B.
+- Privacy gate: children's content via aggregator needs owner review
+  before `OPENROUTER_ENABLED=true` outside dev.
+
+## Commits (feat/spec-033-openrouter)
+- 87306dc feat(ai): OpenRouter client + strict-schema text adapter + specs
+- 6ce612e feat(ai): image adapter + allowlist config + specs
+- b2e01d0 feat(ai): provider selection wiring + env flags (Gemini default)
+- 13b1906 feat(db): migration 0010 + cost_usd recording
+- 4bb4e09 test(e2e): mocked-HTTP suite + bootstrap
+- 87943f8 feat(ai): cost ports + runners + metrics + job recordCost + specs
+- 2608d2a feat(books,designs,credentials): cost_usd audits + openrouter allowlist + specs
 
 ## Next
-SPEC approval first (SDD). Only after approval, implement to this spec.
+Push + PR to `dev` (needs user approval — publishing). Owner applies 0010;
+privacy review before `OPENROUTER_ENABLED=true` outside dev.
