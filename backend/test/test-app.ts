@@ -58,6 +58,12 @@ export interface AiE2ETestContext {
 export interface AiE2ETestAppOptions {
   designEndpointsEnabled?: boolean;
   designImagesEnabled?: boolean;
+  /**
+   * SPEC-033: when true, TEXT/IMAGE_GENERATOR are NOT stubbed — the real
+   * OpenRouter adapters wire through ai.module (OPENROUTER_ENABLED=true)
+   * and tests mock HTTP (global fetch) instead of the adapters.
+   */
+  openRouterEnabled?: boolean;
 }
 
 function applyE2ETestEnv(options: AiE2ETestAppOptions = {}): void {
@@ -68,6 +74,12 @@ function applyE2ETestEnv(options: AiE2ETestAppOptions = {}): void {
   process.env.THROTTLE_LIMIT = '1000';
   process.env.THROTTLE_TTL_MS = '60000';
   process.env.GEMINI_API_KEY ??= 'e2e-mock-gemini-key';
+  process.env.OPENROUTER_API_KEY ??= 'e2e-mock-openrouter-key';
+  if (options.openRouterEnabled === true) {
+    process.env.OPENROUTER_ENABLED = 'true';
+  } else {
+    delete process.env.OPENROUTER_ENABLED;
+  }
   process.env.SUPABASE_URL ??= 'https://e2e-test.supabase.co';
   process.env.SUPABASE_SERVICE_KEY ??= 'e2e-mock-service-key';
   delete process.env.REDIS_URL;
@@ -120,15 +132,24 @@ export async function createAiE2ETestApp(
     .fn()
     .mockRejectedValue(new Error('images disabled'));
   const storedFiles = new Map<string, Buffer>();
-  const moduleRef = await Test.createTestingModule({
+  const testingModule = Test.createTestingModule({
     imports: [AppModule],
   })
     .overrideProvider(SupabaseService)
-    .useValue({ getClient: () => null })
-    .overrideProvider(TEXT_GENERATOR)
-    .useValue({ generate: mockTextGenerate })
-    .overrideProvider(IMAGE_GENERATOR)
-    .useValue({ generate: mockImageGenerate })
+    .useValue({ getClient: () => null });
+
+  // SPEC-033: with openRouterEnabled the ai.module factory wires the real
+  // OpenRouter adapters (HTTP mocked per-test via global fetch); the
+  // returned jest.fn()s are unused placeholders.
+  if (options.openRouterEnabled !== true) {
+    testingModule
+      .overrideProvider(TEXT_GENERATOR)
+      .useValue({ generate: mockTextGenerate })
+      .overrideProvider(IMAGE_GENERATOR)
+      .useValue({ generate: mockImageGenerate });
+  }
+
+  const moduleRef = await testingModule
     .overrideProvider(BOOK_STORAGE)
     .useValue({
       upload: (path: string, data: Buffer): Promise<void> => {
