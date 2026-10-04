@@ -41,10 +41,12 @@ function buildRunner(job: JobRecord | null = JOB) {
   const findById = jest.fn().mockResolvedValue(job);
   const markProcessing = jest.fn().mockResolvedValue(undefined);
   const complete = jest.fn().mockResolvedValue(undefined);
+  const recordCost = jest.fn().mockResolvedValue(undefined);
   const jobs = {
     findById,
     markProcessing,
     complete,
+    recordCost,
   } as unknown as JobRepository;
   const generate = jest.fn();
   const textGenerator = { generate } as unknown as TextGeneratorPort;
@@ -79,6 +81,7 @@ function buildRunner(job: JobRecord | null = JOB) {
     findById,
     markProcessing,
     complete,
+    recordCost,
     generate,
     persist,
     getBookDefaults,
@@ -213,5 +216,41 @@ describe('GenerationRunner', () => {
       succeeded: 0,
       failed: 1,
     });
+  });
+
+  it('records cost in metrics and on the job row when usage carries costUsd (SPEC-033)', async () => {
+    const { runner, generate, metrics, recordCost, persist } = buildRunner();
+    generate.mockResolvedValue({
+      text: VALID_BOOK_TEXT,
+      model: 'google/gemini-3.8-flash',
+      usage: { inputTokens: 100, outputTokens: 200, costUsd: 0.0042 },
+    });
+
+    await runner.run('job-1', 'corr-1');
+
+    expect(metrics.snapshot().generation).toMatchObject({
+      jobs: 1,
+      succeeded: 1,
+    });
+    expect(metrics.snapshot().generation.costUsd).toBeCloseTo(0.0042, 6);
+    expect(recordCost).toHaveBeenCalledWith('job-1', 0.0042);
+    const persistCalls = persist.mock.calls as unknown as Array<
+      [PersistBookInput]
+    >;
+    expect(persistCalls[0][0].usage).toMatchObject({ costUsd: 0.0042 });
+  });
+
+  it('skips job cost recording when usage carries no cost (SPEC-033)', async () => {
+    const { runner, generate, metrics, recordCost } = buildRunner();
+    generate.mockResolvedValue({
+      text: VALID_BOOK_TEXT,
+      model: 'gemini-test',
+      usage: { inputTokens: 10, outputTokens: 20 },
+    });
+
+    await runner.run('job-1', 'corr-1');
+
+    expect(metrics.snapshot().generation.costUsd).toBe(0);
+    expect(recordCost).not.toHaveBeenCalled();
   });
 });

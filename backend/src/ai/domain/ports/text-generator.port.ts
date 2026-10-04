@@ -10,6 +10,9 @@ export interface TextGenerationRequest {
 export interface TextGenerationUsage {
   inputTokens?: number;
   outputTokens?: number;
+  // SPEC-033: per-response provider cost in USD (OpenRouter `usage.cost`).
+  // Absent for providers that report no cost (Gemini default path).
+  costUsd?: number;
 }
 
 export interface TextGenerationResult {

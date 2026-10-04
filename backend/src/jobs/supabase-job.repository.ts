@@ -17,6 +17,9 @@ interface GenerationJobRow {
   request: unknown;
   book: unknown;
   error: unknown;
+  // SPEC-033: `cost_usd` (migration 0010). Optional on read so rows from
+  // before the migration still map; writes require the migrated column.
+  cost_usd?: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -62,6 +65,10 @@ export class SupabaseJobRepository implements JobRepository {
 
   async fail(jobId: string, error: AiErrorDto): Promise<void> {
     await this.update(jobId, { status: 'failed', error });
+  }
+
+  async recordCost(jobId: string, costUsd: number): Promise<void> {
+    await this.update(jobId, { cost_usd: costUsd });
   }
 
   async findById(jobId: string): Promise<JobRecord | undefined> {
@@ -127,6 +134,7 @@ function mapRow(row: GenerationJobRow): JobRecord {
     request: row.request as GenerateBookRequestDto,
     book: (row.book as GeneratedBookDto | null) ?? undefined,
     error: (row.error as AiErrorDto | null) ?? undefined,
+    costUsd: row.cost_usd ?? undefined,
     createdAt: new Date(row.created_at),
     updatedAt: new Date(row.updated_at),
   };

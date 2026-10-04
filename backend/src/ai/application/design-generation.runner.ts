@@ -83,6 +83,7 @@ export class DesignGenerationRunner {
         latencyMs,
         inputTokens: usage.inputTokens,
         outputTokens: usage.outputTokens,
+        costUsd: usage.costUsd,
       });
       this.logger.info(
         { ...context, latencyMs },
@@ -99,9 +100,11 @@ export class DesignGenerationRunner {
     }
   }
 
-  private async execute(
-    jobId: string,
-  ): Promise<{ inputTokens?: number; outputTokens?: number }> {
+  private async execute(jobId: string): Promise<{
+    inputTokens?: number;
+    outputTokens?: number;
+    costUsd?: number;
+  }> {
     const job = await this.jobs.findById(jobId);
 
     if (!job) {
@@ -154,6 +157,16 @@ export class DesignGenerationRunner {
     const imagePath = buildDesignImagePath(job.userId, jobId);
     await this.storage.upload(imagePath, image.data, image.mimeType);
 
+    // SPEC-033: per-response provider cost is the reported text cost plus
+    // the reported image cost; undefined when neither adapter reports one
+    // (Gemini default path). Failures record no cost (run() catch path).
+    const textCost = result.usage?.costUsd;
+    const imageCost = image.usage?.costUsd;
+    const costUsd =
+      textCost !== undefined || imageCost !== undefined
+        ? (textCost ?? 0) + (imageCost ?? 0)
+        : undefined;
+
     const stored = await this.designs.save({
       userId: job.userId,
       profileId: request.profileId,
@@ -171,6 +184,7 @@ export class DesignGenerationRunner {
         model: result.model,
         inputTokens: result.usage?.inputTokens,
         outputTokens: result.usage?.outputTokens,
+        ...(costUsd !== undefined ? { costUsd } : {}),
         generationJobId: jobId,
         createdBy: job.userId,
       },
@@ -197,9 +211,14 @@ export class DesignGenerationRunner {
       ],
     });
 
+    if (costUsd !== undefined) {
+      await this.jobs.recordCost(jobId, costUsd);
+    }
+
     return {
       inputTokens: result.usage?.inputTokens,
       outputTokens: result.usage?.outputTokens,
+      costUsd,
     };
   }
 }
