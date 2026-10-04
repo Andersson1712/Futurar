@@ -58,4 +58,4 @@ time; single writer at a time.
 - 241e8de feat(designs): accessible wizard entry + design E2E
 
 ## Next
-PR #38 open to `dev` (https://github.com/Andersson1712/Futurar/pull/38) — awaiting review/merge. Owner then applies 0009 + sets DESIGN_* flags.
+Merged to `dev` as #38. Owner applies 0009 + sets DESIGN_* flags. Follow-up: SPEC-029B Presentaciones.
