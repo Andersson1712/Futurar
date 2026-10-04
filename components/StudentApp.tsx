@@ -9,7 +9,7 @@ import { ScanSettingsProvider, useScanSettings } from '../contexts/ScanSettingsC
 import { useAccessibility } from '../contexts/AccessibilityContext';
 import { fromStudentSettings } from '../utils/accessibility';
 import { speak, stopSpeaking } from '../utils/speech';
-import { MESSAGES, messageForErrorCode, t } from '../utils/messages';
+import { MESSAGES, messageForErrorCode, t, type MessageKey } from '../utils/messages';
 import { getRandomImage } from '../utils/images';
 import { loadStorySettings } from '../utils/storySettings';
 import {
@@ -21,6 +21,13 @@ import {
 import { ApiError, NetworkError } from '../services/backendApi';
 import { followJob, requestBookGeneration } from '../services/bookGeneration';
 import { bookToStory } from '../services/bookMappers';
+import {
+    DESIGN_MESSAGE_MAX_LENGTH,
+    designDetailToStory,
+    getStudentDesign,
+    requestDesignGeneration,
+    type DesignOccasion,
+} from '../services/backendDesigns';
 import { buildOptionPages, nextPageIndex } from '../utils/optionPages';
 import type { Student, StudentSettings, Story } from '../types/database';
 import type { ScanOption } from '../types';
@@ -53,6 +60,10 @@ type AppStep =
     | 'SELECT_MISSION'
     | 'SELECT_STYLE'
     | 'GENERATING'
+    | 'SELECT_DESIGN_OCCASION'
+    | 'SELECT_DESIGN_MESSAGE'
+    | 'SELECT_DESIGN_STYLE'
+    | 'GENERATING_DESIGN'
     | 'RESULT_VIEW'
     | 'STORY_DETAILS';
 
@@ -91,6 +102,12 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
         type: 'story'
     });
     const [isSpeaking, setIsSpeaking] = useState(false);
+    const [designInput, setDesignInput] = useState({
+        occasion: '' as DesignOccasion | '',
+        occasionLabel: '',
+        message: '',
+        style: '',
+    });
     const [isRestored, setIsRestored] = useState(false);
     const [initialScrollTop, setInitialScrollTop] = useState(0);
     const viewerProgressRef = useRef<ViewerProgress | undefined>(undefined);
@@ -214,7 +231,14 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
 
     // Autosave progress (SPEC-014): debounced on state changes and on exit
     const persistProgress = useCallback(() => {
-        if (!currentStudent || step === 'PROFILE' || step === 'GENERATING') return;
+        if (
+            !currentStudent ||
+            step === 'PROFILE' ||
+            step === 'GENERATING' ||
+            step === 'GENERATING_DESIGN'
+        ) {
+            return;
+        }
 
         saveProgress({
             studentId: currentStudent.id,
@@ -289,6 +313,27 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
         { id: 'design', label: t('wizard.design'), icon: 'brush' }
     ];
 
+    // SPEC-029: fixed flyer occasions (backend enum) as scan options.
+    const designOccasionOptions: ScanOption[] = useMemo(() => {
+        const occasions: Array<{
+            value: DesignOccasion;
+            labelKey: MessageKey;
+            icon: string;
+        }> = [
+            { value: 'event', labelKey: 'wizard.designOccasionEvent', icon: 'celebration' },
+            { value: 'birthday', labelKey: 'wizard.designOccasionBirthday', icon: 'cake' },
+            { value: 'announcement', labelKey: 'wizard.designOccasionAnnouncement', icon: 'campaign' },
+            { value: 'invitation', labelKey: 'wizard.designOccasionInvitation', icon: 'mail' },
+            { value: 'other', labelKey: 'wizard.designOccasionOther', icon: 'more_horiz' },
+        ];
+
+        return occasions.map((item) => ({
+            id: item.value,
+            label: t(item.labelKey),
+            icon: item.icon,
+        }));
+    }, []);
+
     // State for student-specific elements (loaded from database)
     const [studentProtagonists, setStudentProtagonists] = useState<ScanOption[]>([]);
     const [studentScenarios, setStudentScenarios] = useState<ScanOption[]>([]);
@@ -359,7 +404,9 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
                 step === 'SELECT_SCENERY' ? sceneryOptions :
                     step === 'SELECT_MISSION' ? missionOptions :
                         step === 'SELECT_STYLE' ? styleOptions :
-                            [];
+                            step === 'SELECT_DESIGN_OCCASION' ? designOccasionOptions :
+                                step === 'SELECT_DESIGN_STYLE' ? styleOptions :
+                                    [];
     const wizardPages = buildOptionPages(wizardRawOptions);
     const pageCount = wizardPages.length;
     const safePage = pageCount === 0 ? 0 : Math.min(optionPage, pageCount - 1);
@@ -386,6 +433,12 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
         if (opt.id === 'library') {
             speakWithState("Tu biblioteca de cuentos");
             setStep('LIBRARY');
+            return;
+        }
+        if (opt.id === 'design') {
+            setConfig(prev => ({ ...prev, type: 'design' }));
+            speakWithState(t('wizard.designOccasionTitle'));
+            setStep('SELECT_DESIGN_OCCASION');
             return;
         }
         setConfig(prev => ({ ...prev, type: opt.id as 'story' | 'design' }));
@@ -418,6 +471,27 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
         setStep('GENERATING');
     };
 
+    const handleDesignOccasionSelect = (opt: ScanOption) => {
+        setDesignInput((prev) => ({
+            ...prev,
+            occasion: opt.id as DesignOccasion,
+            occasionLabel: opt.label,
+        }));
+        speakWithState(t('wizard.designMessageTitle'));
+        setStep('SELECT_DESIGN_MESSAGE');
+    };
+
+    const handleDesignStyleSelect = (opt: ScanOption) => {
+        setDesignInput((prev) => ({ ...prev, style: opt.label }));
+        setStep('GENERATING_DESIGN');
+    };
+
+    const handleDesignMessageNext = () => {
+        if (!designInput.message.trim()) return;
+        speakWithState(t('wizard.designStyleTitle'));
+        setStep('SELECT_DESIGN_STYLE');
+    };
+
     const handleWizardSelect = (opt: ScanOption) => {
         if (opt.id === MORE_OPTIONS_ID) {
             const next = nextPageIndex(safePage, pageCount);
@@ -431,6 +505,8 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
         else if (step === 'SELECT_SCENERY') handleScenerySelect(opt);
         else if (step === 'SELECT_MISSION') handleMissionSelect(opt);
         else if (step === 'SELECT_STYLE') handleStyleSelect(opt);
+        else if (step === 'SELECT_DESIGN_OCCASION') handleDesignOccasionSelect(opt);
+        else if (step === 'SELECT_DESIGN_STYLE') handleDesignStyleSelect(opt);
     };
 
     const handleBackToProfile = () => {
@@ -442,6 +518,7 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
         setStep('PROFILE');
         setCurrentStudent(null);
         setConfig({ protagonist: '', scenery: '', mission: '', style: '', type: 'story' });
+        setDesignInput({ occasion: '', occasionLabel: '', message: '', style: '' });
         setElementsLoaded(false);
         setStudentProtagonists([]);
         setStudentScenarios([]);
@@ -453,6 +530,7 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
         handleStopSpeaking();
         setStep('MENU');
         setConfig({ protagonist: '', scenery: '', mission: '', style: '', type: 'story' });
+        setDesignInput({ occasion: '', occasionLabel: '', message: '', style: '' });
     };
 
     const handleCreateAnother = () => {
@@ -565,6 +643,107 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
         return () => controller.abort();
     }, [step, currentStudent]);
 
+    // Design generation through the Nest backend (SPEC-029).
+    useEffect(() => {
+        if (step !== 'GENERATING_DESIGN' || !currentStudent) return;
+
+        const controller = new AbortController();
+        setError(null);
+        setGenerationProgress({ status: MESSAGES.designGeneration.queued, progress: 10 });
+
+        const occasion = designInput.occasion;
+        const message = designInput.message.trim();
+        const style = designInput.style;
+
+        const run = async () => {
+            if (!occasion || !message) {
+                setError(MESSAGES.errors.generic);
+                setStep('SELECT_DESIGN_OCCASION');
+                return;
+            }
+
+            try {
+                const job = await requestDesignGeneration({
+                    occasion,
+                    message,
+                    style,
+                    audience: 'child',
+                    profileId: currentStudent.id,
+                });
+                const finalStatus = await followJob(job.jobId, {
+                    signal: controller.signal,
+                    onStatus: (status) => {
+                        setGenerationProgress({
+                            status:
+                                status.status === 'completed'
+                                    ? MESSAGES.designGeneration.completed
+                                    : MESSAGES.designGeneration.processing,
+                            progress:
+                                status.progress ??
+                                (status.status === 'queued' ? 15 : 60),
+                        });
+                    },
+                });
+
+                const designId = finalStatus.bookId ?? finalStatus.book?.id;
+
+                if (finalStatus.status === 'failed' || !designId) {
+                    throw new ApiError({
+                        statusCode: 502,
+                        code: finalStatus.error?.code ?? 'INTERNAL',
+                        message:
+                            finalStatus.error?.message ?? 'generation failed',
+                    });
+                }
+
+                const detail = await getStudentDesign(designId);
+                const story = designDetailToStory(detail, currentStudent.id);
+
+                setConfig({
+                    id: story.id,
+                    protagonist: '',
+                    scenery: '',
+                    mission: '',
+                    style: story.style,
+                    title: story.title,
+                    content: story.content ?? '',
+                    imageUrl: story.image_url ?? undefined,
+                    type: 'design',
+                });
+                setGenerationProgress({
+                    status: MESSAGES.designGeneration.completed,
+                    progress: 100,
+                });
+                speakWithState(t('wizard.designReady', { title: story.title }));
+                setStep('STORY_DETAILS');
+            } catch (err) {
+                if (err instanceof DOMException && err.name === 'AbortError') {
+                    return;
+                }
+
+                const failureMessage =
+                    err instanceof ApiError
+                        ? messageForErrorCode(err.code)
+                        : err instanceof NetworkError
+                          ? MESSAGES.errors.network
+                          : MESSAGES.errors.generic;
+
+                setGenerationProgress({
+                    status: MESSAGES.designGeneration.failed,
+                    progress: 0,
+                });
+                setError(failureMessage);
+                speakWithState(failureMessage);
+                // Never park the UI on the spinner: back to style selection.
+                setStep('SELECT_DESIGN_STYLE');
+            }
+        };
+
+        void run();
+
+        return () => controller.abort();
+    }, [step, currentStudent]);
+
     // Loading state
     if (isLoading) {
         return (
@@ -634,8 +813,10 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
                     mission={config.mission}
                     style={config.style}
                     studentId={currentStudent?.id}
-                    persisted={Boolean(config.id)}
-                    bookId={config.id}
+                    // Diseños are already persisted server-side: keep the
+                    // legacy auto-save off and skip book-only mutations.
+                    persisted={config.type === 'design' ? true : Boolean(config.id)}
+                    bookId={config.type === 'design' ? undefined : config.id}
                     dedication={config.dedication}
                     dedicationPosition={config.dedicationPosition}
                     isFavorite={config.isFavorite}
@@ -848,10 +1029,10 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
                 )}
 
                 {/* Menu and Selection Steps */}
-                {['MENU', 'SELECT_PROTAGONIST', 'SELECT_SCENERY', 'SELECT_MISSION', 'SELECT_STYLE'].includes(step) && (
+                {['MENU', 'SELECT_PROTAGONIST', 'SELECT_SCENERY', 'SELECT_MISSION', 'SELECT_STYLE', 'SELECT_DESIGN_OCCASION', 'SELECT_DESIGN_MESSAGE', 'SELECT_DESIGN_STYLE'].includes(step) && (
                     <div className="w-full max-w-5xl text-center">
-                        {/* Progress Indicator */}
-                        {step !== 'MENU' && (
+                        {/* Progress Indicator (book wizard only) */}
+                        {step !== 'MENU' && !step.startsWith('SELECT_DESIGN') && (
                             <div className="mb-6 flex items-center justify-center gap-2">
                                 <div className={`h-2 w-16 rounded-full transition-all ${step === 'SELECT_PROTAGONIST' || step === 'SELECT_SCENERY' || step === 'SELECT_MISSION' || step === 'SELECT_STYLE' ? 'bg-primary' : 'bg-slate-700'}`} />
                                 <div className={`h-2 w-16 rounded-full transition-all ${step === 'SELECT_SCENERY' || step === 'SELECT_MISSION' || step === 'SELECT_STYLE' ? 'bg-primary' : 'bg-slate-700'}`} />
@@ -881,29 +1062,95 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
                             </div>
                         )}
 
+                        {/* Current design selections */}
+                        {step.startsWith('SELECT_DESIGN') && (designInput.occasionLabel || designInput.style) && (
+                            <div className="mb-6 flex flex-wrap items-center justify-center gap-2">
+                                {designInput.occasionLabel && (
+                                    <span className="px-3 py-1 bg-primary/20 text-primary rounded-full text-sm font-bold">
+                                        {designInput.occasionLabel}
+                                    </span>
+                                )}
+                                {designInput.style && (
+                                    <span className="px-3 py-1 bg-blue-500/20 text-blue-400 rounded-full text-sm font-bold">
+                                        {designInput.style}
+                                    </span>
+                                )}
+                            </div>
+                        )}
+
                         <h2 className="text-2xl md:text-4xl font-black mb-8 animate-fade-in">
                             {step === 'MENU' && t('wizard.menuTitle')}
                             {step === 'SELECT_PROTAGONIST' && t('wizard.protagonistTitle')}
                             {step === 'SELECT_SCENERY' && t('wizard.sceneryTitle')}
                             {step === 'SELECT_MISSION' && t('wizard.missionTitle')}
                             {step === 'SELECT_STYLE' && t('wizard.styleTitle')}
+                            {step === 'SELECT_DESIGN_OCCASION' && t('wizard.designOccasionTitle')}
+                            {step === 'SELECT_DESIGN_MESSAGE' && t('wizard.designMessageTitle')}
+                            {step === 'SELECT_DESIGN_STYLE' && t('wizard.designStyleTitle')}
                         </h2>
 
-                        {pageCount > 1 && (
+                        {pageCount > 1 && step !== 'SELECT_DESIGN_MESSAGE' && (
                             <p aria-live="polite" className="text-sm md:text-base font-bold text-gray-300 mb-4">
                                 {t('wizard.pageIndicator', { current: safePage + 1, total: pageCount })}
                             </p>
                         )}
 
-                        <ScanningGrid
-                            options={pageOptions}
-                            onSelect={handleWizardSelect}
-                            columns={step === 'MENU' ? 2 : Math.min(3, scanColumns + 1)}
-                            scanInterval={scanInterval}
-                            soundEnabled={soundEnabled}
-                            voiceEnabled={voiceEnabled}
-                            isPaused={scanningPaused}
-                        />
+                        {step === 'SELECT_DESIGN_MESSAGE' ? (
+                            <form
+                                className="max-w-xl mx-auto flex flex-col gap-4 text-left"
+                                onSubmit={(event) => {
+                                    event.preventDefault();
+                                    handleDesignMessageNext();
+                                }}
+                            >
+                                <label
+                                    htmlFor="design-message"
+                                    className="text-base md:text-lg font-bold text-gray-200"
+                                >
+                                    {t('wizard.designMessageLabel')}
+                                </label>
+                                <textarea
+                                    id="design-message"
+                                    value={designInput.message}
+                                    maxLength={DESIGN_MESSAGE_MAX_LENGTH}
+                                    rows={3}
+                                    placeholder={t('wizard.designMessagePlaceholder')}
+                                    onChange={(event) =>
+                                        setDesignInput((prev) => ({
+                                            ...prev,
+                                            message: event.target.value,
+                                        }))
+                                    }
+                                    className="w-full min-h-11 p-4 text-lg rounded-2xl bg-slate-800/80 border-2 border-white/10 text-white placeholder:text-gray-500 focus:border-primary focus:outline-none"
+                                />
+                                <p className="text-sm text-gray-400">
+                                    {t('wizard.designMessageHint')}
+                                </p>
+                                <p aria-live="polite" className="text-sm font-bold text-gray-300">
+                                    {t('wizard.designMessageCount', {
+                                        current: designInput.message.length,
+                                        total: DESIGN_MESSAGE_MAX_LENGTH,
+                                    })}
+                                </p>
+                                <button
+                                    type="submit"
+                                    disabled={!designInput.message.trim()}
+                                    className="px-8 py-4 min-h-11 rounded-2xl font-bold text-lg bg-primary hover:bg-primary/80 transition-all hover:scale-105 disabled:opacity-40 disabled:hover:scale-100"
+                                >
+                                    {t('wizard.designMessageNext')}
+                                </button>
+                            </form>
+                        ) : (
+                            <ScanningGrid
+                                options={pageOptions}
+                                onSelect={handleWizardSelect}
+                                columns={step === 'MENU' ? 2 : Math.min(3, scanColumns + 1)}
+                                scanInterval={scanInterval}
+                                soundEnabled={soundEnabled}
+                                voiceEnabled={voiceEnabled}
+                                isPaused={scanningPaused}
+                            />
+                        )}
                     </div>
                 )}
 
@@ -923,7 +1170,7 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
                 )}
 
                 {/* Generating State */}
-                {step === 'GENERATING' && (
+                {(step === 'GENERATING' || step === 'GENERATING_DESIGN') && (
                     <div className="flex flex-col items-center text-center max-w-lg">
                         <div className="relative mb-8">
                             <span className="material-symbols-outlined text-8xl text-primary animate-pulse">auto_fix</span>
@@ -935,7 +1182,9 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
                         </div>
 
                         <h2 className="text-3xl md:text-4xl font-black mb-4">
-                            {t('wizard.generatingTitle')}
+                            {step === 'GENERATING_DESIGN'
+                                ? t('wizard.generatingDesignTitle')
+                                : t('wizard.generatingTitle')}
                         </h2>
 
                         <p className="text-lg text-gray-400 mb-6">
@@ -957,7 +1206,13 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
                             >
                                 <p className="text-red-300 font-medium">{error}</p>
                                 <button
-                                    onClick={() => setStep('SELECT_STYLE')}
+                                    onClick={() =>
+                                        setStep(
+                                            step === 'GENERATING_DESIGN'
+                                                ? 'SELECT_DESIGN_STYLE'
+                                                : 'SELECT_STYLE',
+                                        )
+                                    }
                                     className="mt-4 px-6 py-3 min-h-11 bg-primary rounded-xl font-bold hover:bg-primary/80 transition-colors"
                                 >
                                     {t('wizard.retry')}
@@ -966,13 +1221,24 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
                         )}
 
                         {/* Story Preview */}
-                        <div className="mt-8 p-4 bg-slate-800/50 rounded-2xl border border-slate-700">
-                            <p className="text-sm text-gray-400">
-                                Protagonista: <span className="text-primary font-bold">{config.protagonist}</span> •
-                                Escenario: <span className="text-blue-400 font-bold">{config.scenery}</span> •
-                                Misión: <span className="text-green-400 font-bold">{config.mission}</span>
-                            </p>
-                        </div>
+                        {step === 'GENERATING_DESIGN' ? (
+                            <div className="mt-8 p-4 bg-slate-800/50 rounded-2xl border border-slate-700">
+                                <p className="text-sm text-gray-400">
+                                    {t('wizard.designPreview', {
+                                        occasion: designInput.occasionLabel,
+                                        style: designInput.style,
+                                    })}
+                                </p>
+                            </div>
+                        ) : (
+                            <div className="mt-8 p-4 bg-slate-800/50 rounded-2xl border border-slate-700">
+                                <p className="text-sm text-gray-400">
+                                    Protagonista: <span className="text-primary font-bold">{config.protagonist}</span> •
+                                    Escenario: <span className="text-blue-400 font-bold">{config.scenery}</span> •
+                                    Misión: <span className="text-green-400 font-bold">{config.mission}</span>
+                                </p>
+                            </div>
+                        )}
                     </div>
                 )}
             </main>
@@ -1006,7 +1272,7 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
             )}
 
             {/* Floating Controls - visible when student is selected */}
-            {currentStudent && step !== 'GENERATING' && (
+            {currentStudent && step !== 'GENERATING' && step !== 'GENERATING_DESIGN' && (
                 <FloatingControls onGoToMenu={handleBackToMenu} />
             )}
         </div>
