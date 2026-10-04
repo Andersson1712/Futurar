@@ -58,5 +58,4 @@ time; single writer at a time.
 - 241e8de feat(designs): accessible wizard entry + design E2E
 
 ## Next
-Push + PR to `dev` (029-6, needs user approval — publishing). Note: stacked on
- 028 branch; rebase onto `dev` after PR #37 merges, then open the 029 PR.
+PR #38 open to `dev` (https://github.com/Andersson1712/Futurar/pull/38) — awaiting review/merge. Owner then applies 0009 + sets DESIGN_* flags.
