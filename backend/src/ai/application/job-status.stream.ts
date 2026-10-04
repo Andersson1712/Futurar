@@ -2,7 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import type { MessageEvent } from '@nestjs/common';
 import {
   Observable,
-  Subject,
+  ReplaySubject,
   concat,
   finalize,
   interval,
@@ -44,14 +44,18 @@ export function createJobStatusStream(
   userId: string,
   initial: JobRecord,
 ): Observable<MessageEvent> {
-  const stop$ = new Subject<void>();
+  // Replay the stop signal: when the initial snapshot is already terminal,
+  // statusEvents$ completes synchronously during merge subscription, before
+  // heartbeats$ subscribes to stop$. A plain Subject would drop the signal
+  // and leave the heartbeat interval (and the HTTP stream) open forever.
+  const stop$ = new ReplaySubject<void>(1);
 
   const changes$ = concat(
     of<JobRecord | undefined>(initial),
     interval(JOB_STATUS_POLL_MS).pipe(
       mergeMap(() => from(jobs.find(jobId, userId))),
     ),
-  );
+  ).pipe(map((job) => snapshotJob(job)));
 
   const statusEvents$ = changes$.pipe(
     distinctUntilChanged((a, b) => fingerprint(a) === fingerprint(b)),
@@ -79,6 +83,23 @@ export function createJobStatusStream(
   );
 
   return merge(statusEvents$, heartbeats$);
+}
+
+function snapshotJob(job: JobRecord | undefined): JobRecord | undefined {
+  if (!job) return job;
+
+  // The repository may hand out its live stored record and mutate it in
+  // place on transitions. Freeze each emission (with its own updatedAt
+  // instance) so distinctUntilChanged compares point-in-time values instead
+  // of two aliases of the same mutated object.
+  return {
+    ...job,
+    request: { ...job.request },
+    book: job.book ? { ...job.book } : undefined,
+    error: job.error ? { ...job.error } : undefined,
+    createdAt: new Date(job.createdAt.getTime()),
+    updatedAt: new Date(job.updatedAt.getTime()),
+  };
 }
 
 function isTerminal(job: JobRecord | undefined): boolean {
