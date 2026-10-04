@@ -18,7 +18,7 @@ Leyenda:
 
 - Fase activa: **Fase 8 — Observabilidad y operación**
 - Última tarea cerrada: SPEC-027 (observabilidad backend: correlation id, pino, métricas, health)
-- Próxima tarea: push + PR de SPEC-028 a `dev` (rama `feat/spec-028-backend-e2e` lista) — SPEC-026 en pausa per owner
+- Próxima tarea: merge del PR #37 (SPEC-028) a `dev` — SPEC-026 en pausa per owner
 - Rama de integración: `dev` (protegida con CI); `main` congelada y protegida.
 
 ---

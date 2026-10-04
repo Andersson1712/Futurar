@@ -95,4 +95,4 @@ contract change; `InMemoryJobRepository` semantics untouched):
   10 passed; `npm run build` clean; `npm run lint` clean.
 
 ## Next
-Push + PR to `dev` (028-6, needs user approval — publishing).
+PR #37 open to `dev` (https://github.com/Andersson1712/Futurar/pull/37) — awaiting review/merge.
