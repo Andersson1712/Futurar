@@ -47,4 +47,4 @@
 
 ## Next Steps
 - [ ] Owner: rotate key; migrations 0001→0008; `book-images` bucket; `AI_SECRETS_MASTER_KEY`; `LOG_LEVEL=info` in `backend/.env.example`; chore Vite/TS.
-- [x] SPEC-028/029 merged to dev (#37/#38). Next: SPEC-029B presentaciones (spec pendiente); 026 on hold.
+- [x] SPEC-028/029 merged (#37/#38). SPEC-023C on branch pending PR; next 029B, 026 on hold.

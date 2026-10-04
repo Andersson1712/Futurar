@@ -9,8 +9,11 @@
 
 Every new teacher starts with the same introductory catalog (3 actions,
 4 story options, 79 items across levels) the first time they create a
-profile, and can then grow or prune it freely. No migration, no new
-dependency, no contract change.
+profile, and can then grow or prune it freely. Stored catalog vs
+on-screen quota follow the owner's rule: all 79 items are stored, but
+each profile shows at most `max_enabled` per option (`max_per_page` per
+level); adding one more requires disabling another or raising the quota.
+No migration, no contract change.
 
 ## Why
 
@@ -38,6 +41,18 @@ the model it fills, or it rots on every greenfield signup.
   so one call site covers Supabase and in-memory paths): first profile
   creation seeds the catalog, second profile finds actions present and
   skips.
+- Quota seeding: after ensuring the catalog, write explicit
+  `profile_option_items` rows so each new profile starts with exactly
+  `max_enabled` items enabled per option (first by `level`, then
+  `sort_order`) and the rest disabled. New items rely on no implicit
+  state; the wizard and the editor then agree from day one.
+- Teacher-facing quota editor: the Elementos tab shows the quota but
+  cannot change it, so add a minimal `maxEnabled`/`maxPerPage` editor
+  per option (new `updateOption` call in `services/backendActions.ts`
+  hitting the existing `PATCH options/:id`, validated server-side).
+- One-off repair (parent-run service-key script, not shipped code): the
+  already-seeded teacher gets the same explicit disabled rows for the
+  excess over each option quota, un-bricking the editor.
 - A teacher with zero profiles still has an empty catalog until the
   first profile is created — accepted: every teacher flow starts with
   profile creation, and there is no earlier backend-known teacher event
@@ -49,10 +64,14 @@ the model it fills, or it rots on every greenfield signup.
 ## Acceptance criteria
 
 - [ ] New teacher (no actions) + first profile → 3 actions, 4 options,
-  79 items (RED: empty catalog; GREEN after hook).
+  79 items (RED: empty catalog; GREEN after hook), with exactly
+  `max_enabled` enabled per option and the rest explicitly disabled.
 - [ ] Second profile for the same teacher → zero new rows (idempotent).
 - [ ] Existing teacher with catalog → hook is a no-op (row counts unchanged).
-- [ ] `npm test`, `npm run test:e2e`, `npm run build`, `npm run lint` green.
+- [ ] Quota editor: teacher raises `maxEnabled` on an option and can then
+  enable up to the new quota; lowering it blocks over-quota enables.
+- [ ] `npm test`, `npm run test:e2e`, `npm run build`, `npm run lint`
+  (backend) + `typecheck`, `check:supabase`, `npm test` (frontend) green.
 
 ## Edge cases
 
