@@ -50,6 +50,18 @@ describe('AiCredentialsService (SPEC-020)', () => {
     expect(list.filter((item) => item.status === 'active')).toHaveLength(1);
   });
 
+  it('accepts openrouter credentials while keeping gemini (SPEC-033)', async () => {
+    const { service } = buildService();
+
+    const metadata = await service.save('teacher-1', 'openrouter', API_KEY);
+
+    expect(metadata).toMatchObject({
+      provider: 'openrouter',
+      keyHint: 'defg',
+      status: 'active',
+    });
+  });
+
   it('rejects invalid keys and providers', async () => {
     const { service } = buildService();
 
