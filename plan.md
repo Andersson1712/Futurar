@@ -17,8 +17,8 @@ Leyenda:
 ## Estado actual
 
 - Fase activa: **Fase 8 — Observabilidad y operación**
-- Última tarea cerrada: SPEC-029 (verticales: framework + Diseños flyers)
-- Próxima tarea: SPEC-033 OpenRouter (propuesto, pendiente aprobación); luego 029B — SPEC-026 en pausa per owner
+- Última tarea cerrada: SPEC-033 (OpenRouter multi-modelo)
+- Próxima tarea: SPEC-029B Presentaciones (spec pendiente) — SPEC-026 en pausa per owner
 - Rama de integración: `dev` (protegida con CI); `main` congelada y protegida.
 
 ---
@@ -259,7 +259,7 @@ Leyenda:
 - [ ] SPEC-032: Nuevas opciones sin saturar
 
 ### EPIC 9.5 — Multi-modelo (OpenRouter)
-- [x] SPEC-033: OpenRouter como segundo proveedor (allowlist curada texto/imagen, migración 0010, costo) — PR #41 abierto
+- [x] SPEC-033: OpenRouter como segundo proveedor (allowlist curada texto/imagen, migración 0010, costo) — merge #41
 - [ ] SPEC-033B: Selección de modelo por docente (follow-up)
 - [ ] SPEC-033C: Budgets por tenant (follow-up, solo registro en 033)
 
@@ -306,7 +306,7 @@ Leyenda:
 | SPEC-027 | Observabilidad backend (correlation, pino, métricas, health) | implementado (#34) | owner | 2026-10-03 |
 | SPEC-028 | Integración + E2E backend con proveedor mockeado | implementado (#37) | owner | 2026-10-03 |
 | SPEC-029 | Verticales: framework + Diseños (flyers) | implementado (#38) | owner | 2026-10-03 |
-| SPEC-033 | OpenRouter multi-modelo (allowlist curada) | implementado en rama, pendiente PR | owner | 2026-10-03 |
+| SPEC-033 | OpenRouter multi-modelo (allowlist curada) | implementado (#41) | owner | 2026-10-03 |
 
 ## Notas
 
