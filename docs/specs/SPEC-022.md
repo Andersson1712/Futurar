@@ -1,6 +1,6 @@
 # SPEC-022 — Contacts per profile, dedications and favorites for backend books
 
-- Status: **implemented** (2026-10-01; pending owner: apply migration 0006)
+- Status: **implemented** (2026-10-01; migration 0006 applied, verified 2026-10-03)
 - Phase: 6 / EPIC 6.3
 - Depends on: SPEC-021 (profiles API), SPEC-008 (book persistence), SPEC-009 (reader/library)
 - Blocks: SPEC-023 (options CRUD), SPEC-027 (analytics)

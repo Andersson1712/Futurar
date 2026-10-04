@@ -1,6 +1,6 @@
 # SPEC-021 — Profiles API: CRUD, modules, technical config and book complexity
 
-- Status: **implemented** (2026-10-01; pending owner: apply migration 0005)
+- Status: **implemented** (2026-10-01; migration 0005 applied, verified 2026-10-03)
 - Phase: 6 / EPIC 6.2
 - Depends on: SPEC-015 (settings), SPEC-020 (credentials), SPEC-010 (audit)
 - Blocks: SPEC-023 (options CRUD), SPEC-027 (analytics), SPEC-010 audit closure

@@ -1,6 +1,6 @@
 # SPEC-023B — Per-screen/action/page limits and wizard scan pagination
 
-- Status: **implemented** (2026-10-01; pending owner: apply migration 0008)
+- Status: **implemented** (2026-10-01; migration 0008 applied, verified 2026-10-03)
 - Phase: 6 / EPIC 6.4
 - Depends on: SPEC-023 (actions/options catalog)
 - Blocks: SPEC-027 (analytics), SPEC-010 audit closure
