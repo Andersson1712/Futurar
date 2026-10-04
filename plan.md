@@ -191,6 +191,8 @@ Leyenda:
 - [x] SPEC-023: CRUD de acciones y opciones (backend; editor docente migrado)
 - [x] SPEC-023: Permisos por perfil (`profile_actions`/`profile_option_items`)
 - [x] SPEC-023B: Límites por pantalla/acción/página (max_enabled, paginación) — merge #29
+- [~] SPEC-023C: Catálogo introductorio global para docentes nuevos (propuesto, pendiente aprobación)
+- [ ] Intro seed aplicado vía service key (79 ítems, 2026-10-03); migraciones 0001→0009 pendientes de aplicar por owner (orden: 0001→0009)
 
 ---
 
