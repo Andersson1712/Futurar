@@ -51,4 +51,4 @@ disclosure.
 protagonist 39 stored/4 enabled, scenario 18/4, mission 16/4, style 6/4.
 
 ## Next
-Push + PR to `dev` (needs user approval — publishing).
+PR #40 open to `dev` (https://github.com/Andersson1712/Futurar/pull/40) — awaiting review/merge.
