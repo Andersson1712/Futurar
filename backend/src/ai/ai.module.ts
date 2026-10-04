@@ -7,11 +7,24 @@ import { BookOutputParser } from './application/book-output.parser';
 import { BookOutputValidator } from './application/book-output.validator';
 import { BOOK_GENERATION_USE_CASE } from './application/book-generation.use-case';
 import { BookPersistenceService } from './application/book-persistence.service';
+import {
+  DesignBullMqJobQueue,
+  DesignGenerationRunner,
+} from './application/design-generation.runner';
+import { DesignGenerationService } from './application/design-generation.service';
+import {
+  DESIGN_GENERATION_USE_CASE,
+  DESIGN_JOB_QUEUE,
+} from './application/design-generation.use-case';
+import { DesignOutputParser } from './application/design-output.parser';
+import { DesignOutputValidator } from './application/design-output.validator';
+import { DesignPromptBuilderService } from './application/design-prompt-builder.service';
 import { CircuitBreaker } from './application/circuit-breaker';
 import { GenerationRunner } from './application/generation-runner';
 import { JobStatusStream } from './application/job-status.stream';
 import { PromptBuilderService } from './application/prompt-builder.service';
 import { BooksModule } from '../books/books.module';
+import { DesignsModule } from '../designs/designs.module';
 import { ProfilesModule } from '../profiles/profiles.module';
 import { IDEMPOTENCY_STORE } from '../common/idempotency/idempotency-store';
 import { InMemoryIdempotencyStore } from '../common/idempotency/in-memory-idempotency.store';
@@ -63,6 +76,7 @@ import {
     RedisModule,
     ObservabilityModule,
     BooksModule,
+    DesignsModule,
     ProfilesModule,
   ],
   controllers: [AiController, AiCredentialsController],
@@ -117,9 +131,14 @@ import {
       inject: [REDIS_CLIENT, InMemoryIdempotencyStore],
     },
     PromptBuilderService,
+    DesignPromptBuilderService,
     BookOutputParser,
     BookOutputValidator,
+    DesignOutputParser,
+    DesignOutputValidator,
     BookPersistenceService,
+    DesignGenerationService,
+    DesignGenerationRunner,
     CircuitBreaker,
     InMemoryJobRepository,
     {
@@ -165,6 +184,43 @@ import {
     {
       provide: BOOK_GENERATION_USE_CASE,
       useClass: BookGenerationService,
+    },
+    {
+      provide: DESIGN_GENERATION_USE_CASE,
+      useClass: DesignGenerationService,
+    },
+    // DesignBullMqJobQueue lifecycle is factory-owned (same as
+    // BullMqJobQueue): constructed only when QUEUE_DRIVER=bullmq so no
+    // stray worker boots.
+    {
+      provide: DESIGN_JOB_QUEUE,
+      useFactory: (
+        configService: ConfigService,
+        redis: RedisClient,
+        runner: DesignGenerationRunner,
+        jobs: JobRepository,
+        logger: PinoLogger,
+      ): JobQueue => {
+        if (resolveQueueDriver(configService) === 'bullmq') {
+          if (!redis) {
+            throw new Error('REDIS_URL is required for QUEUE_DRIVER=bullmq');
+          }
+
+          return new DesignBullMqJobQueue(redis, runner, jobs, logger);
+        }
+
+        // InlineJobQueue only invokes run(jobId, correlationId), which the
+        // design runner implements; the cast keeps the shared queue code
+        // untouched (SPEC-029: no book refactors).
+        return new InlineJobQueue(runner as unknown as GenerationRunner, jobs);
+      },
+      inject: [
+        ConfigService,
+        REDIS_CLIENT,
+        DesignGenerationRunner,
+        JOB_REPOSITORY,
+        PinoLogger,
+      ],
     },
   ],
   exports: [TEXT_GENERATOR, IMAGE_GENERATOR, TTS_GENERATOR],

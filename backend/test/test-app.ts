@@ -21,6 +21,7 @@ import {
 } from '../src/ai/tokens';
 import { AppModule } from '../src/app.module';
 import { configureApp } from '../src/app.setup';
+import { BOOK_STORAGE } from '../src/books/book-storage.port';
 import { AiErrorException } from '../src/common/errors/ai-error.exception';
 import { SupabaseAuthGuard } from '../src/common/guards/supabase-auth.guard';
 import { REDIS_CLIENT } from '../src/common/redis/redis-client';
@@ -40,12 +41,26 @@ export const VALID_GENERATE_BODY = {
   storySize: 'small',
 } as const;
 
+export const VALID_DESIGN_TITLE = 'Fiesta de cumple';
+
+export const VALID_DESIGN_BODY = {
+  occasion: 'birthday',
+  message: 'Fiesta de cumple el sabado a las 17',
+  style: 'Acuarela',
+} as const;
+
 export interface AiE2ETestContext {
   app: INestApplication<App>;
   mockTextGenerate: jest.Mock;
+  mockImageGenerate: jest.Mock;
 }
 
-function applyE2ETestEnv(): void {
+export interface AiE2ETestAppOptions {
+  designEndpointsEnabled?: boolean;
+  designImagesEnabled?: boolean;
+}
+
+function applyE2ETestEnv(options: AiE2ETestAppOptions = {}): void {
   process.env.NODE_ENV = 'test';
   process.env.AI_ENDPOINTS_ENABLED = 'true';
   process.env.QUEUE_DRIVER = 'inline';
@@ -57,6 +72,16 @@ function applyE2ETestEnv(): void {
   process.env.SUPABASE_SERVICE_KEY ??= 'e2e-mock-service-key';
   delete process.env.REDIS_URL;
   delete process.env.BOOK_IMAGES_ENABLED;
+  if (options.designEndpointsEnabled === false) {
+    delete process.env.DESIGN_ENDPOINTS_ENABLED;
+  } else {
+    process.env.DESIGN_ENDPOINTS_ENABLED = 'true';
+  }
+  if (options.designImagesEnabled === false) {
+    delete process.env.DESIGN_IMAGES_ENABLED;
+  } else {
+    process.env.DESIGN_IMAGES_ENABLED = 'true';
+  }
 }
 
 interface AuthenticatedTestRequest {
@@ -85,10 +110,16 @@ function testAuthGuard() {
   };
 }
 
-export async function createAiE2ETestApp(): Promise<AiE2ETestContext> {
-  applyE2ETestEnv();
+export async function createAiE2ETestApp(
+  options: AiE2ETestAppOptions = {},
+): Promise<AiE2ETestContext> {
+  applyE2ETestEnv(options);
 
   const mockTextGenerate = jest.fn();
+  const mockImageGenerate = jest
+    .fn()
+    .mockRejectedValue(new Error('images disabled'));
+  const storedFiles = new Map<string, Buffer>();
   const moduleRef = await Test.createTestingModule({
     imports: [AppModule],
   })
@@ -97,8 +128,15 @@ export async function createAiE2ETestApp(): Promise<AiE2ETestContext> {
     .overrideProvider(TEXT_GENERATOR)
     .useValue({ generate: mockTextGenerate })
     .overrideProvider(IMAGE_GENERATOR)
+    .useValue({ generate: mockImageGenerate })
+    .overrideProvider(BOOK_STORAGE)
     .useValue({
-      generate: jest.fn().mockRejectedValue(new Error('images disabled')),
+      upload: (path: string, data: Buffer): Promise<void> => {
+        storedFiles.set(path, data);
+        return Promise.resolve();
+      },
+      signedUrl: (path: string): Promise<string> =>
+        Promise.resolve(`https://storage.test/${path}`),
     })
     .overrideProvider(TTS_GENERATOR)
     .useValue({})
@@ -130,7 +168,7 @@ export async function createAiE2ETestApp(): Promise<AiE2ETestContext> {
   const app: INestApplication<App> = moduleRef.createNestApplication();
   configureApp(app);
   await app.init();
-  return { app, mockTextGenerate };
+  return { app, mockTextGenerate, mockImageGenerate };
 }
 
 export async function closeAiE2ETestApp(

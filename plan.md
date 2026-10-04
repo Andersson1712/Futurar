@@ -18,7 +18,7 @@ Leyenda:
 
 - Fase activa: **Fase 8 — Observabilidad y operación**
 - Última tarea cerrada: SPEC-027 (observabilidad backend: correlation id, pino, métricas, health)
-- Próxima tarea: merge del PR #37 (SPEC-028) a `dev` — SPEC-026 en pausa per owner
+- Próxima tarea: merge del PR #38 (SPEC-029) a `dev`; owner aplica 0009 + flags — SPEC-026 en pausa per owner
 - Rama de integración: `dev` (protegida con CI); `main` congelada y protegida.
 
 ---
@@ -240,9 +240,9 @@ Leyenda:
 ## Fase 9 — Post-MVP / norte
 
 ### EPIC 9.1 — Nuevos verticales
-- [ ] SPEC-029: Diseños (flyers)
-- [ ] SPEC-029: Presentaciones
-- [ ] SPEC-029: Comunicación (cómo me siento, pedir ayuda, etc.)
+- [x] SPEC-029: Diseños (flyers) — framework de verticales + primer vertical (rama lista, pendiente PR)
+- [ ] SPEC-029: Presentaciones (follow-up 029B)
+- [ ] SPEC-029: Comunicación (cómo me siento, pedir ayuda, etc.) (follow-up 029C)
 
 ### EPIC 9.2 — TTS es-AR
 - [ ] SPEC-030: Evaluar Google Cloud TTS / ElevenLabs
@@ -298,6 +298,7 @@ Leyenda:
 | SPEC-026 | Licencia, versionado y publicación | en pausa per owner | — | — |
 | SPEC-027 | Observabilidad backend (correlation, pino, métricas, health) | implementado (#34) | owner | 2026-10-03 |
 | SPEC-028 | Integración + E2E backend con proveedor mockeado | implementado en rama, pendiente PR | owner | 2026-10-03 |
+| SPEC-029 | Verticales: framework + Diseños (flyers) | implementado en rama, pendiente PR | owner | 2026-10-03 |
 
 ## Notas
 
