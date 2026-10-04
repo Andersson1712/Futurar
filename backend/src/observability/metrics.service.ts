@@ -5,6 +5,9 @@ export interface GenerationRecord {
   latencyMs: number;
   inputTokens?: number;
   outputTokens?: number;
+  // SPEC-033: per-response OpenRouter cost in USD. Recorded only when the
+  // caller threads provider usage through (runners still pass tokens only).
+  costUsd?: number;
 }
 
 export interface MetricsSnapshot {
@@ -20,6 +23,7 @@ export interface MetricsSnapshot {
     averageLatencyMs: number;
     inputTokens: number;
     outputTokens: number;
+    costUsd: number;
   };
 }
 
@@ -39,6 +43,7 @@ export class MetricsService {
   private generationLatencySumMs = 0;
   private generationInputTokens = 0;
   private generationOutputTokens = 0;
+  private generationCostUsd = 0;
 
   recordHttpRequest(statusCode: number, durationMs: number): void {
     this.httpTotal += 1;
@@ -59,6 +64,7 @@ export class MetricsService {
     this.generationLatencySumMs += Math.max(0, record.latencyMs);
     this.generationInputTokens += Math.max(0, record.inputTokens ?? 0);
     this.generationOutputTokens += Math.max(0, record.outputTokens ?? 0);
+    this.generationCostUsd += Math.max(0, record.costUsd ?? 0);
   }
 
   snapshot(): MetricsSnapshot {
@@ -79,6 +85,7 @@ export class MetricsService {
             : this.generationLatencySumMs / this.generationJobs,
         inputTokens: this.generationInputTokens,
         outputTokens: this.generationOutputTokens,
+        costUsd: this.generationCostUsd,
       },
     };
   }
