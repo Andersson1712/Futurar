@@ -4,6 +4,7 @@ import {
     saveStorySettings,
     type StorySettings,
 } from '../utils/storySettings';
+import { t } from '../utils/messages';
 import { useDialogA11y } from '../hooks/useDialogA11y';
 
 interface GlobalConfigModalProps {
@@ -114,6 +115,9 @@ const GlobalConfigModal: React.FC<GlobalConfigModalProps> = ({ onClose }) => {
 - Agrega un momento de suspenso antes del clímax
 - Termina con una moraleja sobre la amistad"
                         />
+                        <p className="mt-2 text-xs text-amber-400/90">
+                            {t('config.customStructurePrivacy')}
+                        </p>
                     </div>
                 </div>
 

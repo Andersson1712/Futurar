@@ -3,6 +3,7 @@ import { Story } from '../types/database';
 import { supabase } from '../services/supabase';
 import { generateStoryPDF } from '../utils/pdfGenerator';
 import { speak } from '../utils/speech';
+import { t } from '../utils/messages';
 import { useDialogA11y } from '../hooks/useDialogA11y';
 
 interface StoryDetailsProps {
@@ -250,6 +251,9 @@ const StoryDetails: React.FC<StoryDetailsProps> = ({
                                 <label className="block text-sm font-bold text-gray-400 mb-2">
                                     Mensaje especial
                                 </label>
+                                <p className="text-xs text-gray-500 mb-2">
+                                    {t('reader.dedicationPrivacy')}
+                                </p>
                                 <textarea
                                     value={dedicationText}
                                     onChange={(e) => setDedicationText(e.target.value)}

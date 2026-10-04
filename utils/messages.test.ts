@@ -46,6 +46,13 @@ describe('messages (SPEC-018)', () => {
     expect(MESSAGES.designGeneration.failed).toBeTruthy();
   });
 
+  it('exposes the privacy notice copy in es-AR', () => {
+    expect(t('reader.dedicationPrivacy')).toBe(
+      'Esta dedicatoria se guarda con el libro.',
+    );
+    expect(t('config.customStructurePrivacy')).toMatch(/viaja al generador/);
+  });
+
   it('exposes the quota editor copy in es-AR (SPEC-023C)', () => {
     expect(t('editor.quotaMaxEnabled')).toBe('Máx. habilitados');
     expect(t('editor.quotaMaxPerPage')).toBe('Máx. por página');
