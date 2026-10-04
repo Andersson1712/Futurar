@@ -55,15 +55,14 @@ Direct-inline or one bounded writer per ODD triggers at implementation.
 - Privacy gate: children's content via aggregator needs owner review
   before `OPENROUTER_ENABLED=true` outside dev.
 
-## Commits (feat/spec-033-openrouter)
-- 87306dc feat(ai): OpenRouter client + strict-schema text adapter + specs
-- 6ce612e feat(ai): image adapter + allowlist config + specs
-- b2e01d0 feat(ai): provider selection wiring + env flags (Gemini default)
-- 13b1906 feat(db): migration 0010 + cost_usd recording
-- 4bb4e09 test(e2e): mocked-HTTP suite + bootstrap
-- 87943f8 feat(ai): cost ports + runners + metrics + job recordCost + specs
-- 2608d2a feat(books,designs,credentials): cost_usd audits + openrouter allowlist + specs
+## Commits (feat/spec-033-openrouter, rebased onto dev @ 8d57328)
+- 4837561 feat(ai): OpenRouter client + strict-schema text adapter + specs
+- f5d3654 feat(ai): image adapter + allowlist config + specs
+- a52ccf8 feat(ai): provider selection wiring + env flags (Gemini default)
+- ea3be2d feat(db): migration 0010 + cost_usd recording
+- 48b9f1e test(e2e): mocked-HTTP suite + bootstrap
+- 0f4742a feat(ai): cost ports + runners + metrics + job recordCost + specs
+- 84df50f feat(books,designs,credentials): cost_usd audits + openrouter allowlist + specs
 
 ## Next
-Push + PR to `dev` (needs user approval — publishing). Owner applies 0010;
-privacy review before `OPENROUTER_ENABLED=true` outside dev.
+PR #41 open to `dev` (https://github.com/Andersson1712/Futurar/pull/41) — awaiting review/merge. Owner applies 0010; privacy review before enabling outside dev.

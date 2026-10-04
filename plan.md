@@ -259,7 +259,7 @@ Leyenda:
 - [ ] SPEC-032: Nuevas opciones sin saturar
 
 ### EPIC 9.5 — Multi-modelo (OpenRouter)
-- [x] SPEC-033: OpenRouter como segundo proveedor (allowlist curada texto/imagen, migración 0010, costo) — rama lista, pendiente PR
+- [x] SPEC-033: OpenRouter como segundo proveedor (allowlist curada texto/imagen, migración 0010, costo) — PR #41 abierto
 - [ ] SPEC-033B: Selección de modelo por docente (follow-up)
 - [ ] SPEC-033C: Budgets por tenant (follow-up, solo registro en 033)
 
