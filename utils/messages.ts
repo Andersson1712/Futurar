@@ -148,6 +148,7 @@ export const TRANSLATIONS = {
   'reader.dedicationSaved': 'Dedicatoria guardada',
   'reader.dedicationRemoved': 'Dedicatoria quitada',
   'reader.dedicationError': 'No pudimos guardar la dedicatoria',
+  'reader.dedicationPrivacy': 'Esta dedicatoria se guarda con el libro.',
   'reader.favorite': 'Favorito',
   'reader.favoriteAdd': 'Marcar como favorito',
   'reader.favoriteRemove': 'Quitar de favoritos',
@@ -156,6 +157,8 @@ export const TRANSLATIONS = {
 
   'library.favorites': 'Favoritos',
   'library.all': 'Todos',
+
+  'config.customStructurePrivacy': 'Lo que escribas acá viaja al generador de IA con tu pedido. Evitá nombres reales, escuelas, direcciones u otros datos personales.',
 } as const;
 
 export type MessageKey = keyof typeof TRANSLATIONS;

@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import { beforeEach, describe, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { expectNoA11yViolations } from '../test/a11y';
 import LoginForm from './LoginForm';
 import ScanningGrid from './ScanningGrid';
@@ -8,6 +8,7 @@ import FloatingControls from './FloatingControls';
 import GlobalConfigModal from './GlobalConfigModal';
 import StoryDetails from './StoryDetails';
 import { ScanSettingsProvider } from '../contexts/ScanSettingsContext';
+import { t } from '../utils/messages';
 import type { ScanOption } from '../types';
 
 vi.mock('../utils/speech', () => ({
@@ -155,6 +156,10 @@ describe('a11y (SPEC-016)', () => {
     );
 
     await screen.findByRole('dialog', { name: 'Configuración de Cuentos' });
+    expect(
+      screen.getByText(t('config.customStructurePrivacy')),
+    ).toBeTruthy();
+
     await expectNoA11yViolations(container);
   });
 
@@ -174,6 +179,9 @@ describe('a11y (SPEC-016)', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /PDF/i }));
     await screen.findByRole('dialog', { name: 'Agregar Dedicatoria' });
+    expect(
+      screen.getByText(t('reader.dedicationPrivacy')),
+    ).toBeTruthy();
 
     await expectNoA11yViolations(container);
   });

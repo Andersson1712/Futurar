@@ -620,6 +620,9 @@ const StoryReader: React.FC<StoryReaderProps> = ({
                         <p className="text-gray-400 text-sm mb-4">
                             {t('reader.dedicationHint')}
                         </p>
+                        <p className="text-gray-500 text-xs mb-4">
+                            {t('reader.dedicationPrivacy')}
+                        </p>
 
                         {contacts.length > 0 && (
                             <div className="flex flex-wrap gap-2 mb-4">

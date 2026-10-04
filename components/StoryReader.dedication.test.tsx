@@ -72,6 +72,14 @@ describe('StoryReader dedication and favorite (SPEC-022)', () => {
     vi.clearAllMocks();
   });
 
+  it('shows the privacy notice in the dedication dialog', () => {
+    renderReader();
+
+    fireEvent.click(screen.getByText(t('reader.dedication')));
+
+    expect(screen.getByText(t('reader.dedicationPrivacy'))).toBeTruthy();
+  });
+
   it('saves a dedication using a contact', async () => {
     saveBookDedication.mockResolvedValue({
       id: 'book-1',
