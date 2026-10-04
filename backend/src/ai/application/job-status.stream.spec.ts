@@ -145,6 +145,54 @@ describe('createJobStatusStream', () => {
     });
   });
 
+  it('emits transitions when the repository mutates the stored record in place', async () => {
+    const { repository, find } = buildRepository();
+    // Same mutable reference on every poll, like InMemoryJobRepository.find.
+    const live = buildJob('queued');
+    find.mockImplementation(() => Promise.resolve(live));
+
+    const received: MessageEvent[] = [];
+    let completed = false;
+    createJobStatusStream(repository, 'job-1', 'user-1', live).subscribe({
+      next: (event) => received.push(event),
+      complete: () => {
+        completed = true;
+      },
+    });
+
+    await jest.advanceTimersByTimeAsync(JOB_STATUS_POLL_MS);
+    live.status = 'processing';
+    live.updatedAt = new Date(live.updatedAt.getTime() + 1);
+    await jest.advanceTimersByTimeAsync(JOB_STATUS_POLL_MS);
+    live.status = 'completed';
+    live.updatedAt = new Date(live.updatedAt.getTime() + 1);
+    await jest.advanceTimersByTimeAsync(JOB_STATUS_POLL_MS);
+    await jest.advanceTimersByTimeAsync(JOB_STATUS_POLL_MS);
+
+    const statuses = statusEvents(received).map(
+      (event) => (event.data as JobStatusDto).status,
+    );
+
+    expect(statuses).toEqual(['queued', 'processing', 'completed']);
+    expect(completed).toBe(true);
+  });
+
+  it('closes immediately when the initial snapshot is already terminal', async () => {
+    const { repository, find } = buildRepository();
+    const completed = buildJob('completed');
+    find.mockResolvedValue(completed);
+
+    const events = await lastValueFrom(
+      createJobStatusStream(repository, 'job-1', 'user-1', completed).pipe(
+        toArray(),
+      ),
+    );
+
+    expect(
+      statusEvents(events).map((event) => (event.data as JobStatusDto).status),
+    ).toEqual(['completed']);
+  });
+
   it('stops polling after unsubscribe', async () => {
     const { repository, find } = buildRepository();
     const initial = buildJob('queued');

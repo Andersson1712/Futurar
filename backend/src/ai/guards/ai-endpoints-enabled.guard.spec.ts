@@ -2,8 +2,9 @@ import { ConfigService } from '@nestjs/config';
 import { AiErrorException } from '../../common/errors/ai-error.exception';
 import { AiEndpointsEnabledGuard } from './ai-endpoints-enabled.guard';
 
-function buildGuard(enabled?: boolean): AiEndpointsEnabledGuard {
-  const config = enabled === undefined ? {} : { AI_ENDPOINTS_ENABLED: enabled };
+function buildGuard(enabled?: unknown): AiEndpointsEnabledGuard {
+  const config =
+    enabled === undefined ? {} : { AI_ENDPOINTS_ENABLED: enabled };
 
   return new AiEndpointsEnabledGuard(new ConfigService(config));
 }
@@ -30,5 +31,15 @@ describe('AiEndpointsEnabledGuard', () => {
 
   it('allows the request when AI_ENDPOINTS_ENABLED is true', () => {
     expect(buildGuard(true).canActivate()).toBe(true);
+  });
+
+  it('allows raw string flags from the ConfigService env fallback', () => {
+    expect(buildGuard('true').canActivate()).toBe(true);
+    expect(buildGuard('1').canActivate()).toBe(true);
+  });
+
+  it('blocks falsy raw string flags', () => {
+    expect(() => buildGuard('false').canActivate()).toThrow(AiErrorException);
+    expect(() => buildGuard('0').canActivate()).toThrow(AiErrorException);
   });
 });
