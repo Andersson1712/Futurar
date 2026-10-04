@@ -16,9 +16,9 @@ Leyenda:
 
 ## Estado actual
 
-- Fase activa: **Fase 7 — Proceso, gobernanza y open source**
-- Última tarea cerrada: SPEC-025 (documentación pública: README bilingüe, ADRs y guías)
-- Próxima tarea: SPEC-026 (licencia, versionado y publicación)
+- Fase activa: **Fase 8 — Observabilidad y operación**
+- Última tarea cerrada: SPEC-027 (observabilidad backend: correlation id, pino, métricas, health)
+- Próxima tarea: push + PR de SPEC-028 a `dev` (rama `feat/spec-028-backend-e2e` lista) — SPEC-026 en pausa per owner
 - Rama de integración: `dev` (protegida con CI); `main` congelada y protegida.
 
 ---
@@ -190,19 +190,19 @@ Leyenda:
 - [x] SPEC-023: Modelo Acción → Opciones → Ítems (nivel/tipo) por docente
 - [x] SPEC-023: CRUD de acciones y opciones (backend; editor docente migrado)
 - [x] SPEC-023: Permisos por perfil (`profile_actions`/`profile_option_items`)
-- [ ] SPEC-023B: Límites por pantalla/acción/página (max_enabled, paginación)
+- [x] SPEC-023B: Límites por pantalla/acción/página (max_enabled, paginación) — merge #29
 
 ---
 
 ## Fase 7 — Proceso, gobernanza y open source
 
 ### EPIC 7.1 — Git flow
-- [ ] SPEC-024: Proteger main (PR, review, CI, linear, no force push)
-- [ ] SPEC-024: commitlint + husky
-- [ ] SPEC-024: PR template con checklist a11y y tests
-- [ ] SPEC-024: Issue templates
-- [ ] SPEC-024: CODEOWNERS
-- [ ] SPEC-024: Squash merge por defecto
+- [x] SPEC-024: Proteger main (PR, review, CI, linear, no force push) — merge #33
+- [x] SPEC-024: commitlint + husky — merge #35
+- [x] SPEC-024: PR template con checklist a11y y tests — merge #33
+- [x] SPEC-024: Issue templates — merge #33
+- [x] SPEC-024: CODEOWNERS — merge #33
+- [x] SPEC-024: Squash merge por defecto — merge #33
 
 ### EPIC 7.2 — Documentación
 - [x] SPEC-025: README.md (en) + README.es.md (es)
@@ -214,26 +214,26 @@ Leyenda:
 - [x] SPEC-025: Guía de i18n
 
 ### EPIC 7.3 — Licencia y release
-- [ ] SPEC-026: LICENSE (definir)
-- [ ] SPEC-026: CHANGELOG con semantic-release o changesets
-- [ ] SPEC-026: Versionado semántico
-- [ ] SPEC-026: Publicación en GitHub público
+- [ ] SPEC-026: LICENSE (definir) — en pausa per owner
+- [ ] SPEC-026: CHANGELOG con semantic-release o changesets — en pausa per owner
+- [ ] SPEC-026: Versionado semántico — en pausa per owner
+- [ ] SPEC-026: Publicación en GitHub público — en pausa per owner
 
 ---
 
 ## Fase 8 — Observabilidad y operación
 
 ### EPIC 8.1 — Logs, métricas, trazas
-- [ ] SPEC-027: Correlation ID por request
-- [ ] SPEC-027: Logs estructurados (pino)
-- [ ] SPEC-027: Métricas (latencia, tokens, costo, errores)
-- [ ] SPEC-027: OpenTelemetry
-- [ ] SPEC-027: Alertas de fallos y costos anómalos
+- [x] SPEC-027: Correlation ID por request — merge #34
+- [x] SPEC-027: Logs estructurados (pino) — merge #34
+- [x] SPEC-027: Métricas (latencia, tokens, costo, errores) — merge #34
+- [ ] SPEC-027: OpenTelemetry (follow-up, no inventado en baseline)
+- [ ] SPEC-027: Alertas de fallos y costos anómalos (solo umbrales en `docs/ops/alerts.md`)
 
 ### EPIC 8.2 — Testing backend
-- [ ] SPEC-028: Unit PromptBuilder, validación, adaptadores
-- [ ] SPEC-028: Integración con proveedor mockeado
-- [ ] SPEC-028: E2E flujo completo con Supabase test
+- [x] SPEC-028: Integration generate→job→SSE→book con proveedor mockeado (rama lista, pendiente PR)
+- [x] SPEC-028: Failure paths (INVALID_OUTPUT, CONTENT_BLOCKED) + Idempotency-Key replay (rama lista, pendiente PR)
+- [x] SPEC-028: E2E observabilidad (correlation echo, health pública, metrics 401) (rama lista, pendiente PR)
 
 ---
 
@@ -289,7 +289,15 @@ Leyenda:
 | SPEC-018 | Tests críticos, i18n guard y E2E de flujo | implementado | owner | 2026-09-30 |
 | SPEC-019 | CI GitHub Actions + protección de rama dev | implementado | owner | 2026-09-30 |
 | SPEC-020 | Claves de IA cifradas por docente + rotación | implementado | owner | 2026-09-30 |
-| … | … | … | … | … |
+| SPEC-021 | Perfiles backend + migración frontend | implementado | owner | 2026-10-03 |
+| SPEC-022 | Contactos, dedicatorias y favoritos | implementado | owner | 2026-10-03 |
+| SPEC-023 | Catálogo acciones/opciones + permisos | implementado | owner | 2026-10-03 |
+| SPEC-023B | Límites por pantalla + paginación wizard | implementado (#29) | owner | 2026-10-03 |
+| SPEC-024 | Git flow, commitlint, templates, CODEOWNERS | implementado (#33/#35) | owner | 2026-10-03 |
+| SPEC-025 | Documentación pública + ADRs + guías | implementado (#31) | owner | 2026-10-03 |
+| SPEC-026 | Licencia, versionado y publicación | en pausa per owner | — | — |
+| SPEC-027 | Observabilidad backend (correlation, pino, métricas, health) | implementado (#34) | owner | 2026-10-03 |
+| SPEC-028 | Integración + E2E backend con proveedor mockeado | implementado en rama, pendiente PR | owner | 2026-10-03 |
 
 ## Notas
 
