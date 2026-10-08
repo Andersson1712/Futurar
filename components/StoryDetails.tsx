@@ -1,6 +1,5 @@
 import React, { useRef, useState } from 'react';
 import { Story } from '../types/database';
-import { supabase } from '../services/supabase';
 import { generateStoryPDF } from '../utils/pdfGenerator';
 import { speak } from '../utils/speech';
 import { t } from '../utils/messages';
@@ -42,7 +41,7 @@ const StoryDetails: React.FC<StoryDetailsProps> = ({
         () => setShowDedicationModal(false)
     );
 
-    const handleSave = async () => {
+    const handleSave = () => {
         if (isSaving || hasSaved) return;
 
         // Books generated through the backend are already persisted (SPEC-008).
@@ -52,32 +51,8 @@ const StoryDetails: React.FC<StoryDetailsProps> = ({
             return;
         }
 
-        setIsSaving(true);
-        if (voiceEnabled) speak('Guardando tu cuento en la biblioteca...');
-
-        try {
-            const { error } = await supabase.from('stories').insert({
-                student_id: story.student_id,
-                title: story.title,
-                content: story.content,
-                protagonist: story.protagonist,
-                scenery: story.scenery,
-                mission: story.mission,
-                style: story.style,
-                image_url: story.image_url,
-                type: 'story'
-            });
-
-            if (error) throw error;
-
-            setHasSaved(true);
-            if (voiceEnabled) speak('¡Cuento guardado con éxito!');
-        } catch (err) {
-            console.error('Error saving story:', err);
-            if (voiceEnabled) speak('Hubo un problema al guardar el cuento.');
-        } finally {
-            setIsSaving(false);
-        }
+        // SPEC-032: no legacy fallback. Never mark an unpersisted story saved.
+        if (voiceEnabled) speak('Hubo un problema al guardar el cuento.');
     };
 
     const handleExportClick = () => {
