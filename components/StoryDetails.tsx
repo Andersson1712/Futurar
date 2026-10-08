@@ -8,6 +8,7 @@ import { followJob } from '../services/bookGeneration';
 import {
   getExportDownload,
   requestBookExport,
+  requestDesignExport,
 } from '../services/backendExports';
 import { useDialogA11y } from '../hooks/useDialogA11y';
 
@@ -15,6 +16,7 @@ interface StoryDetailsProps {
     story: Story;
     persisted?: boolean;
     bookId?: string;
+    designId?: string;
     onBack: () => void;
     onRead: () => void;
     onGoMenu: () => void;
@@ -25,6 +27,7 @@ const StoryDetails: React.FC<StoryDetailsProps> = ({
     story,
     persisted = false,
     bookId,
+    designId,
     onBack,
     onRead,
     onGoMenu,
@@ -41,6 +44,8 @@ const StoryDetails: React.FC<StoryDetailsProps> = ({
     const [exportStatus, setExportStatus] = useState('');
     const [isExportingEpub, setIsExportingEpub] = useState(false);
     const [epubStatus, setEpubStatus] = useState('');
+    const [isExportingDesignPdf, setIsExportingDesignPdf] = useState(false);
+    const [designPdfStatus, setDesignPdfStatus] = useState('');
     const [isSaving, setIsSaving] = useState(false);
     const [hasSaved, setHasSaved] = useState(false);
     const dedicationDialogRef = useRef<HTMLDivElement>(null);
@@ -67,6 +72,60 @@ const StoryDetails: React.FC<StoryDetailsProps> = ({
 
     const handleExportClick = () => {
         setShowDedicationModal(true);
+    };
+
+    // SPEC-031B: server-side flyer PDF (designs keep no client PDF path:
+    // the dedication modal flow below is books-only).
+    const handleGenerateDesignPDF = async () => {
+        if (!designId || isExportingDesignPdf) return;
+
+        const controller = new AbortController();
+        setIsExportingDesignPdf(true);
+        setDesignPdfStatus(t('reader.designPdfGenerating'));
+        if (voiceEnabled) speak(t('reader.designPdfGenerating'));
+
+        try {
+            const job = await requestDesignExport(
+                designId,
+                { format: 'pdf' },
+                { signal: controller.signal },
+            );
+            const finalStatus = await followJob(job.jobId, {
+                signal: controller.signal,
+            });
+
+            if (finalStatus.status === 'failed' || !finalStatus.bookId) {
+                throw new ApiError({
+                    statusCode: 502,
+                    code: finalStatus.error?.code ?? 'INTERNAL',
+                    message:
+                        finalStatus.error?.message ?? 'export failed',
+                });
+            }
+
+            const { downloadUrl } = await getExportDownload(job.jobId, {
+                signal: controller.signal,
+            });
+            const link = document.createElement('a');
+            link.href = downloadUrl;
+            link.download = `${story.title}.pdf`;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+
+            setDesignPdfStatus(t('reader.designPdfReady'));
+            if (voiceEnabled) speak(t('reader.designPdfReady'));
+        } catch (err) {
+            if (err instanceof DOMException && err.name === 'AbortError') {
+                return;
+            }
+
+            setDesignPdfStatus(t('reader.designPdfFailed'));
+            if (voiceEnabled) speak(t('reader.designPdfFailed'));
+        } finally {
+            setIsExportingDesignPdf(false);
+            setTimeout(() => setDesignPdfStatus(''), 5000);
+        }
     };
 
     // SPEC-031: server-side EPUB through the export job pipeline.
@@ -218,11 +277,14 @@ const StoryDetails: React.FC<StoryDetailsProps> = ({
                         </button>
 
                         <button
-                            onClick={handleExportClick}
-                            className="flex-1 min-w-[200px] py-4 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-2xl font-bold text-xl text-white flex items-center justify-center gap-3 transition-all hover:scale-105"
+                            onClick={designId ? handleGenerateDesignPDF : handleExportClick}
+                            disabled={isExportingDesignPdf}
+                            className="flex-1 min-w-[200px] py-4 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-2xl font-bold text-xl text-white flex items-center justify-center gap-3 transition-all hover:scale-105 disabled:opacity-40"
                         >
                             <span className="material-symbols-outlined text-3xl">picture_as_pdf</span>
-                            Descargar PDF
+                            {isExportingDesignPdf
+                                ? (designPdfStatus || t('reader.designPdfGenerating'))
+                                : 'Descargar PDF'}
                         </button>
 
                         {bookId && (
@@ -265,6 +327,12 @@ const StoryDetails: React.FC<StoryDetailsProps> = ({
                     {epubStatus && !isExportingEpub && (
                         <p aria-live="polite" className="text-sm text-gray-400 text-center">
                             {epubStatus}
+                        </p>
+                    )}
+
+                    {designPdfStatus && !isExportingDesignPdf && (
+                        <p aria-live="polite" className="text-sm text-gray-400 text-center">
+                            {designPdfStatus}
                         </p>
                     )}
 

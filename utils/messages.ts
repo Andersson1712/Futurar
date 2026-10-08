@@ -113,6 +113,9 @@ export const TRANSLATIONS = {
   'reader.epubGenerating': 'Generando tu EPUB, por favor esperá un momento.',
   'reader.epubReady': 'Tu EPUB está listo y se descargó.',
   'reader.epubFailed': 'No pudimos generar el EPUB.',
+  'reader.designPdfGenerating': 'Generando el PDF de tu diseño...',
+  'reader.designPdfReady': 'Tu PDF está listo y se descargó.',
+  'reader.designPdfFailed': 'No pudimos generar el PDF del diseño.',
   'reader.other': 'Otro',
   'reader.home': 'Volver al inicio',
 
