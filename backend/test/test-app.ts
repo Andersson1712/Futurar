@@ -57,6 +57,15 @@ export const VALID_PRESENTATION_BODY = {
   slideCount: 5,
 } as const;
 
+export const VALID_COMMUNICATION_TITLE = 'Mis sentimientos';
+
+export const VALID_COMMUNICATION_BODY = {
+  kind: 'feelings',
+  topic: 'Cómo me siento hoy',
+  style: 'Pictogramas',
+  cellCount: 6,
+} as const;
+
 export interface AiE2ETestContext {
   app: INestApplication<App>;
   mockTextGenerate: jest.Mock;
@@ -68,6 +77,8 @@ export interface AiE2ETestAppOptions {
   designImagesEnabled?: boolean;
   presentationEndpointsEnabled?: boolean;
   presentationImagesEnabled?: boolean;
+  communicationEndpointsEnabled?: boolean;
+  communicationImagesEnabled?: boolean;
   /**
    * SPEC-033: when true, TEXT/IMAGE_GENERATOR are NOT stubbed — the real
    * OpenRouter adapters wire through ai.module (OPENROUTER_ENABLED=true)
@@ -113,6 +124,16 @@ function applyE2ETestEnv(options: AiE2ETestAppOptions = {}): void {
     delete process.env.PRESENTATION_IMAGES_ENABLED;
   } else {
     process.env.PRESENTATION_IMAGES_ENABLED = 'true';
+  }
+  if (options.communicationEndpointsEnabled === false) {
+    delete process.env.COMMUNICATION_ENDPOINTS_ENABLED;
+  } else {
+    process.env.COMMUNICATION_ENDPOINTS_ENABLED = 'true';
+  }
+  if (options.communicationImagesEnabled === false) {
+    delete process.env.COMMUNICATION_IMAGES_ENABLED;
+  } else {
+    process.env.COMMUNICATION_IMAGES_ENABLED = 'true';
   }
 }
 

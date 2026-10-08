@@ -35,6 +35,15 @@ import {
     requestPresentationGeneration,
     type PresentationSlideCount,
 } from '../services/backendPresentations';
+import {
+    COMMUNICATION_TOPIC_MAX_LENGTH,
+    communicationDetailToStory,
+    getStudentCommunication,
+    requestCommunicationGeneration,
+    type CommunicationCellCount,
+    type CommunicationDetailPayload,
+    type CommunicationKind,
+} from '../services/backendCommunications';
 import { buildOptionPages, nextPageIndex } from '../utils/optionPages';
 import type { Student, StudentSettings, Story } from '../types/database';
 import type { ScanOption } from '../types';
@@ -52,7 +61,7 @@ interface StoryConfig {
     title?: string;
     content?: string;
     imageUrl?: string;
-    type: 'story' | 'design' | 'presentation';
+    type: 'story' | 'design' | 'presentation' | 'communication';
     dedication?: string;
     dedicationPosition?: 'start' | 'end';
     isFavorite?: boolean;
@@ -75,6 +84,12 @@ type AppStep =
     | 'SELECT_PRESENTATION_SLIDE_COUNT'
     | 'SELECT_PRESENTATION_STYLE'
     | 'GENERATING_PRESENTATION'
+    | 'SELECT_COMMUNICATION_KIND'
+    | 'SELECT_COMMUNICATION_TOPIC'
+    | 'SELECT_COMMUNICATION_CELL_COUNT'
+    | 'SELECT_COMMUNICATION_STYLE'
+    | 'GENERATING_COMMUNICATION'
+    | 'BOARD_USE'
     | 'RESULT_VIEW'
     | 'STORY_DETAILS';
 
@@ -125,6 +140,16 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
         slideCountLabel: '',
         style: '',
     });
+    const [communicationInput, setCommunicationInput] = useState({
+        kind: '' as CommunicationKind | '',
+        kindLabel: '',
+        topic: '',
+        cellCount: 0 as CommunicationCellCount | 0,
+        cellCountLabel: '',
+        style: '',
+    });
+    const [boardDetail, setBoardDetail] = useState<CommunicationDetailPayload | null>(null);
+    const [lastSpokenCell, setLastSpokenCell] = useState('');
     const [isRestored, setIsRestored] = useState(false);
     const [initialScrollTop, setInitialScrollTop] = useState(0);
     const viewerProgressRef = useRef<ViewerProgress | undefined>(undefined);
@@ -328,7 +353,8 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
         { id: 'story', label: t('wizard.createStory'), icon: 'auto_stories' },
         { id: 'library', label: t('wizard.library'), icon: 'collections_bookmark' },
         { id: 'design', label: t('wizard.design'), icon: 'brush' },
-        { id: 'presentation', label: t('wizard.presentation'), icon: 'slideshow' }
+        { id: 'presentation', label: t('wizard.presentation'), icon: 'slideshow' },
+        { id: 'communication', label: t('wizard.communication'), icon: 'forum' }
     ];
 
     // SPEC-029: fixed flyer occasions (backend enum) as scan options.
@@ -362,6 +388,44 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
             { value: 5, labelKey: 'wizard.presentationSlideCount5', icon: 'filter_5' },
             { value: 8, labelKey: 'wizard.presentationSlideCount8', icon: 'filter_8' },
             { value: 10, labelKey: 'wizard.presentationSlideCount10', icon: 'filter_10' },
+        ];
+
+        return counts.map((item) => ({
+            id: String(item.value),
+            label: t(item.labelKey),
+            icon: item.icon,
+        }));
+    }, []);
+
+    // SPEC-029C: fixed board kinds (backend enum) as scan options.
+    const communicationKindOptions: ScanOption[] = useMemo(() => {
+        const kinds: Array<{
+            value: CommunicationKind;
+            labelKey: MessageKey;
+            icon: string;
+        }> = [
+            { value: 'feelings', labelKey: 'wizard.communicationKindFeelings', icon: 'mood' },
+            { value: 'help', labelKey: 'wizard.communicationKindHelp', icon: 'help' },
+            { value: 'custom', labelKey: 'wizard.communicationKindCustom', icon: 'edit' },
+        ];
+
+        return kinds.map((item) => ({
+            id: item.value,
+            label: t(item.labelKey),
+            icon: item.icon,
+        }));
+    }, []);
+
+    // SPEC-029C: fixed cell counts (backend enum) as scan options.
+    const communicationCellCountOptions: ScanOption[] = useMemo(() => {
+        const counts: Array<{
+            value: CommunicationCellCount;
+            labelKey: MessageKey;
+            icon: string;
+        }> = [
+            { value: 4, labelKey: 'wizard.communicationCellCount4', icon: 'filter_4' },
+            { value: 6, labelKey: 'wizard.communicationCellCount6', icon: 'filter_6' },
+            { value: 8, labelKey: 'wizard.communicationCellCount8', icon: 'filter_8' },
         ];
 
         return counts.map((item) => ({
@@ -445,7 +509,10 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
                                 step === 'SELECT_DESIGN_STYLE' ? styleOptions :
                                     step === 'SELECT_PRESENTATION_SLIDE_COUNT' ? presentationSlideCountOptions :
                                         step === 'SELECT_PRESENTATION_STYLE' ? styleOptions :
-                                            [];
+                                            step === 'SELECT_COMMUNICATION_KIND' ? communicationKindOptions :
+                                                step === 'SELECT_COMMUNICATION_CELL_COUNT' ? communicationCellCountOptions :
+                                                    step === 'SELECT_COMMUNICATION_STYLE' ? styleOptions :
+                                                        [];
     const wizardPages = buildOptionPages(wizardRawOptions);
     const pageCount = wizardPages.length;
     const safePage = pageCount === 0 ? 0 : Math.min(optionPage, pageCount - 1);
@@ -486,7 +553,13 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
             setStep('SELECT_PRESENTATION_TOPIC');
             return;
         }
-        setConfig(prev => ({ ...prev, type: opt.id as 'story' | 'design' | 'presentation' }));
+        if (opt.id === 'communication') {
+            setConfig(prev => ({ ...prev, type: 'communication' }));
+            speakWithState(t('wizard.communicationKindTitle'));
+            setStep('SELECT_COMMUNICATION_KIND');
+            return;
+        }
+        setConfig(prev => ({ ...prev, type: opt.id as 'story' | 'design' | 'presentation' | 'communication' }));
         if (opt.id === 'story') {
             speakWithState("Elige tu protagonista");
             setStep('SELECT_PROTAGONIST');
@@ -560,6 +633,46 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
         setStep('GENERATING_PRESENTATION');
     };
 
+    const handleCommunicationKindSelect = (opt: ScanOption) => {
+        const kind = opt.id as CommunicationKind;
+        if (kind !== 'feelings' && kind !== 'help' && kind !== 'custom') return;
+        setCommunicationInput((prev) => ({
+            ...prev,
+            kind,
+            kindLabel: opt.label,
+        }));
+        speakWithState(t('wizard.communicationTopicTitle'));
+        setStep('SELECT_COMMUNICATION_TOPIC');
+    };
+
+    const handleCommunicationTopicNext = () => {
+        if (!communicationInput.topic.trim()) return;
+        speakWithState(t('wizard.communicationCellCountTitle'));
+        setStep('SELECT_COMMUNICATION_CELL_COUNT');
+    };
+
+    const handleCommunicationCellCountSelect = (opt: ScanOption) => {
+        const cellCount = Number(opt.id) as CommunicationCellCount;
+        if (cellCount !== 4 && cellCount !== 6 && cellCount !== 8) return;
+        setCommunicationInput((prev) => ({
+            ...prev,
+            cellCount,
+            cellCountLabel: opt.label,
+        }));
+        speakWithState(t('wizard.communicationStyleTitle'));
+        setStep('SELECT_COMMUNICATION_STYLE');
+    };
+
+    const handleCommunicationStyleSelect = (opt: ScanOption) => {
+        setCommunicationInput((prev) => ({ ...prev, style: opt.label }));
+        setStep('GENERATING_COMMUNICATION');
+    };
+
+    const handleBoardCellSelect = (opt: ScanOption) => {
+        setLastSpokenCell(opt.label);
+        speakWithState(opt.label);
+    };
+
     const handleWizardSelect = (opt: ScanOption) => {
         if (opt.id === MORE_OPTIONS_ID) {
             const next = nextPageIndex(safePage, pageCount);
@@ -577,6 +690,9 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
         else if (step === 'SELECT_DESIGN_STYLE') handleDesignStyleSelect(opt);
         else if (step === 'SELECT_PRESENTATION_SLIDE_COUNT') handlePresentationSlideCountSelect(opt);
         else if (step === 'SELECT_PRESENTATION_STYLE') handlePresentationStyleSelect(opt);
+        else if (step === 'SELECT_COMMUNICATION_KIND') handleCommunicationKindSelect(opt);
+        else if (step === 'SELECT_COMMUNICATION_CELL_COUNT') handleCommunicationCellCountSelect(opt);
+        else if (step === 'SELECT_COMMUNICATION_STYLE') handleCommunicationStyleSelect(opt);
     };
 
     const handleBackToProfile = () => {
@@ -590,6 +706,9 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
         setConfig({ protagonist: '', scenery: '', mission: '', style: '', type: 'story' });
         setDesignInput({ occasion: '', occasionLabel: '', message: '', style: '' });
         setPresentationInput({ topic: '', slideCount: 0, slideCountLabel: '', style: '' });
+        setCommunicationInput({ kind: '', kindLabel: '', topic: '', cellCount: 0, cellCountLabel: '', style: '' });
+        setBoardDetail(null);
+        setLastSpokenCell('');
         setElementsLoaded(false);
         setStudentProtagonists([]);
         setStudentScenarios([]);
@@ -603,6 +722,16 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
         setConfig({ protagonist: '', scenery: '', mission: '', style: '', type: 'story' });
         setDesignInput({ occasion: '', occasionLabel: '', message: '', style: '' });
         setPresentationInput({ topic: '', slideCount: 0, slideCountLabel: '', style: '' });
+        setCommunicationInput({ kind: '', kindLabel: '', topic: '', cellCount: 0, cellCountLabel: '', style: '' });
+        setBoardDetail(null);
+        setLastSpokenCell('');
+    };
+
+    const handleBackToLibrary = () => {
+        handleStopSpeaking();
+        setBoardDetail(null);
+        setLastSpokenCell('');
+        setStep('LIBRARY');
     };
 
     const handleCreateAnother = () => {
@@ -916,6 +1045,109 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
 
         return () => controller.abort();
     }, [step, currentStudent]);
+
+    // Board generation through the Nest backend (SPEC-029C).
+    useEffect(() => {
+        if (step !== 'GENERATING_COMMUNICATION' || !currentStudent) return;
+
+        const controller = new AbortController();
+        setError(null);
+        setGenerationProgress({ status: MESSAGES.communicationGeneration.queued, progress: 10 });
+
+        const kind = communicationInput.kind;
+        const topic = communicationInput.topic.trim();
+        const style = communicationInput.style;
+        const cellCount = communicationInput.cellCount;
+
+        const run = async () => {
+            if (!kind || !topic || cellCount === 0) {
+                setError(MESSAGES.errors.generic);
+                setStep('SELECT_COMMUNICATION_KIND');
+                return;
+            }
+
+            try {
+                const job = await requestCommunicationGeneration({
+                    kind,
+                    topic,
+                    style,
+                    cellCount,
+                    audience: 'child',
+                    profileId: currentStudent.id,
+                });
+                const finalStatus = await followJob(job.jobId, {
+                    signal: controller.signal,
+                    onStatus: (status) => {
+                        setGenerationProgress({
+                            status:
+                                status.status === 'completed'
+                                    ? MESSAGES.communicationGeneration.completed
+                                    : MESSAGES.communicationGeneration.processing,
+                            progress:
+                                status.progress ??
+                                (status.status === 'queued' ? 15 : 60),
+                        });
+                    },
+                });
+
+                const boardId = finalStatus.bookId ?? finalStatus.book?.id;
+
+                if (finalStatus.status === 'failed' || !boardId) {
+                    throw new ApiError({
+                        statusCode: 502,
+                        code: finalStatus.error?.code ?? 'INTERNAL',
+                        message:
+                            finalStatus.error?.message ?? 'generation failed',
+                    });
+                }
+
+                const detail = await getStudentCommunication(boardId);
+                setBoardDetail(detail);
+                setLastSpokenCell('');
+                setConfig({
+                    id: detail.id,
+                    protagonist: '',
+                    scenery: '',
+                    mission: '',
+                    style: detail.style,
+                    title: detail.title,
+                    content: '',
+                    imageUrl: undefined,
+                    type: 'communication',
+                });
+                setGenerationProgress({
+                    status: MESSAGES.communicationGeneration.completed,
+                    progress: 100,
+                });
+                speakWithState(t('wizard.communicationReady', { title: detail.title }));
+                setStep('BOARD_USE');
+            } catch (err) {
+                if (err instanceof DOMException && err.name === 'AbortError') {
+                    return;
+                }
+
+                const failureMessage =
+                    err instanceof ApiError
+                        ? messageForErrorCode(err.code)
+                        : err instanceof NetworkError
+                          ? MESSAGES.errors.network
+                          : MESSAGES.errors.generic;
+
+                setGenerationProgress({
+                    status: MESSAGES.communicationGeneration.failed,
+                    progress: 0,
+                });
+                setError(failureMessage);
+                speakWithState(failureMessage);
+                // Never park the UI on the spinner: back to style selection.
+                setStep('SELECT_COMMUNICATION_STYLE');
+            }
+        };
+
+        void run();
+
+        return () => controller.abort();
+    }, [step, currentStudent]);
     if (isLoading) {
         return (
             <div className="min-h-[100dvh] flex items-center justify-center bg-gradient-to-br from-slate-900 to-slate-950">
@@ -984,10 +1216,11 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
                     mission={config.mission}
                     style={config.style}
                     studentId={currentStudent?.id}
-                    // Diseños y presentaciones are already persisted server-side:
-                    // keep the legacy auto-save off and skip book-only mutations.
-                    persisted={config.type === 'design' || config.type === 'presentation' ? true : Boolean(config.id)}
-                    bookId={config.type === 'design' || config.type === 'presentation' ? undefined : config.id}
+                    // Tableros y diseños/presentaciones are already persisted
+                    // server-side: keep the legacy auto-save off and skip
+                    // book-only mutations.
+                    persisted={config.type === 'design' || config.type === 'presentation' || config.type === 'communication' ? true : Boolean(config.id)}
+                    bookId={config.type === 'design' || config.type === 'presentation' || config.type === 'communication' ? undefined : config.id}
                     dedication={config.dedication}
                     dedicationPosition={config.dedicationPosition}
                     isFavorite={config.isFavorite}
@@ -1031,6 +1264,22 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
     // Vista de biblioteca del estudiante
     if (step === 'LIBRARY' && currentStudent) {
         const handleSelectStory = (story: Story) => {
+            if (story.type === 'communication') {
+                // Boards open in the use view: fetch cells, then speak.
+                const openBoard = async () => {
+                    try {
+                        const detail = await getStudentCommunication(story.id);
+                        setBoardDetail(detail);
+                        setLastSpokenCell('');
+                        setStep('BOARD_USE');
+                        speakWithState(`Has seleccionado ${detail.title}`);
+                    } catch {
+                        setError(MESSAGES.errors.libraryUnavailable);
+                    }
+                };
+                void openBoard();
+                return;
+            }
             // Load story into config and show it
             setConfig({
                 id: story.id,
@@ -1041,7 +1290,7 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
                 title: story.title,
                 content: story.content || '',
                 imageUrl: story.image_url || undefined,
-                type: (story.type as 'story' | 'design' | 'presentation') || 'story',
+                type: (story.type as 'story' | 'design' | 'presentation' | 'communication') || 'story',
                 dedication: story.dedication_to ?? undefined,
                 dedicationPosition:
                     (story.dedication_position as 'start' | 'end') ??
@@ -1106,6 +1355,58 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
                         </p>
                     </div>
                 )}
+            </div>
+        );
+    }
+
+
+    // Vista de uso del tablero (SPEC-029C): celdas grandes, elegir habla.
+    if (step === 'BOARD_USE' && currentStudent && boardDetail) {
+        const cellOptions: ScanOption[] = boardDetail.cells.map((cell, index) => ({
+            id: String(index),
+            label: cell.label,
+            icon: 'forum',
+            image: cell.imageUrl ?? undefined,
+        }));
+
+        return (
+            <div className="min-h-[100dvh] flex flex-col bg-gradient-to-br from-slate-900 to-slate-950 text-white font-display">
+                <header className="flex items-center justify-between px-4 md:px-8 py-3 bg-black/30 border-b border-white/10">
+                    <div className="flex items-center gap-3">
+                        <div className="size-10 bg-primary/20 text-primary flex items-center justify-center rounded-xl">
+                            <span className="material-symbols-outlined text-2xl">forum</span>
+                        </div>
+                        <h1 className="text-xl md:text-2xl font-black tracking-tighter">{boardDetail.title}</h1>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={handleBackToLibrary}
+                            className="p-2 min-w-11 min-h-11 hover:bg-white/10 rounded-full transition-colors bg-white/5"
+                            title="Volver a la biblioteca"
+                        >
+                            <span className="material-symbols-outlined">arrow_back</span>
+                        </button>
+                    </div>
+                </header>
+
+                <main className="flex-1 flex flex-col items-center safe-center p-4 md:p-6 lg:p-8 overflow-y-auto">
+                    <p aria-live="polite" className="text-lg md:text-xl font-bold text-gray-200 mb-6 min-h-8">
+                        {lastSpokenCell || boardDetail.topic}
+                    </p>
+                    <div className="w-full max-w-5xl text-center">
+                        <ScanningGrid
+                            options={cellOptions}
+                            onSelect={handleBoardCellSelect}
+                            columns={Math.min(3, scanColumns + 1)}
+                            scanInterval={scanInterval}
+                            soundEnabled={soundEnabled}
+                            voiceEnabled={voiceEnabled}
+                            isPaused={scanningPaused}
+                        />
+                    </div>
+                </main>
+
+                <FloatingControls onGoToMenu={handleBackToMenu} />
             </div>
         );
     }
@@ -1199,11 +1500,11 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
                     </div>
                 )}
 
-                {/* Menu and Selection Steps */}
-                {['MENU', 'SELECT_PROTAGONIST', 'SELECT_SCENERY', 'SELECT_MISSION', 'SELECT_STYLE', 'SELECT_DESIGN_OCCASION', 'SELECT_DESIGN_MESSAGE', 'SELECT_DESIGN_STYLE', 'SELECT_PRESENTATION_TOPIC', 'SELECT_PRESENTATION_SLIDE_COUNT', 'SELECT_PRESENTATION_STYLE'].includes(step) && (
+                {/* Menu and Selection Steps (029C lesson: every new wizard step must be listed here) */}
+                {['MENU', 'SELECT_PROTAGONIST', 'SELECT_SCENERY', 'SELECT_MISSION', 'SELECT_STYLE', 'SELECT_DESIGN_OCCASION', 'SELECT_DESIGN_MESSAGE', 'SELECT_DESIGN_STYLE', 'SELECT_PRESENTATION_TOPIC', 'SELECT_PRESENTATION_SLIDE_COUNT', 'SELECT_PRESENTATION_STYLE', 'SELECT_COMMUNICATION_KIND', 'SELECT_COMMUNICATION_TOPIC', 'SELECT_COMMUNICATION_CELL_COUNT', 'SELECT_COMMUNICATION_STYLE'].includes(step) && (
                     <div className="w-full max-w-5xl text-center">
                         {/* Progress Indicator (book wizard only) */}
-                        {step !== 'MENU' && !step.startsWith('SELECT_DESIGN') && !step.startsWith('SELECT_PRESENTATION') && (
+                        {step !== 'MENU' && !step.startsWith('SELECT_DESIGN') && !step.startsWith('SELECT_PRESENTATION') && !step.startsWith('SELECT_COMMUNICATION') && (
                             <div className="mb-6 flex items-center justify-center gap-2">
                                 <div className={`h-2 w-16 rounded-full transition-all ${step === 'SELECT_PROTAGONIST' || step === 'SELECT_SCENERY' || step === 'SELECT_MISSION' || step === 'SELECT_STYLE' ? 'bg-primary' : 'bg-slate-700'}`} />
                                 <div className={`h-2 w-16 rounded-full transition-all ${step === 'SELECT_SCENERY' || step === 'SELECT_MISSION' || step === 'SELECT_STYLE' ? 'bg-primary' : 'bg-slate-700'}`} />
@@ -1270,6 +1571,32 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
                             </div>
                         )}
 
+                        {/* Current board selections */}
+                        {step.startsWith('SELECT_COMMUNICATION') && (communicationInput.kindLabel || communicationInput.topic || communicationInput.cellCountLabel || communicationInput.style) && (
+                            <div className="mb-6 flex flex-wrap items-center justify-center gap-2">
+                                {communicationInput.kindLabel && (
+                                    <span className="px-3 py-1 bg-primary/20 text-primary rounded-full text-sm font-bold">
+                                        {communicationInput.kindLabel}
+                                    </span>
+                                )}
+                                {communicationInput.topic && (
+                                    <span className="px-3 py-1 bg-teal-500/20 text-teal-300 rounded-full text-sm font-bold">
+                                        {communicationInput.topic}
+                                    </span>
+                                )}
+                                {communicationInput.cellCountLabel && (
+                                    <span className="px-3 py-1 bg-green-500/20 text-green-400 rounded-full text-sm font-bold">
+                                        {communicationInput.cellCountLabel}
+                                    </span>
+                                )}
+                                {communicationInput.style && (
+                                    <span className="px-3 py-1 bg-blue-500/20 text-blue-400 rounded-full text-sm font-bold">
+                                        {communicationInput.style}
+                                    </span>
+                                )}
+                            </div>
+                        )}
+
                         <h2 className="text-2xl md:text-4xl font-black mb-8 animate-fade-in">
                             {step === 'MENU' && t('wizard.menuTitle')}
                             {step === 'SELECT_PROTAGONIST' && t('wizard.protagonistTitle')}
@@ -1282,15 +1609,64 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
                             {step === 'SELECT_PRESENTATION_TOPIC' && t('wizard.presentationTopicTitle')}
                             {step === 'SELECT_PRESENTATION_SLIDE_COUNT' && t('wizard.presentationSlideCountTitle')}
                             {step === 'SELECT_PRESENTATION_STYLE' && t('wizard.presentationStyleTitle')}
+                            {step === 'SELECT_COMMUNICATION_KIND' && t('wizard.communicationKindTitle')}
+                            {step === 'SELECT_COMMUNICATION_TOPIC' && t('wizard.communicationTopicTitle')}
+                            {step === 'SELECT_COMMUNICATION_CELL_COUNT' && t('wizard.communicationCellCountTitle')}
+                            {step === 'SELECT_COMMUNICATION_STYLE' && t('wizard.communicationStyleTitle')}
                         </h2>
 
-                        {pageCount > 1 && step !== 'SELECT_DESIGN_MESSAGE' && step !== 'SELECT_PRESENTATION_TOPIC' && (
+                        {pageCount > 1 && step !== 'SELECT_DESIGN_MESSAGE' && step !== 'SELECT_PRESENTATION_TOPIC' && step !== 'SELECT_COMMUNICATION_TOPIC' && (
                             <p aria-live="polite" className="text-sm md:text-base font-bold text-gray-300 mb-4">
                                 {t('wizard.pageIndicator', { current: safePage + 1, total: pageCount })}
                             </p>
                         )}
 
-                        {step === 'SELECT_PRESENTATION_TOPIC' ? (
+                        {step === 'SELECT_COMMUNICATION_TOPIC' ? (
+                            <form
+                                className="max-w-xl mx-auto flex flex-col gap-4 text-left"
+                                onSubmit={(event) => {
+                                    event.preventDefault();
+                                    handleCommunicationTopicNext();
+                                }}
+                            >
+                                <label
+                                    htmlFor="communication-topic"
+                                    className="text-base md:text-lg font-bold text-gray-200"
+                                >
+                                    {t('wizard.communicationTopicLabel')}
+                                </label>
+                                <textarea
+                                    id="communication-topic"
+                                    value={communicationInput.topic}
+                                    maxLength={COMMUNICATION_TOPIC_MAX_LENGTH}
+                                    rows={3}
+                                    placeholder={t('wizard.communicationTopicPlaceholder')}
+                                    onChange={(event) =>
+                                        setCommunicationInput((prev) => ({
+                                            ...prev,
+                                            topic: event.target.value,
+                                        }))
+                                    }
+                                    className="w-full min-h-11 p-4 text-lg rounded-2xl bg-slate-800/80 border-2 border-white/10 text-white placeholder:text-gray-500 focus:border-primary focus:outline-none"
+                                />
+                                <p className="text-sm text-gray-400">
+                                    {t('wizard.communicationTopicHint')}
+                                </p>
+                                <p aria-live="polite" className="text-sm font-bold text-gray-300">
+                                    {t('wizard.communicationTopicCount', {
+                                        current: communicationInput.topic.length,
+                                        total: COMMUNICATION_TOPIC_MAX_LENGTH,
+                                    })}
+                                </p>
+                                <button
+                                    type="submit"
+                                    disabled={!communicationInput.topic.trim()}
+                                    className="px-8 py-4 min-h-11 rounded-2xl font-bold text-lg bg-primary hover:bg-primary/80 transition-all hover:scale-105 disabled:opacity-40 disabled:hover:scale-100"
+                                >
+                                    {t('wizard.communicationTopicNext')}
+                                </button>
+                            </form>
+                        ) : step === 'SELECT_PRESENTATION_TOPIC' ? (
                             <form
                                 className="max-w-xl mx-auto flex flex-col gap-4 text-left"
                                 onSubmit={(event) => {
@@ -1410,7 +1786,7 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
                 )}
 
                 {/* Generating State */}
-                {(step === 'GENERATING' || step === 'GENERATING_DESIGN' || step === 'GENERATING_PRESENTATION') && (
+                {(step === 'GENERATING' || step === 'GENERATING_DESIGN' || step === 'GENERATING_PRESENTATION' || step === 'GENERATING_COMMUNICATION') && (
                     <div className="flex flex-col items-center text-center max-w-lg">
                         <div className="relative mb-8">
                             <span className="material-symbols-outlined text-8xl text-primary animate-pulse">auto_fix</span>
@@ -1426,7 +1802,9 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
                                 ? t('wizard.generatingDesignTitle')
                                 : step === 'GENERATING_PRESENTATION'
                                   ? t('wizard.generatingPresentationTitle')
-                                  : t('wizard.generatingTitle')}
+                                  : step === 'GENERATING_COMMUNICATION'
+                                    ? t('wizard.generatingCommunicationTitle')
+                                    : t('wizard.generatingTitle')}
                         </h2>
 
                         <p className="text-lg text-gray-400 mb-6">
@@ -1454,7 +1832,9 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
                                                 ? 'SELECT_DESIGN_STYLE'
                                                 : step === 'GENERATING_PRESENTATION'
                                                   ? 'SELECT_PRESENTATION_STYLE'
-                                                  : 'SELECT_STYLE',
+                                                  : step === 'GENERATING_COMMUNICATION'
+                                                    ? 'SELECT_COMMUNICATION_STYLE'
+                                                    : 'SELECT_STYLE',
                                         )
                                     }
                                     className="mt-4 px-6 py-3 min-h-11 bg-primary rounded-xl font-bold hover:bg-primary/80 transition-colors"
@@ -1481,6 +1861,17 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
                                         topic: presentationInput.topic,
                                         slideCount: presentationInput.slideCount,
                                         style: presentationInput.style,
+                                    })}
+                                </p>
+                            </div>
+                        ) : step === 'GENERATING_COMMUNICATION' ? (
+                            <div className="mt-8 p-4 bg-slate-800/50 rounded-2xl border border-slate-700">
+                                <p className="text-sm text-gray-400">
+                                    {t('wizard.communicationPreview', {
+                                        kind: communicationInput.kindLabel,
+                                        topic: communicationInput.topic,
+                                        cellCount: communicationInput.cellCount,
+                                        style: communicationInput.style,
                                     })}
                                 </p>
                             </div>

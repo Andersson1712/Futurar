@@ -49,10 +49,13 @@ import { DESIGN_GENERATION_USE_CASE } from './application/design-generation.use-
 import type { DesignGenerationUseCase } from './application/design-generation.use-case';
 import { PRESENTATION_GENERATION_USE_CASE } from './application/presentation-generation.use-case';
 import type { PresentationGenerationUseCase } from './application/presentation-generation.use-case';
+import { COMMUNICATION_GENERATION_USE_CASE } from './application/communication-generation.use-case';
+import type { CommunicationGenerationUseCase } from './application/communication-generation.use-case';
 import { JobStatusStream } from './application/job-status.stream';
 import { GenerateBookRequestDto } from './dto/generate-book-request.dto';
 import { GenerateDesignRequestDto } from './dto/generate-design-request.dto';
 import { GeneratePresentationRequestDto } from './dto/generate-presentation-request.dto';
+import { GenerateCommunicationRequestDto } from './dto/generate-communication-request.dto';
 import {
   GenerateBookResponseDto,
   JobStatusDto,
@@ -79,6 +82,14 @@ export class AiController {
     @Inject(PRESENTATION_GENERATION_USE_CASE)
     private readonly presentationGeneration:
       PresentationGenerationUseCase | undefined,
+    // Optional so pre-existing standalone AiController test modules (books,
+    // designs, presentations) keep resolving without the board provider;
+    // AiModule always provides it, and the handler below degrades to 501
+    // when absent.
+    @Optional()
+    @Inject(COMMUNICATION_GENERATION_USE_CASE)
+    private readonly communicationGeneration:
+      CommunicationGenerationUseCase | undefined,
     private readonly jobStatusStream: JobStatusStream,
   ) {}
 
@@ -179,6 +190,43 @@ export class AiController {
     }
 
     return this.presentationGeneration.requestGeneration({
+      ...dto,
+      userId: request.user?.id ?? '',
+      correlationId: requestCorrelationId(request),
+    });
+  }
+
+  @Post('communications/generate')
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @UseGuards(AiEndpointsEnabledGuard, SupabaseAuthGuard)
+  @UseInterceptors(IdempotencyInterceptor)
+  @HttpCode(HttpStatus.ACCEPTED)
+  @ApiOperation({ summary: 'Request AI board generation' })
+  @ApiHeader({
+    name: IDEMPOTENCY_KEY_HEADER,
+    required: true,
+    description: 'Unique 8-128 character key for this request',
+  })
+  @ApiAcceptedResponse({ type: GenerateBookResponseDto })
+  @ApiBadRequestResponse({ type: AiErrorDto })
+  @ApiConflictResponse({ type: AiErrorDto })
+  @ApiUnprocessableEntityResponse({ type: AiErrorDto })
+  @ApiBadGatewayResponse({ type: AiErrorDto })
+  @ApiTooManyRequestsResponse({ type: AiErrorDto })
+  @ApiServiceUnavailableResponse({ type: AiErrorDto })
+  async generateCommunication(
+    @Body() dto: GenerateCommunicationRequestDto,
+    @Req() request: AuthenticatedRequest,
+  ): Promise<GenerateBookResponseDto> {
+    if (!this.communicationGeneration) {
+      throw new AiErrorException(
+        501,
+        'NOT_IMPLEMENTED',
+        'Communication endpoints are disabled',
+      );
+    }
+
+    return this.communicationGeneration.requestGeneration({
       ...dto,
       userId: request.user?.id ?? '',
       correlationId: requestCorrelationId(request),
