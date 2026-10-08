@@ -3,11 +3,18 @@ import { Story } from '../types/database';
 import { generateStoryPDF } from '../utils/pdfGenerator';
 import { speak } from '../utils/speech';
 import { t } from '../utils/messages';
+import { ApiError } from '../services/backendApi';
+import { followJob } from '../services/bookGeneration';
+import {
+  getExportDownload,
+  requestBookExport,
+} from '../services/backendExports';
 import { useDialogA11y } from '../hooks/useDialogA11y';
 
 interface StoryDetailsProps {
     story: Story;
     persisted?: boolean;
+    bookId?: string;
     onBack: () => void;
     onRead: () => void;
     onGoMenu: () => void;
@@ -17,6 +24,7 @@ interface StoryDetailsProps {
 const StoryDetails: React.FC<StoryDetailsProps> = ({
     story,
     persisted = false,
+    bookId,
     onBack,
     onRead,
     onGoMenu,
@@ -31,6 +39,8 @@ const StoryDetails: React.FC<StoryDetailsProps> = ({
         story.dedication_position === 'end' ? 'end' : 'start'
     );
     const [exportStatus, setExportStatus] = useState('');
+    const [isExportingEpub, setIsExportingEpub] = useState(false);
+    const [epubStatus, setEpubStatus] = useState('');
     const [isSaving, setIsSaving] = useState(false);
     const [hasSaved, setHasSaved] = useState(false);
     const dedicationDialogRef = useRef<HTMLDivElement>(null);
@@ -57,6 +67,60 @@ const StoryDetails: React.FC<StoryDetailsProps> = ({
 
     const handleExportClick = () => {
         setShowDedicationModal(true);
+    };
+
+    // SPEC-031: server-side EPUB through the export job pipeline.
+    const handleGenerateEPUB = async () => {
+        if (!bookId || isExportingEpub) return;
+
+        const controller = new AbortController();
+        setIsExportingEpub(true);
+        setEpubStatus(t('reader.epubGenerating'));
+        if (voiceEnabled) speak(t('reader.epubGenerating'));
+
+        try {
+            const job = await requestBookExport(
+                bookId,
+                { format: 'epub' },
+                { signal: controller.signal },
+            );
+            const finalStatus = await followJob(job.jobId, {
+                signal: controller.signal,
+            });
+
+            if (finalStatus.status === 'failed' || !finalStatus.bookId) {
+                throw new ApiError({
+                    statusCode: 502,
+                    code: finalStatus.error?.code ?? 'INTERNAL',
+                    message: finalStatus.error?.message ?? 'export failed',
+                });
+            }
+
+            const { downloadUrl } = await getExportDownload(job.jobId, {
+                signal: controller.signal,
+            });
+            const link = document.createElement('a');
+            link.href = downloadUrl;
+            link.download = `${story.title}.epub`;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+
+            setEpubStatus(t('reader.epubReady'));
+            if (voiceEnabled) speak(t('reader.epubReady'));
+        } catch (err) {
+            if (err instanceof DOMException && err.name === 'AbortError') {
+                return;
+            }
+
+            // Any export failure speaks the same localized message: the
+            // button context already says what failed.
+            setEpubStatus(t('reader.epubFailed'));
+            if (voiceEnabled) speak(t('reader.epubFailed'));
+        } finally {
+            setIsExportingEpub(false);
+            setTimeout(() => setEpubStatus(''), 5000);
+        }
     };
 
     const handleGeneratePDF = async () => {
@@ -161,6 +225,19 @@ const StoryDetails: React.FC<StoryDetailsProps> = ({
                             Descargar PDF
                         </button>
 
+                        {bookId && (
+                            <button
+                                onClick={handleGenerateEPUB}
+                                disabled={isExportingEpub}
+                                className="flex-1 min-w-[200px] py-4 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-2xl font-bold text-xl text-white flex items-center justify-center gap-3 transition-all hover:scale-105 disabled:opacity-40"
+                            >
+                                <span className="material-symbols-outlined text-3xl">book</span>
+                                {isExportingEpub
+                                    ? (epubStatus || t('reader.epubGenerating'))
+                                    : t('reader.epubDownload')}
+                            </button>
+                        )}
+
                         <button
                             onClick={handleSave}
                             disabled={isSaving || hasSaved}
@@ -184,6 +261,12 @@ const StoryDetails: React.FC<StoryDetailsProps> = ({
                             Volver al Menú Principal
                         </button>
                     </div>
+
+                    {epubStatus && !isExportingEpub && (
+                        <p aria-live="polite" className="text-sm text-gray-400 text-center">
+                            {epubStatus}
+                        </p>
+                    )}
 
                     <div className="p-6 bg-white/5 rounded-2xl border border-white/10">
                         <h2 className="text-lg font-bold text-gray-300 mb-2 flex items-center gap-2">

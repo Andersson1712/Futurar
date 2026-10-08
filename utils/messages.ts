@@ -108,6 +108,11 @@ export const TRANSLATIONS = {
   'reader.read': 'Leer',
   'reader.save': 'Guardar',
   'reader.pdf': 'PDF',
+  'reader.epub': 'EPUB',
+  'reader.epubDownload': 'Descargar EPUB',
+  'reader.epubGenerating': 'Generando tu EPUB, por favor esperá un momento.',
+  'reader.epubReady': 'Tu EPUB está listo y se descargó.',
+  'reader.epubFailed': 'No pudimos generar el EPUB.',
   'reader.other': 'Otro',
   'reader.home': 'Volver al inicio',
 

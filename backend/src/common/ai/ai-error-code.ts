@@ -11,4 +11,5 @@ export type AiErrorCode =
   | 'NOT_IMPLEMENTED'
   | 'VALIDATION_FAILED'
   | 'LIMIT_EXCEEDED'
+  | 'JOB_NOT_READY'
   | 'INTERNAL';

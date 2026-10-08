@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PinoLogger } from 'nestjs-pino';
 import { AiController } from './ai.controller';
+import { ExportsController } from '../exports/exports.controller';
 import { BookGenerationService } from './application/book-generation.service';
 import { BookOutputParser } from './application/book-output.parser';
 import { BookOutputValidator } from './application/book-output.validator';
@@ -21,6 +22,16 @@ import { DesignOutputValidator } from './application/design-output.validator';
 import { DesignPromptBuilderService } from './application/design-prompt-builder.service';
 import { PresentationOutputParser } from './application/presentation-output.parser';
 import { CommunicationOutputParser } from './application/communication-output.parser';
+import { EpubBuilderService } from './application/epub-builder.service';
+import {
+  EXPORT_GENERATION_USE_CASE,
+  EXPORT_JOB_QUEUE,
+} from './application/export-generation.use-case';
+import { ExportGenerationService } from './application/export-generation.service';
+import {
+  ExportBullMqJobQueue,
+  ExportGenerationRunner,
+} from './application/export-generation.runner';
 import { CommunicationOutputValidator } from './application/communication-output.validator';
 import { CommunicationPromptBuilderService } from './application/communication-prompt-builder.service';
 import {
@@ -111,7 +122,7 @@ import {
     PresentationsModule,
     ProfilesModule,
   ],
-  controllers: [AiController, AiCredentialsController],
+  controllers: [AiController, AiCredentialsController, ExportsController],
   providers: [
     EnvSecretProvider,
     InMemoryCredentialRepository,
@@ -198,6 +209,9 @@ import {
     CommunicationPromptBuilderService,
     CommunicationOutputParser,
     CommunicationOutputValidator,
+    EpubBuilderService,
+    ExportGenerationService,
+    ExportGenerationRunner,
     BookPersistenceService,
     DesignGenerationService,
     DesignGenerationRunner,
@@ -262,6 +276,10 @@ import {
     {
       provide: COMMUNICATION_GENERATION_USE_CASE,
       useClass: CommunicationGenerationService,
+    },
+    {
+      provide: EXPORT_GENERATION_USE_CASE,
+      useClass: ExportGenerationService,
     },
     // DesignBullMqJobQueue lifecycle is factory-owned (same as
     // BullMqJobQueue): constructed only when QUEUE_DRIVER=bullmq so no
@@ -358,6 +376,39 @@ import {
         ConfigService,
         REDIS_CLIENT,
         CommunicationGenerationRunner,
+        JOB_REPOSITORY,
+        PinoLogger,
+      ],
+    },
+    // ExportBullMqJobQueue lifecycle is factory-owned (same as
+    // BullMqJobQueue): constructed only when QUEUE_DRIVER=bullmq so no
+    // stray worker boots.
+    {
+      provide: EXPORT_JOB_QUEUE,
+      useFactory: (
+        configService: ConfigService,
+        redis: RedisClient,
+        runner: ExportGenerationRunner,
+        jobs: JobRepository,
+        logger: PinoLogger,
+      ): JobQueue => {
+        if (resolveQueueDriver(configService) === 'bullmq') {
+          if (!redis) {
+            throw new Error('REDIS_URL is required for QUEUE_DRIVER=bullmq');
+          }
+
+          return new ExportBullMqJobQueue(redis, runner, jobs, logger);
+        }
+
+        // InlineJobQueue only invokes run(jobId, correlationId), which the
+        // export runner implements; the cast keeps the shared queue code
+        // untouched (SPEC-031: no book/ai refactors).
+        return new InlineJobQueue(runner as unknown as GenerationRunner, jobs);
+      },
+      inject: [
+        ConfigService,
+        REDIS_CLIENT,
+        ExportGenerationRunner,
         JOB_REPOSITORY,
         PinoLogger,
       ],

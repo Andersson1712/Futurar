@@ -112,6 +112,11 @@ export class EnvironmentVariables {
   @IsOptional()
   @Transform(toBoolean)
   @IsBoolean()
+  EXPORTS_ENABLED?: boolean;
+
+  @IsOptional()
+  @Transform(toBoolean)
+  @IsBoolean()
   AI_CREDENTIALS_ENABLED?: boolean;
 
   @IsOptional()
@@ -315,6 +320,15 @@ export function validateEnv(
   ) {
     throw new Error(
       'COMMUNICATION_IMAGES_ENABLED=true requires: SUPABASE_URL, SUPABASE_SERVICE_KEY',
+    );
+  }
+
+  if (
+    validated.EXPORTS_ENABLED === true &&
+    (!validated.SUPABASE_URL?.trim() || !validated.SUPABASE_SERVICE_KEY?.trim())
+  ) {
+    throw new Error(
+      'EXPORTS_ENABLED=true requires: SUPABASE_URL, SUPABASE_SERVICE_KEY',
     );
   }
 

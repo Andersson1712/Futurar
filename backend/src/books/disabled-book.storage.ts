@@ -9,6 +9,10 @@ export class DisabledBookStorage implements BookStorage {
   signedUrl(): Promise<string> {
     return Promise.reject(disabledError());
   }
+
+  download(): Promise<Buffer> {
+    return Promise.reject(disabledError());
+  }
 }
 
 function disabledError(): AiErrorException {

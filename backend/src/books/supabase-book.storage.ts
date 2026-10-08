@@ -11,6 +11,11 @@ interface SignedUrlResponse {
   error: unknown;
 }
 
+interface DownloadResponse {
+  data: Blob | null;
+  error: unknown;
+}
+
 export class SupabaseBookStorage implements BookStorage {
   constructor(
     private readonly supabaseService: SupabaseService,
@@ -40,6 +45,18 @@ export class SupabaseBookStorage implements BookStorage {
     }
 
     return response.data.signedUrl;
+  }
+
+  async download(path: string): Promise<Buffer> {
+    const response = (await this.client()
+      .storage.from(this.bucket)
+      .download(path)) as unknown as DownloadResponse;
+
+    if (response.error || !response.data) {
+      throw storageUnavailable();
+    }
+
+    return Buffer.from(await response.data.arrayBuffer());
   }
 
   private client() {
