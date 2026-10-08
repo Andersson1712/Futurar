@@ -87,9 +87,10 @@ test.describe('book EPUB export (SPEC-031)', () => {
 
     await page.getByText('Ana').click();
     await page.getByText('Mi Biblioteca').click();
-    await expect(page.getByText(BOOK_TITLE).first()).toBeVisible();
+    await expect(page.getByText(BOOK_TITLE)).toBeVisible();
 
-    await page.getByText(BOOK_TITLE).first().click();
+    await page.getByText(BOOK_TITLE).click();
+    await expect(page.getByText('Descargar PDF')).toBeVisible();
     await expect(page.getByText('Descargar EPUB')).toBeVisible();
 
     const [download] = await Promise.all([
@@ -115,7 +116,7 @@ test.describe('book EPUB export (SPEC-031)', () => {
 
     await page.getByText('Ana').click();
     await page.getByText('Mi Biblioteca').click();
-    await page.getByText(BOOK_TITLE).first().click();
+    await page.getByText(BOOK_TITLE).click();
     await page.getByText('Descargar EPUB').click();
 
     await expect(page.getByText('No pudimos generar el EPUB.')).toBeVisible({
