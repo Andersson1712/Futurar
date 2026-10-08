@@ -52,4 +52,5 @@ so no test-first cycle applies — verification is owner-run count queries.
   merge-removal follow-up
 
 ## Commits (feat/spec-032-legacy-migration)
-- (pending)
+- 8b9dd2d feat(migration): backfill legacy stories into books (0013) with SPEC-032 (032-1..3)
+- 9d1fda8 docs(memory): sync post SPEC-032 task doc
