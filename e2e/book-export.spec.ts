@@ -69,6 +69,12 @@ async function mockExport(page: Page): Promise<void> {
   await page.route('**/api/v1/exports/export-job-1/download', (route) =>
     route.fulfill({
       status: 200,
+      json: { downloadUrl: '/api/v1/exports/export-job-1/file' },
+    }),
+  );
+  await page.route('**/api/v1/exports/export-job-1/file', (route) =>
+    route.fulfill({
+      status: 200,
       headers: {
         'content-type': 'application/epub+zip',
         'content-disposition': 'attachment; filename="book.epub"',
