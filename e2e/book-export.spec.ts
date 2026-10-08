@@ -20,6 +20,7 @@ const BOOK_DETAIL = {
   scenery: 'Un bosque',
   mission: 'Una estrella',
   style: 'Acuarela',
+  pages: [{ pageNumber: 1, content: 'Había una vez un dragón.' }],
   image_url: null,
   type: 'story',
   created_at: '2026-01-01T00:00:00.000Z',
