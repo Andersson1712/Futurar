@@ -1200,10 +1200,10 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
                 )}
 
                 {/* Menu and Selection Steps */}
-                {['MENU', 'SELECT_PROTAGONIST', 'SELECT_SCENERY', 'SELECT_MISSION', 'SELECT_STYLE', 'SELECT_DESIGN_OCCASION', 'SELECT_DESIGN_MESSAGE', 'SELECT_DESIGN_STYLE'].includes(step) && (
+                {['MENU', 'SELECT_PROTAGONIST', 'SELECT_SCENERY', 'SELECT_MISSION', 'SELECT_STYLE', 'SELECT_DESIGN_OCCASION', 'SELECT_DESIGN_MESSAGE', 'SELECT_DESIGN_STYLE', 'SELECT_PRESENTATION_TOPIC', 'SELECT_PRESENTATION_SLIDE_COUNT', 'SELECT_PRESENTATION_STYLE'].includes(step) && (
                     <div className="w-full max-w-5xl text-center">
                         {/* Progress Indicator (book wizard only) */}
-                        {step !== 'MENU' && !step.startsWith('SELECT_DESIGN') && (
+                        {step !== 'MENU' && !step.startsWith('SELECT_DESIGN') && !step.startsWith('SELECT_PRESENTATION') && (
                             <div className="mb-6 flex items-center justify-center gap-2">
                                 <div className={`h-2 w-16 rounded-full transition-all ${step === 'SELECT_PROTAGONIST' || step === 'SELECT_SCENERY' || step === 'SELECT_MISSION' || step === 'SELECT_STYLE' ? 'bg-primary' : 'bg-slate-700'}`} />
                                 <div className={`h-2 w-16 rounded-full transition-all ${step === 'SELECT_SCENERY' || step === 'SELECT_MISSION' || step === 'SELECT_STYLE' ? 'bg-primary' : 'bg-slate-700'}`} />

@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { mockBackend } from './helpers/mockBackend';
 
-const PRESENTATION_TITLE = 'Los dinosaurios';
+const PRESENTATION_TITLE = 'Dinosaurios asombrosos';
 const PRESENTATION_TOPIC = 'Los dinosaurios';
 
 const COMPLETED_PRESENTATION_JOB = {
