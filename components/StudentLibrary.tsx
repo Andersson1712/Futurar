@@ -4,7 +4,6 @@
  */
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { supabase } from '../services/supabase';
 import { getStudentBook, listStudentBooks } from '../services/backendBooks';
 import { bookDetailToStory, bookSummaryToStory } from '../services/bookMappers';
 import {
@@ -46,7 +45,7 @@ interface StudentLibraryProps {
 interface LibraryEntry {
     story: Story;
     isBackend: boolean;
-    kind: 'book' | 'design' | 'presentation' | 'communication' | 'legacy';
+    kind: 'book' | 'design' | 'presentation' | 'communication';
 }
 
 const StudentLibrary: React.FC<StudentLibraryProps> = ({
@@ -73,25 +72,13 @@ const StudentLibrary: React.FC<StudentLibraryProps> = ({
         [entries, showFavoritesOnly],
     );
 
-    // Backend books (SPEC-008) + legacy Supabase stories, read-only.
+    // Backend library (SPEC-008/029/029B/029C): books, designs,
+    // presentations and boards. Legacy `stories` are no longer read
+    // (SPEC-032 backfill verified empty); the table stays as rollback safety.
     useEffect(() => {
         const fetchStories = async () => {
             setIsLoading(true);
             setError(null);
-
-            let legacyStories: Story[] = [];
-            try {
-                const { data, error: dbError } = await supabase
-                    .from('stories')
-                    .select('*')
-                    .eq('student_id', studentId)
-                    .order('created_at', { ascending: false });
-
-                if (dbError) throw dbError;
-                legacyStories = data ?? [];
-            } catch (e) {
-                console.error('Error loading legacy stories:', e);
-            }
 
             let backendStories: Story[] = [];
             try {
@@ -157,11 +144,6 @@ const StudentLibrary: React.FC<StudentLibraryProps> = ({
                     isBackend: true,
                     kind: 'communication' as const,
                 })),
-                ...legacyStories.map((story) => ({
-                    story,
-                    isBackend: false,
-                    kind: 'legacy' as const,
-                })),
             ]);
             setIsLoading(false);
         };
@@ -219,11 +201,6 @@ const StudentLibrary: React.FC<StudentLibraryProps> = ({
         if (!entry) return;
 
         if (voiceEnabled) speak(`Abriendo ${entry.story.title}`);
-
-        if (!entry.isBackend) {
-            onSelectStory(entry.story);
-            return;
-        }
 
         setOpeningId(entry.story.id);
         try {

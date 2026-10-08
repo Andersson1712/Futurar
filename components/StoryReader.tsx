@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { supabase } from '../services/supabase';
 import {
   clearBookDedication,
   saveBookDedication,
@@ -40,7 +39,6 @@ type StoryReaderProps = {
     onRead: (text: string) => void;
     voiceEnabled?: boolean;
     onCreateAnother?: () => void;
-    onSaveSuccess?: () => void;
     scanInterval?: number;
 };
 
@@ -117,7 +115,6 @@ const StoryReader: React.FC<StoryReaderProps> = ({
     onRead,
     voiceEnabled = true,
     onCreateAnother,
-    onSaveSuccess,
     scanInterval = 3000
 }) => {
     const [scanIndex, setScanIndex] = useState(0);
@@ -228,7 +225,7 @@ const StoryReader: React.FC<StoryReaderProps> = ({
     }, [scanIndex, voiceEnabled, isGeneratingPDF, isSaving, showDedicationModal, isFavorite]);
 
     // Guardar historia en biblioteca
-    const handleSaveStory = useCallback(async () => {
+    const handleSaveStory = useCallback(() => {
         // Books generated through the backend are already persisted (SPEC-008).
         if (persisted) {
             setSaveMessage('Tu cuento ya está en tu biblioteca');
@@ -237,39 +234,12 @@ const StoryReader: React.FC<StoryReaderProps> = ({
             return;
         }
 
-        if (!studentId) {
-            setSaveMessage('Error: No se puede guardar sin estudiante');
-            setTimeout(() => setSaveMessage(null), 3000);
-            return;
-        }
-
-        setIsSaving(true);
-        try {
-            const { error } = await supabase.from('stories').insert({
-                student_id: studentId,
-                title: title,
-                content: content,
-                protagonist: protagonist,
-                scenery: scenery,
-                mission: mission,
-                style: style,
-                type: 'story',
-                image_url: chapters[0]?.imageUrl || null,
-            });
-
-            if (error) throw error;
-
-            setSaveMessage('¡Cuento guardado en tu biblioteca!');
-            if (voiceEnabled) speak('Cuento guardado en tu biblioteca');
-            onSaveSuccess?.();
-        } catch (err: any) {
-            console.error('Error saving story:', err);
-            setSaveMessage('Error al guardar: ' + err.message);
-        } finally {
-            setIsSaving(false);
-            setTimeout(() => setSaveMessage(null), 3000);
-        }
-    }, [studentId, persisted, title, content, protagonist, scenery, mission, style, chapters, voiceEnabled, onSaveSuccess]);
+        // SPEC-032: no legacy fallback. An unpersisted story has no data
+        // layer to save to — report loudly instead of a silent success.
+        setSaveMessage('Error: este cuento no está guardado en tu biblioteca');
+        if (voiceEnabled) speak('Error: este cuento no está guardado en tu biblioteca');
+        setTimeout(() => setSaveMessage(null), 3000);
+    }, [persisted, voiceEnabled]);
 
     // Generar PDF usando la utilidad centralizada
     const generatePDF = async () => {
