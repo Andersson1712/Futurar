@@ -79,6 +79,7 @@ export interface AiE2ETestAppOptions {
   presentationImagesEnabled?: boolean;
   communicationEndpointsEnabled?: boolean;
   communicationImagesEnabled?: boolean;
+  exportsEnabled?: boolean;
   /**
    * SPEC-033: when true, TEXT/IMAGE_GENERATOR are NOT stubbed — the real
    * OpenRouter adapters wire through ai.module (OPENROUTER_ENABLED=true)
@@ -134,6 +135,11 @@ function applyE2ETestEnv(options: AiE2ETestAppOptions = {}): void {
     delete process.env.COMMUNICATION_IMAGES_ENABLED;
   } else {
     process.env.COMMUNICATION_IMAGES_ENABLED = 'true';
+  }
+  if (options.exportsEnabled === false) {
+    delete process.env.EXPORTS_ENABLED;
+  } else {
+    process.env.EXPORTS_ENABLED = 'true';
   }
 }
 
@@ -199,6 +205,17 @@ export async function createAiE2ETestApp(
       },
       signedUrl: (path: string): Promise<string> =>
         Promise.resolve(`https://storage.test/${path}`),
+      download: (path: string): Promise<Buffer> => {
+        const data = storedFiles.get(path);
+
+        if (!data) {
+          return Promise.reject(
+            new Error(`storage.test: no such file ${path}`),
+          );
+        }
+
+        return Promise.resolve(data);
+      },
     })
     .overrideProvider(TTS_GENERATOR)
     .useValue({})
