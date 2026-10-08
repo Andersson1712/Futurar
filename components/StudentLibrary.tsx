@@ -19,6 +19,12 @@ import {
     presentationDetailToStory,
     presentationSummaryToStory,
 } from '../services/backendPresentations';
+import {
+    communicationDetailToStory,
+    communicationSummaryToStory,
+    getStudentCommunication,
+    listStudentCommunications,
+} from '../services/backendCommunications';
 import { MESSAGES, messageForErrorCode, t } from '../utils/messages';
 import { ApiError, NetworkError } from '../services/backendApi';
 import ScanningGrid from './ScanningGrid';
@@ -40,7 +46,7 @@ interface StudentLibraryProps {
 interface LibraryEntry {
     story: Story;
     isBackend: boolean;
-    kind: 'book' | 'design' | 'presentation' | 'legacy';
+    kind: 'book' | 'design' | 'presentation' | 'communication' | 'legacy';
 }
 
 const StudentLibrary: React.FC<StudentLibraryProps> = ({
@@ -119,6 +125,17 @@ const StudentLibrary: React.FC<StudentLibraryProps> = ({
                 console.warn('Backend presentations unavailable:', e);
             }
 
+            // Tableros (SPEC-029C) merge read-only alongside books.
+            let communicationStories: Story[] = [];
+            try {
+                const summaries = await listStudentCommunications(studentId);
+                communicationStories = summaries.map((summary) =>
+                    communicationSummaryToStory(summary, studentId),
+                );
+            } catch (e) {
+                console.warn('Backend boards unavailable:', e);
+            }
+
             setEntries([
                 ...backendStories.map((story) => ({
                     story,
@@ -134,6 +151,11 @@ const StudentLibrary: React.FC<StudentLibraryProps> = ({
                     story,
                     isBackend: true,
                     kind: 'presentation' as const,
+                })),
+                ...communicationStories.map((story) => ({
+                    story,
+                    isBackend: true,
+                    kind: 'communication' as const,
                 })),
                 ...legacyStories.map((story) => ({
                     story,
@@ -157,16 +179,20 @@ const StudentLibrary: React.FC<StudentLibraryProps> = ({
                     ? 'brush'
                     : story.type === 'presentation'
                       ? 'slideshow'
-                      : 'auto_stories',
+                      : story.type === 'communication'
+                        ? 'forum'
+                        : 'auto_stories',
             image: story.image_url || undefined,
             description:
                 story.type === 'design'
                     ? story.content || t('library.designDescription')
                     : story.type === 'presentation'
                       ? story.content || t('library.presentationDescription')
-                      : story.protagonist
-                        ? `${story.protagonist} en ${story.scenery}`
-                        : 'Cuento guardado',
+                      : story.type === 'communication'
+                        ? story.content || t('library.communicationDescription')
+                        : story.protagonist
+                          ? `${story.protagonist} en ${story.scenery}`
+                          : 'Cuento guardado',
         }));
 
         // Add "Back to Menu" option at the end
@@ -207,6 +233,9 @@ const StudentLibrary: React.FC<StudentLibraryProps> = ({
             } else if (entry.kind === 'presentation') {
                 const presentation = await getStudentPresentation(entry.story.id);
                 onSelectStory(presentationDetailToStory(presentation, studentId));
+            } else if (entry.kind === 'communication') {
+                const board = await getStudentCommunication(entry.story.id);
+                onSelectStory(communicationDetailToStory(board, studentId));
             } else {
                 const book = await getStudentBook(entry.story.id);
                 onSelectStory(bookDetailToStory(book, studentId));
@@ -241,7 +270,9 @@ const StudentLibrary: React.FC<StudentLibraryProps> = ({
                             ? t('library.openDesign')
                             : openingEntry?.kind === 'presentation'
                               ? t('library.openPresentation')
-                              : t('library.openStory')
+                              : openingEntry?.kind === 'communication'
+                                ? t('library.openCommunication')
+                                : t('library.openStory')
                         : t('library.loading')}
                 </p>
             </div>

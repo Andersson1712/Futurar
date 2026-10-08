@@ -72,6 +72,26 @@ export const TRANSLATIONS = {
   'wizard.presentationReady': 'Tu presentación {title} está lista',
   'wizard.presentationPreview': 'Tema: {topic} • {slideCount} diapositivas • Estilo: {style}',
 
+  'wizard.communication': 'Comunicar',
+  'wizard.communicationKindTitle': 'Elegí el tipo de tablero',
+  'wizard.communicationKindFeelings': 'Cómo me siento',
+  'wizard.communicationKindHelp': 'Pedir ayuda',
+  'wizard.communicationKindCustom': 'Personalizado',
+  'wizard.communicationTopicTitle': 'Elegí el tema',
+  'wizard.communicationTopicLabel': 'Tema del tablero',
+  'wizard.communicationTopicPlaceholder': 'Ej.: Cómo me siento hoy',
+  'wizard.communicationTopicHint': 'Hasta 120 caracteres',
+  'wizard.communicationTopicCount': '{current} de {total} caracteres',
+  'wizard.communicationTopicNext': 'Elegir cantidad',
+  'wizard.communicationCellCountTitle': '¿Cuántas celdas?',
+  'wizard.communicationCellCount4': '4 celdas',
+  'wizard.communicationCellCount6': '6 celdas',
+  'wizard.communicationCellCount8': '8 celdas',
+  'wizard.communicationStyleTitle': 'Elegí el estilo del tablero',
+  'wizard.generatingCommunicationTitle': 'Creando tu tablero...',
+  'wizard.communicationReady': 'Tu tablero {title} está listo',
+  'wizard.communicationPreview': 'Tipo: {kind} • Tema: {topic} • {cellCount} celdas • Estilo: {style}',
+
   'library.loading': 'Cargando tu biblioteca...',
   'library.emptyTitle': 'Tu biblioteca está vacía',
   'library.emptyHint': '¡Crea tu primer cuento y aparecerá aquí!',
@@ -82,6 +102,8 @@ export const TRANSLATIONS = {
   'library.designDescription': 'Diseño guardado',
   'library.openPresentation': 'Abriendo tu presentación...',
   'library.presentationDescription': 'Presentación guardada',
+  'library.openCommunication': 'Abriendo tu tablero...',
+  'library.communicationDescription': 'Tablero guardado',
 
   'reader.read': 'Leer',
   'reader.save': 'Guardar',
@@ -250,6 +272,12 @@ export const MESSAGES = {
     processing: 'La IA está creando tu presentación única',
     completed: '¡Tu presentación está lista!',
     failed: 'No pudimos terminar la presentación',
+  },
+  communicationGeneration: {
+    queued: 'Preparando las celdas...',
+    processing: 'La IA está creando tu tablero único',
+    completed: '¡Tu tablero está listo!',
+    failed: 'No pudimos terminar el tablero',
   },
 } as const;
 
