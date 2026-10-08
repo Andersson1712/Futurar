@@ -56,6 +56,22 @@ export const TRANSLATIONS = {
   'wizard.designOccasionInvitation': 'Invitación',
   'wizard.designOccasionOther': 'Otro motivo',
 
+  'wizard.presentation': 'Presentar',
+  'wizard.presentationTopicTitle': 'Elegí el tema',
+  'wizard.presentationTopicLabel': 'Tema de la presentación',
+  'wizard.presentationTopicPlaceholder': 'Ej.: Los dinosaurios',
+  'wizard.presentationTopicHint': 'Hasta 120 caracteres',
+  'wizard.presentationTopicCount': '{current} de {total} caracteres',
+  'wizard.presentationTopicNext': 'Elegir cantidad',
+  'wizard.presentationSlideCountTitle': '¿Cuántas diapositivas?',
+  'wizard.presentationSlideCount5': '5 diapositivas',
+  'wizard.presentationSlideCount8': '8 diapositivas',
+  'wizard.presentationSlideCount10': '10 diapositivas',
+  'wizard.presentationStyleTitle': 'Elegí el estilo de la presentación',
+  'wizard.generatingPresentationTitle': 'Creando tu presentación...',
+  'wizard.presentationReady': 'Tu presentación {title} está lista',
+  'wizard.presentationPreview': 'Tema: {topic} • {slideCount} diapositivas • Estilo: {style}',
+
   'library.loading': 'Cargando tu biblioteca...',
   'library.emptyTitle': 'Tu biblioteca está vacía',
   'library.emptyHint': '¡Crea tu primer cuento y aparecerá aquí!',
@@ -64,6 +80,8 @@ export const TRANSLATIONS = {
   'library.openStory': 'Abriendo tu cuento...',
   'library.openDesign': 'Abriendo tu diseño...',
   'library.designDescription': 'Diseño guardado',
+  'library.openPresentation': 'Abriendo tu presentación...',
+  'library.presentationDescription': 'Presentación guardada',
 
   'reader.read': 'Leer',
   'reader.save': 'Guardar',
@@ -226,6 +244,12 @@ export const MESSAGES = {
     processing: 'La IA está creando tu diseño único',
     completed: '¡Tu diseño está listo!',
     failed: 'No pudimos terminar el diseño',
+  },
+  presentationGeneration: {
+    queued: 'Preparando las diapositivas...',
+    processing: 'La IA está creando tu presentación única',
+    completed: '¡Tu presentación está lista!',
+    failed: 'No pudimos terminar la presentación',
   },
 } as const;
 

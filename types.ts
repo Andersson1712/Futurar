@@ -36,7 +36,7 @@ export interface StoryConfig {
   style: string;
   content?: string;
   imageUrl?: string;
-  type: 'story' | 'design';
+  type: 'story' | 'design' | 'presentation';
   date?: string;
   studentId?: string;
 }

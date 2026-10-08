@@ -28,6 +28,13 @@ import {
     requestDesignGeneration,
     type DesignOccasion,
 } from '../services/backendDesigns';
+import {
+    PRESENTATION_TOPIC_MAX_LENGTH,
+    presentationDetailToStory,
+    getStudentPresentation,
+    requestPresentationGeneration,
+    type PresentationSlideCount,
+} from '../services/backendPresentations';
 import { buildOptionPages, nextPageIndex } from '../utils/optionPages';
 import type { Student, StudentSettings, Story } from '../types/database';
 import type { ScanOption } from '../types';
@@ -45,7 +52,7 @@ interface StoryConfig {
     title?: string;
     content?: string;
     imageUrl?: string;
-    type: 'story' | 'design';
+    type: 'story' | 'design' | 'presentation';
     dedication?: string;
     dedicationPosition?: 'start' | 'end';
     isFavorite?: boolean;
@@ -64,6 +71,10 @@ type AppStep =
     | 'SELECT_DESIGN_MESSAGE'
     | 'SELECT_DESIGN_STYLE'
     | 'GENERATING_DESIGN'
+    | 'SELECT_PRESENTATION_TOPIC'
+    | 'SELECT_PRESENTATION_SLIDE_COUNT'
+    | 'SELECT_PRESENTATION_STYLE'
+    | 'GENERATING_PRESENTATION'
     | 'RESULT_VIEW'
     | 'STORY_DETAILS';
 
@@ -106,6 +117,12 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
         occasion: '' as DesignOccasion | '',
         occasionLabel: '',
         message: '',
+        style: '',
+    });
+    const [presentationInput, setPresentationInput] = useState({
+        topic: '',
+        slideCount: 0 as PresentationSlideCount | 0,
+        slideCountLabel: '',
         style: '',
     });
     const [isRestored, setIsRestored] = useState(false);
@@ -310,7 +327,8 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
     const menuOptions: ScanOption[] = [
         { id: 'story', label: t('wizard.createStory'), icon: 'auto_stories' },
         { id: 'library', label: t('wizard.library'), icon: 'collections_bookmark' },
-        { id: 'design', label: t('wizard.design'), icon: 'brush' }
+        { id: 'design', label: t('wizard.design'), icon: 'brush' },
+        { id: 'presentation', label: t('wizard.presentation'), icon: 'slideshow' }
     ];
 
     // SPEC-029: fixed flyer occasions (backend enum) as scan options.
@@ -329,6 +347,25 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
 
         return occasions.map((item) => ({
             id: item.value,
+            label: t(item.labelKey),
+            icon: item.icon,
+        }));
+    }, []);
+
+    // SPEC-029B: fixed slide counts (backend enum) as scan options.
+    const presentationSlideCountOptions: ScanOption[] = useMemo(() => {
+        const counts: Array<{
+            value: PresentationSlideCount;
+            labelKey: MessageKey;
+            icon: string;
+        }> = [
+            { value: 5, labelKey: 'wizard.presentationSlideCount5', icon: 'filter_5' },
+            { value: 8, labelKey: 'wizard.presentationSlideCount8', icon: 'filter_8' },
+            { value: 10, labelKey: 'wizard.presentationSlideCount10', icon: 'filter_10' },
+        ];
+
+        return counts.map((item) => ({
+            id: String(item.value),
             label: t(item.labelKey),
             icon: item.icon,
         }));
@@ -406,7 +443,9 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
                         step === 'SELECT_STYLE' ? styleOptions :
                             step === 'SELECT_DESIGN_OCCASION' ? designOccasionOptions :
                                 step === 'SELECT_DESIGN_STYLE' ? styleOptions :
-                                    [];
+                                    step === 'SELECT_PRESENTATION_SLIDE_COUNT' ? presentationSlideCountOptions :
+                                        step === 'SELECT_PRESENTATION_STYLE' ? styleOptions :
+                                            [];
     const wizardPages = buildOptionPages(wizardRawOptions);
     const pageCount = wizardPages.length;
     const safePage = pageCount === 0 ? 0 : Math.min(optionPage, pageCount - 1);
@@ -441,7 +480,13 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
             setStep('SELECT_DESIGN_OCCASION');
             return;
         }
-        setConfig(prev => ({ ...prev, type: opt.id as 'story' | 'design' }));
+        if (opt.id === 'presentation') {
+            setConfig(prev => ({ ...prev, type: 'presentation' }));
+            speakWithState(t('wizard.presentationTopicTitle'));
+            setStep('SELECT_PRESENTATION_TOPIC');
+            return;
+        }
+        setConfig(prev => ({ ...prev, type: opt.id as 'story' | 'design' | 'presentation' }));
         if (opt.id === 'story') {
             speakWithState("Elige tu protagonista");
             setStep('SELECT_PROTAGONIST');
@@ -492,6 +537,29 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
         setStep('SELECT_DESIGN_STYLE');
     };
 
+    const handlePresentationTopicNext = () => {
+        if (!presentationInput.topic.trim()) return;
+        speakWithState(t('wizard.presentationSlideCountTitle'));
+        setStep('SELECT_PRESENTATION_SLIDE_COUNT');
+    };
+
+    const handlePresentationSlideCountSelect = (opt: ScanOption) => {
+        const slideCount = Number(opt.id) as PresentationSlideCount;
+        if (slideCount !== 5 && slideCount !== 8 && slideCount !== 10) return;
+        setPresentationInput((prev) => ({
+            ...prev,
+            slideCount,
+            slideCountLabel: opt.label,
+        }));
+        speakWithState(t('wizard.presentationStyleTitle'));
+        setStep('SELECT_PRESENTATION_STYLE');
+    };
+
+    const handlePresentationStyleSelect = (opt: ScanOption) => {
+        setPresentationInput((prev) => ({ ...prev, style: opt.label }));
+        setStep('GENERATING_PRESENTATION');
+    };
+
     const handleWizardSelect = (opt: ScanOption) => {
         if (opt.id === MORE_OPTIONS_ID) {
             const next = nextPageIndex(safePage, pageCount);
@@ -507,6 +575,8 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
         else if (step === 'SELECT_STYLE') handleStyleSelect(opt);
         else if (step === 'SELECT_DESIGN_OCCASION') handleDesignOccasionSelect(opt);
         else if (step === 'SELECT_DESIGN_STYLE') handleDesignStyleSelect(opt);
+        else if (step === 'SELECT_PRESENTATION_SLIDE_COUNT') handlePresentationSlideCountSelect(opt);
+        else if (step === 'SELECT_PRESENTATION_STYLE') handlePresentationStyleSelect(opt);
     };
 
     const handleBackToProfile = () => {
@@ -519,6 +589,7 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
         setCurrentStudent(null);
         setConfig({ protagonist: '', scenery: '', mission: '', style: '', type: 'story' });
         setDesignInput({ occasion: '', occasionLabel: '', message: '', style: '' });
+        setPresentationInput({ topic: '', slideCount: 0, slideCountLabel: '', style: '' });
         setElementsLoaded(false);
         setStudentProtagonists([]);
         setStudentScenarios([]);
@@ -531,6 +602,7 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
         setStep('MENU');
         setConfig({ protagonist: '', scenery: '', mission: '', style: '', type: 'story' });
         setDesignInput({ occasion: '', occasionLabel: '', message: '', style: '' });
+        setPresentationInput({ topic: '', slideCount: 0, slideCountLabel: '', style: '' });
     };
 
     const handleCreateAnother = () => {
@@ -744,7 +816,106 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
         return () => controller.abort();
     }, [step, currentStudent]);
 
-    // Loading state
+    // Presentation generation through the Nest backend (SPEC-029B).
+    useEffect(() => {
+        if (step !== 'GENERATING_PRESENTATION' || !currentStudent) return;
+
+        const controller = new AbortController();
+        setError(null);
+        setGenerationProgress({ status: MESSAGES.presentationGeneration.queued, progress: 10 });
+
+        const topic = presentationInput.topic.trim();
+        const style = presentationInput.style;
+        const slideCount = presentationInput.slideCount;
+
+        const run = async () => {
+            if (!topic || slideCount === 0) {
+                setError(MESSAGES.errors.generic);
+                setStep('SELECT_PRESENTATION_TOPIC');
+                return;
+            }
+
+            try {
+                const job = await requestPresentationGeneration({
+                    topic,
+                    style,
+                    slideCount,
+                    audience: 'child',
+                    profileId: currentStudent.id,
+                });
+                const finalStatus = await followJob(job.jobId, {
+                    signal: controller.signal,
+                    onStatus: (status) => {
+                        setGenerationProgress({
+                            status:
+                                status.status === 'completed'
+                                    ? MESSAGES.presentationGeneration.completed
+                                    : MESSAGES.presentationGeneration.processing,
+                            progress:
+                                status.progress ??
+                                (status.status === 'queued' ? 15 : 60),
+                        });
+                    },
+                });
+
+                const presentationId = finalStatus.bookId ?? finalStatus.book?.id;
+
+                if (finalStatus.status === 'failed' || !presentationId) {
+                    throw new ApiError({
+                        statusCode: 502,
+                        code: finalStatus.error?.code ?? 'INTERNAL',
+                        message:
+                            finalStatus.error?.message ?? 'generation failed',
+                    });
+                }
+
+                const detail = await getStudentPresentation(presentationId);
+                const story = presentationDetailToStory(detail, currentStudent.id);
+
+                setConfig({
+                    id: story.id,
+                    protagonist: '',
+                    scenery: '',
+                    mission: '',
+                    style: story.style,
+                    title: story.title,
+                    content: story.content ?? '',
+                    imageUrl: story.image_url ?? undefined,
+                    type: 'presentation',
+                });
+                setGenerationProgress({
+                    status: MESSAGES.presentationGeneration.completed,
+                    progress: 100,
+                });
+                speakWithState(t('wizard.presentationReady', { title: story.title }));
+                setStep('STORY_DETAILS');
+            } catch (err) {
+                if (err instanceof DOMException && err.name === 'AbortError') {
+                    return;
+                }
+
+                const failureMessage =
+                    err instanceof ApiError
+                        ? messageForErrorCode(err.code)
+                        : err instanceof NetworkError
+                          ? MESSAGES.errors.network
+                          : MESSAGES.errors.generic;
+
+                setGenerationProgress({
+                    status: MESSAGES.presentationGeneration.failed,
+                    progress: 0,
+                });
+                setError(failureMessage);
+                speakWithState(failureMessage);
+                // Never park the UI on the spinner: back to style selection.
+                setStep('SELECT_PRESENTATION_STYLE');
+            }
+        };
+
+        void run();
+
+        return () => controller.abort();
+    }, [step, currentStudent]);
     if (isLoading) {
         return (
             <div className="min-h-[100dvh] flex items-center justify-center bg-gradient-to-br from-slate-900 to-slate-950">
@@ -813,10 +984,10 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
                     mission={config.mission}
                     style={config.style}
                     studentId={currentStudent?.id}
-                    // Diseños are already persisted server-side: keep the
-                    // legacy auto-save off and skip book-only mutations.
-                    persisted={config.type === 'design' ? true : Boolean(config.id)}
-                    bookId={config.type === 'design' ? undefined : config.id}
+                    // Diseños y presentaciones are already persisted server-side:
+                    // keep the legacy auto-save off and skip book-only mutations.
+                    persisted={config.type === 'design' || config.type === 'presentation' ? true : Boolean(config.id)}
+                    bookId={config.type === 'design' || config.type === 'presentation' ? undefined : config.id}
                     dedication={config.dedication}
                     dedicationPosition={config.dedicationPosition}
                     isFavorite={config.isFavorite}
@@ -870,7 +1041,7 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
                 title: story.title,
                 content: story.content || '',
                 imageUrl: story.image_url || undefined,
-                type: (story.type as 'story' | 'design') || 'story',
+                type: (story.type as 'story' | 'design' | 'presentation') || 'story',
                 dedication: story.dedication_to ?? undefined,
                 dedicationPosition:
                     (story.dedication_position as 'start' | 'end') ??
@@ -1071,8 +1242,29 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
                                     </span>
                                 )}
                                 {designInput.style && (
+                                        <span className="px-3 py-1 bg-blue-500/20 text-blue-400 rounded-full text-sm font-bold">
+                                            {designInput.style}
+                                        </span>
+                                    )}
+                            </div>
+                        )}
+
+                        {/* Current presentation selections */}
+                        {step.startsWith('SELECT_PRESENTATION') && (presentationInput.topic || presentationInput.slideCountLabel || presentationInput.style) && (
+                            <div className="mb-6 flex flex-wrap items-center justify-center gap-2">
+                                {presentationInput.topic && (
+                                    <span className="px-3 py-1 bg-primary/20 text-primary rounded-full text-sm font-bold">
+                                        {presentationInput.topic}
+                                    </span>
+                                )}
+                                {presentationInput.slideCountLabel && (
+                                    <span className="px-3 py-1 bg-green-500/20 text-green-400 rounded-full text-sm font-bold">
+                                        {presentationInput.slideCountLabel}
+                                    </span>
+                                )}
+                                {presentationInput.style && (
                                     <span className="px-3 py-1 bg-blue-500/20 text-blue-400 rounded-full text-sm font-bold">
-                                        {designInput.style}
+                                        {presentationInput.style}
                                     </span>
                                 )}
                             </div>
@@ -1087,15 +1279,63 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
                             {step === 'SELECT_DESIGN_OCCASION' && t('wizard.designOccasionTitle')}
                             {step === 'SELECT_DESIGN_MESSAGE' && t('wizard.designMessageTitle')}
                             {step === 'SELECT_DESIGN_STYLE' && t('wizard.designStyleTitle')}
+                            {step === 'SELECT_PRESENTATION_TOPIC' && t('wizard.presentationTopicTitle')}
+                            {step === 'SELECT_PRESENTATION_SLIDE_COUNT' && t('wizard.presentationSlideCountTitle')}
+                            {step === 'SELECT_PRESENTATION_STYLE' && t('wizard.presentationStyleTitle')}
                         </h2>
 
-                        {pageCount > 1 && step !== 'SELECT_DESIGN_MESSAGE' && (
+                        {pageCount > 1 && step !== 'SELECT_DESIGN_MESSAGE' && step !== 'SELECT_PRESENTATION_TOPIC' && (
                             <p aria-live="polite" className="text-sm md:text-base font-bold text-gray-300 mb-4">
                                 {t('wizard.pageIndicator', { current: safePage + 1, total: pageCount })}
                             </p>
                         )}
 
-                        {step === 'SELECT_DESIGN_MESSAGE' ? (
+                        {step === 'SELECT_PRESENTATION_TOPIC' ? (
+                            <form
+                                className="max-w-xl mx-auto flex flex-col gap-4 text-left"
+                                onSubmit={(event) => {
+                                    event.preventDefault();
+                                    handlePresentationTopicNext();
+                                }}
+                            >
+                                <label
+                                    htmlFor="presentation-topic"
+                                    className="text-base md:text-lg font-bold text-gray-200"
+                                >
+                                    {t('wizard.presentationTopicLabel')}
+                                </label>
+                                <textarea
+                                    id="presentation-topic"
+                                    value={presentationInput.topic}
+                                    maxLength={PRESENTATION_TOPIC_MAX_LENGTH}
+                                    rows={3}
+                                    placeholder={t('wizard.presentationTopicPlaceholder')}
+                                    onChange={(event) =>
+                                        setPresentationInput((prev) => ({
+                                            ...prev,
+                                            topic: event.target.value,
+                                        }))
+                                    }
+                                    className="w-full min-h-11 p-4 text-lg rounded-2xl bg-slate-800/80 border-2 border-white/10 text-white placeholder:text-gray-500 focus:border-primary focus:outline-none"
+                                />
+                                <p className="text-sm text-gray-400">
+                                    {t('wizard.presentationTopicHint')}
+                                </p>
+                                <p aria-live="polite" className="text-sm font-bold text-gray-300">
+                                    {t('wizard.presentationTopicCount', {
+                                        current: presentationInput.topic.length,
+                                        total: PRESENTATION_TOPIC_MAX_LENGTH,
+                                    })}
+                                </p>
+                                <button
+                                    type="submit"
+                                    disabled={!presentationInput.topic.trim()}
+                                    className="px-8 py-4 min-h-11 rounded-2xl font-bold text-lg bg-primary hover:bg-primary/80 transition-all hover:scale-105 disabled:opacity-40 disabled:hover:scale-100"
+                                >
+                                    {t('wizard.presentationTopicNext')}
+                                </button>
+                            </form>
+                        ) : step === 'SELECT_DESIGN_MESSAGE' ? (
                             <form
                                 className="max-w-xl mx-auto flex flex-col gap-4 text-left"
                                 onSubmit={(event) => {
@@ -1170,7 +1410,7 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
                 )}
 
                 {/* Generating State */}
-                {(step === 'GENERATING' || step === 'GENERATING_DESIGN') && (
+                {(step === 'GENERATING' || step === 'GENERATING_DESIGN' || step === 'GENERATING_PRESENTATION') && (
                     <div className="flex flex-col items-center text-center max-w-lg">
                         <div className="relative mb-8">
                             <span className="material-symbols-outlined text-8xl text-primary animate-pulse">auto_fix</span>
@@ -1184,7 +1424,9 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
                         <h2 className="text-3xl md:text-4xl font-black mb-4">
                             {step === 'GENERATING_DESIGN'
                                 ? t('wizard.generatingDesignTitle')
-                                : t('wizard.generatingTitle')}
+                                : step === 'GENERATING_PRESENTATION'
+                                  ? t('wizard.generatingPresentationTitle')
+                                  : t('wizard.generatingTitle')}
                         </h2>
 
                         <p className="text-lg text-gray-400 mb-6">
@@ -1210,7 +1452,9 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
                                         setStep(
                                             step === 'GENERATING_DESIGN'
                                                 ? 'SELECT_DESIGN_STYLE'
-                                                : 'SELECT_STYLE',
+                                                : step === 'GENERATING_PRESENTATION'
+                                                  ? 'SELECT_PRESENTATION_STYLE'
+                                                  : 'SELECT_STYLE',
                                         )
                                     }
                                     className="mt-4 px-6 py-3 min-h-11 bg-primary rounded-xl font-bold hover:bg-primary/80 transition-colors"
@@ -1227,6 +1471,16 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
                                     {t('wizard.designPreview', {
                                         occasion: designInput.occasionLabel,
                                         style: designInput.style,
+                                    })}
+                                </p>
+                            </div>
+                        ) : step === 'GENERATING_PRESENTATION' ? (
+                            <div className="mt-8 p-4 bg-slate-800/50 rounded-2xl border border-slate-700">
+                                <p className="text-sm text-gray-400">
+                                    {t('wizard.presentationPreview', {
+                                        topic: presentationInput.topic,
+                                        slideCount: presentationInput.slideCount,
+                                        style: presentationInput.style,
                                     })}
                                 </p>
                             </div>
