@@ -18,6 +18,8 @@ import {
 } from '../dto/generate-book-response.dto';
 import { BOOK_REPOSITORY } from '../../books/book.repository';
 import type { BookRepository } from '../../books/book.repository';
+import { DESIGN_REPOSITORY } from '../../designs/design.repository';
+import type { DesignRepository } from '../../designs/design.repository';
 
 @Injectable()
 export class ExportGenerationService implements ExportGenerationUseCase {
@@ -25,6 +27,7 @@ export class ExportGenerationService implements ExportGenerationUseCase {
     private readonly configService: ConfigService,
     @Inject(JOB_REPOSITORY) private readonly jobs: JobRepository,
     @Inject(BOOK_REPOSITORY) private readonly books: BookRepository,
+    @Inject(DESIGN_REPOSITORY) private readonly designs: DesignRepository,
     @Inject(EXPORT_JOB_QUEUE) private readonly queue: JobQueue,
   ) {}
 
@@ -43,7 +46,7 @@ export class ExportGenerationService implements ExportGenerationUseCase {
 
     const format = command.format as string;
 
-    if (format !== 'epub') {
+    if (command.format !== 'epub' && command.format !== 'pdf') {
       throw new AiErrorException(
         501,
         'NOT_IMPLEMENTED',
@@ -51,10 +54,40 @@ export class ExportGenerationService implements ExportGenerationUseCase {
       );
     }
 
-    const book = await this.books.findById(command.bookId, command.userId);
+    // SPEC-031B: each format has exactly one source vertical in v1.
+    if (command.format === 'epub') {
+      if (!command.bookId) {
+        throw new AiErrorException(
+          400,
+          'INVALID_REQUEST',
+          'EPUB export requires a book id',
+        );
+      }
 
-    if (!book) {
-      throw new AiErrorException(404, 'NOT_FOUND', 'Book not found');
+      const book = await this.books.findById(command.bookId, command.userId);
+
+      if (!book) {
+        throw new AiErrorException(404, 'NOT_FOUND', 'Book not found');
+      }
+    }
+
+    if (command.format === 'pdf') {
+      if (!command.designId) {
+        throw new AiErrorException(
+          400,
+          'INVALID_REQUEST',
+          'PDF export requires a design id',
+        );
+      }
+
+      const design = await this.designs.findById(
+        command.designId,
+        command.userId,
+      );
+
+      if (!design) {
+        throw new AiErrorException(404, 'NOT_FOUND', 'Design not found');
+      }
     }
 
     // Jobs stay vertical-agnostic (SPEC-031): the export brief rides the

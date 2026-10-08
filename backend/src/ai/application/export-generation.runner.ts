@@ -24,6 +24,10 @@ import {
   BOOK_REPOSITORY,
   type BookRepository,
 } from '../../books/book.repository';
+import {
+  DESIGN_REPOSITORY,
+  type DesignRepository,
+} from '../../designs/design.repository';
 import { isExportFlagEnabled } from '../domain/export-generation.types';
 import { CircuitBreaker } from './circuit-breaker';
 import {
@@ -35,6 +39,7 @@ import {
   EpubBuilderService,
   type EpubImageInput,
 } from './epub-builder.service';
+import { FLYER_PDF_MIME_TYPE, PdfBuilderService } from './pdf-builder.service';
 
 export const EXPORT_ARTIFACT_MIME_TYPE = 'application/epub+zip';
 
@@ -43,8 +48,10 @@ export class ExportGenerationRunner {
   constructor(
     @Inject(JOB_REPOSITORY) private readonly jobs: JobRepository,
     private readonly epubBuilder: EpubBuilderService,
+    private readonly pdfBuilder: PdfBuilderService,
     private readonly breaker: CircuitBreaker,
     @Inject(BOOK_REPOSITORY) private readonly books: BookRepository,
+    @Inject(DESIGN_REPOSITORY) private readonly designs: DesignRepository,
     @Inject(BOOK_STORAGE) private readonly storage: BookStorage,
     private readonly configService: ConfigService,
     private readonly logger: PinoLogger,
@@ -102,6 +109,11 @@ export class ExportGenerationRunner {
     const request = job.request as unknown as ExportGenerationCommand;
     const format = request.format as string;
 
+    if (format === 'pdf') {
+      await this.executeFlyerExport(jobId, job.userId, request);
+      return;
+    }
+
     if (format !== 'epub') {
       throw new AiErrorException(
         501,
@@ -110,7 +122,64 @@ export class ExportGenerationRunner {
       );
     }
 
-    const book = await this.books.findById(request.bookId, job.userId);
+    await this.executeBookExport(jobId, job.userId, request);
+  }
+
+  private async executeFlyerExport(
+    jobId: string,
+    userId: string,
+    request: ExportGenerationCommand,
+  ): Promise<void> {
+    const design = await this.designs.findById(request.designId ?? '', userId);
+
+    if (!design) {
+      throw new AiErrorException(404, 'NOT_FOUND', 'Design not found');
+    }
+
+    // Unlike book pages, the flyer image is REQUIRED: generation guarantees
+    // it, so a missing file fails loudly instead of exporting half a flyer.
+    if (!design.version.imagePath) {
+      throw new AiErrorException(
+        502,
+        'INVALID_OUTPUT',
+        'The flyer has no image to export',
+      );
+    }
+
+    const image = await this.breaker.execute(() =>
+      this.storage.download(design.version.imagePath as string),
+    );
+
+    const pdf = await this.pdfBuilder.buildFlyer({
+      title: design.title,
+      message: design.version.message,
+      occasion: design.version.occasion,
+      style: design.version.style,
+      image: { data: image },
+    });
+
+    const artifactPath = buildExportArtifactPath(userId, jobId, 'pdf');
+    await this.storage.upload(artifactPath, pdf, FLYER_PDF_MIME_TYPE);
+
+    await this.jobs.complete(jobId, {
+      id: design.id,
+      title: design.title,
+      totalPages: 1,
+      pages: [
+        {
+          pageNumber: 1,
+          content: design.version.message,
+        },
+      ],
+    });
+  }
+
+  private async executeBookExport(
+    jobId: string,
+    userId: string,
+    request: ExportGenerationCommand,
+  ): Promise<void> {
+    const book = await this.books.findById(request.bookId ?? '', userId);
 
     if (!book) {
       throw new AiErrorException(404, 'NOT_FOUND', 'Book not found');
@@ -154,7 +223,7 @@ export class ExportGenerationRunner {
       images,
     });
 
-    const artifactPath = buildExportArtifactPath(job.userId, jobId);
+    const artifactPath = buildExportArtifactPath(userId, jobId, 'epub');
     await this.storage.upload(artifactPath, epub, EXPORT_ARTIFACT_MIME_TYPE);
 
     await this.jobs.complete(jobId, {
@@ -172,8 +241,10 @@ export class ExportGenerationRunner {
 export function buildExportArtifactPath(
   userId: string,
   generationJobId: string,
+  format: 'epub' | 'pdf',
 ): string {
-  return `exports/users/${userId}/jobs/${generationJobId}/book.epub`;
+  const fileName = format === 'pdf' ? 'flyer.pdf' : 'book.epub';
+  return `exports/users/${userId}/jobs/${generationJobId}/${fileName}`;
 }
 
 function guessExtension(path: string): string {

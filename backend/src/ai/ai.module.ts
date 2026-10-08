@@ -23,6 +23,7 @@ import { DesignPromptBuilderService } from './application/design-prompt-builder.
 import { PresentationOutputParser } from './application/presentation-output.parser';
 import { CommunicationOutputParser } from './application/communication-output.parser';
 import { EpubBuilderService } from './application/epub-builder.service';
+import { PdfBuilderService } from './application/pdf-builder.service';
 import {
   EXPORT_GENERATION_USE_CASE,
   EXPORT_JOB_QUEUE,
@@ -210,6 +211,7 @@ import {
     CommunicationOutputParser,
     CommunicationOutputValidator,
     EpubBuilderService,
+    PdfBuilderService,
     ExportGenerationService,
     ExportGenerationRunner,
     BookPersistenceService,
