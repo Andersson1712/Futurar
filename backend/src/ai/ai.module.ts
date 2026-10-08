@@ -20,6 +20,18 @@ import { DesignOutputParser } from './application/design-output.parser';
 import { DesignOutputValidator } from './application/design-output.validator';
 import { DesignPromptBuilderService } from './application/design-prompt-builder.service';
 import { PresentationOutputParser } from './application/presentation-output.parser';
+import { CommunicationOutputParser } from './application/communication-output.parser';
+import { CommunicationOutputValidator } from './application/communication-output.validator';
+import { CommunicationPromptBuilderService } from './application/communication-prompt-builder.service';
+import {
+  COMMUNICATION_GENERATION_USE_CASE,
+  COMMUNICATION_JOB_QUEUE,
+} from './application/communication-generation.use-case';
+import { CommunicationGenerationService } from './application/communication-generation.service';
+import {
+  CommunicationBullMqJobQueue,
+  CommunicationGenerationRunner,
+} from './application/communication-generation.runner';
 import { PresentationOutputValidator } from './application/presentation-output.validator';
 import { PresentationPromptBuilderService } from './application/presentation-prompt-builder.service';
 import {
@@ -36,6 +48,7 @@ import { GenerationRunner } from './application/generation-runner';
 import { JobStatusStream } from './application/job-status.stream';
 import { PromptBuilderService } from './application/prompt-builder.service';
 import { BooksModule } from '../books/books.module';
+import { CommunicationsModule } from '../communications/communications.module';
 import { DesignsModule } from '../designs/designs.module';
 import { PresentationsModule } from '../presentations/presentations.module';
 import { ProfilesModule } from '../profiles/profiles.module';
@@ -93,6 +106,7 @@ import {
     RedisModule,
     ObservabilityModule,
     BooksModule,
+    CommunicationsModule,
     DesignsModule,
     PresentationsModule,
     ProfilesModule,
@@ -181,11 +195,16 @@ import {
     PresentationPromptBuilderService,
     PresentationOutputParser,
     PresentationOutputValidator,
+    CommunicationPromptBuilderService,
+    CommunicationOutputParser,
+    CommunicationOutputValidator,
     BookPersistenceService,
     DesignGenerationService,
     DesignGenerationRunner,
     PresentationGenerationService,
     PresentationGenerationRunner,
+    CommunicationGenerationService,
+    CommunicationGenerationRunner,
     CircuitBreaker,
     InMemoryJobRepository,
     {
@@ -239,6 +258,10 @@ import {
     {
       provide: PRESENTATION_GENERATION_USE_CASE,
       useClass: PresentationGenerationService,
+    },
+    {
+      provide: COMMUNICATION_GENERATION_USE_CASE,
+      useClass: CommunicationGenerationService,
     },
     // DesignBullMqJobQueue lifecycle is factory-owned (same as
     // BullMqJobQueue): constructed only when QUEUE_DRIVER=bullmq so no
@@ -302,6 +325,39 @@ import {
         ConfigService,
         REDIS_CLIENT,
         PresentationGenerationRunner,
+        JOB_REPOSITORY,
+        PinoLogger,
+      ],
+    },
+    // CommunicationBullMqJobQueue lifecycle is factory-owned (same as
+    // BullMqJobQueue): constructed only when QUEUE_DRIVER=bullmq so no
+    // stray worker boots.
+    {
+      provide: COMMUNICATION_JOB_QUEUE,
+      useFactory: (
+        configService: ConfigService,
+        redis: RedisClient,
+        runner: CommunicationGenerationRunner,
+        jobs: JobRepository,
+        logger: PinoLogger,
+      ): JobQueue => {
+        if (resolveQueueDriver(configService) === 'bullmq') {
+          if (!redis) {
+            throw new Error('REDIS_URL is required for QUEUE_DRIVER=bullmq');
+          }
+
+          return new CommunicationBullMqJobQueue(redis, runner, jobs, logger);
+        }
+
+        // InlineJobQueue only invokes run(jobId, correlationId), which the
+        // board runner implements; the cast keeps the shared queue code
+        // untouched (SPEC-029C: no book/design/presentation refactors).
+        return new InlineJobQueue(runner as unknown as GenerationRunner, jobs);
+      },
+      inject: [
+        ConfigService,
+        REDIS_CLIENT,
+        CommunicationGenerationRunner,
         JOB_REPOSITORY,
         PinoLogger,
       ],

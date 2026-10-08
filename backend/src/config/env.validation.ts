@@ -102,6 +102,16 @@ export class EnvironmentVariables {
   @IsOptional()
   @Transform(toBoolean)
   @IsBoolean()
+  COMMUNICATION_ENDPOINTS_ENABLED?: boolean;
+
+  @IsOptional()
+  @Transform(toBoolean)
+  @IsBoolean()
+  COMMUNICATION_IMAGES_ENABLED?: boolean;
+
+  @IsOptional()
+  @Transform(toBoolean)
+  @IsBoolean()
   AI_CREDENTIALS_ENABLED?: boolean;
 
   @IsOptional()
@@ -284,6 +294,27 @@ export function validateEnv(
   ) {
     throw new Error(
       'PRESENTATION_IMAGES_ENABLED=true requires: SUPABASE_URL, SUPABASE_SERVICE_KEY',
+    );
+  }
+
+  if (validated.COMMUNICATION_ENDPOINTS_ENABLED === true) {
+    const missing = (
+      ['GEMINI_API_KEY', 'SUPABASE_URL', 'SUPABASE_SERVICE_KEY'] as const
+    ).filter((name) => !validated[name]?.trim());
+
+    if (missing.length > 0) {
+      throw new Error(
+        `COMMUNICATION_ENDPOINTS_ENABLED=true requires: ${missing.join(', ')}`,
+      );
+    }
+  }
+
+  if (
+    validated.COMMUNICATION_IMAGES_ENABLED === true &&
+    (!validated.SUPABASE_URL?.trim() || !validated.SUPABASE_SERVICE_KEY?.trim())
+  ) {
+    throw new Error(
+      'COMMUNICATION_IMAGES_ENABLED=true requires: SUPABASE_URL, SUPABASE_SERVICE_KEY',
     );
   }
 
