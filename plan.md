@@ -16,10 +16,11 @@ Leyenda:
 
 ## Estado actual
 
-- Fase activa: **Fase 8 — Observabilidad y operación**
-- Última tarea cerrada: CORS PATCH + templates rescatados (PR #43/#44 a dev)
-- Próxima tarea: SPEC-029B Presentaciones (spec pendiente) — SPEC-026 en pausa per owner; PR #39 (dev→main) pendiente de review humana
-- Rama de integración: `dev` (protegida con CI); `main` congelada y protegida.
+- Fase activa: **Fase 9 — Post-MVP (verticales completos; próximo SPEC-031 exportación)**
+- Última tarea cerrada: retiro de lecturas/escrituras legacy de `stories` (PR #49 a dev)
+- Próxima tarea: SPEC-031 Exportar PDF/EPUB (spec pendiente) — SPEC-026 en pausa per owner
+- Rama de integración: `dev` (protegida con CI, 4 checks); `main` congelada y protegida.
+- Hito: 4 verticales en `dev` (cuentos, diseños #38, presentaciones #45, tableros #46) + backfill legacy 0013 (#47) + fix 0003 (#48).
 
 ---
 
@@ -191,7 +192,7 @@ Leyenda:
 - [x] SPEC-023: CRUD de acciones y opciones (backend; editor docente migrado)
 - [x] SPEC-023: Permisos por perfil (`profile_actions`/`profile_option_items`)
 - [x] SPEC-023B: Límites por pantalla/acción/página (max_enabled, paginación) — merge #29
-- [x] SPEC-023C: Catálogo introductorio global para docentes nuevos (PR #40 abierto)
+- [x] SPEC-023C: Catálogo introductorio global para docentes nuevos — merge #40
 - [x] Intro seed aplicado vía service key (79 ítems, 2026-10-03); migraciones 0000→0009 verificadas aplicadas (futurar-migrations-all.sql + 0009) — pendiente descartado
 
 ---
@@ -233,9 +234,9 @@ Leyenda:
 - [ ] SPEC-027: Alertas de fallos y costos anómalos (solo umbrales en `docs/ops/alerts.md`)
 
 ### EPIC 8.2 — Testing backend
-- [x] SPEC-028: Integration generate→job→SSE→book con proveedor mockeado (rama lista, pendiente PR)
-- [x] SPEC-028: Failure paths (INVALID_OUTPUT, CONTENT_BLOCKED) + Idempotency-Key replay (rama lista, pendiente PR)
-- [x] SPEC-028: E2E observabilidad (correlation echo, health pública, metrics 401) (rama lista, pendiente PR)
+- [x] SPEC-028: Integration generate→job→SSE→book con proveedor mockeado — merge #37
+- [x] SPEC-028: Failure paths (INVALID_OUTPUT, CONTENT_BLOCKED) + Idempotency-Key replay — merge #37
+- [x] SPEC-028: E2E observabilidad (correlation echo, health pública, metrics 401) — merge #37
 
 ---
 
@@ -243,8 +244,9 @@ Leyenda:
 
 ### EPIC 9.1 — Nuevos verticales
 - [x] SPEC-029: Diseños (flyers) — framework de verticales + primer vertical (merge #38)
-- [ ] SPEC-029: Presentaciones (follow-up 029B)
-- [ ] SPEC-029: Comunicación (cómo me siento, pedir ayuda, etc.) (follow-up 029C)
+- [x] SPEC-029B: Presentaciones (merge #45)
+- [x] SPEC-029C: Comunicación, tableros con vista de uso que habla (merge #46)
+- [x] SPEC-032: Backfill `stories`→`books` (migración 0013) + retiro de lecturas/escrituras legacy del frontend (merge #47 + #49; tabla `stories` queda como respaldo)
 
 ### EPIC 9.2 — TTS es-AR
 - [ ] SPEC-030: Evaluar Google Cloud TTS / ElevenLabs
@@ -255,8 +257,8 @@ Leyenda:
 - [ ] SPEC-031: Publicar y vender
 
 ### EPIC 9.4 — Crecimiento del sistema
-- [ ] SPEC-032: Diseñador UX para opciones de libro
-- [ ] SPEC-032: Nuevas opciones sin saturar
+- [ ] Backlog (ex SPEC-032, número reasignado al backfill legacy): Diseñador UX para opciones de libro
+- [ ] Backlog (ex SPEC-032): Nuevas opciones sin saturar
 
 ### EPIC 9.5 — Multi-modelo (OpenRouter)
 - [x] SPEC-033: OpenRouter como segundo proveedor (allowlist curada texto/imagen, migración 0010, costo) — merge #41
@@ -306,6 +308,9 @@ Leyenda:
 | SPEC-027 | Observabilidad backend (correlation, pino, métricas, health) | implementado (#34) | owner | 2026-10-03 |
 | SPEC-028 | Integración + E2E backend con proveedor mockeado | implementado (#37) | owner | 2026-10-03 |
 | SPEC-029 | Verticales: framework + Diseños (flyers) | implementado (#38) | owner | 2026-10-03 |
+| SPEC-029B | Presentaciones (decks 5/8/10) | implementado (#45) | owner | 2026-10-07 |
+| SPEC-029C | Comunicación (tableros + vista de uso) | implementado (#46) | owner | 2026-10-08 |
+| SPEC-032 | Backfill `stories`→`books` (0013) + retiro legacy frontend | implementado (#47/#49) | owner | 2026-10-08 |
 | SPEC-033 | OpenRouter multi-modelo (allowlist curada) | implementado (#41) | owner | 2026-10-03 |
 
 ## Notas

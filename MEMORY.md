@@ -47,4 +47,4 @@
 
 ## Next Steps
 - [ ] Owner: rotate key; `book-images` bucket; `AI_SECRETS_MASTER_KEY`; `LOG_LEVEL=info` in `backend/.env.example`; chore Vite/TS; applies 0011+0012.
-- [x] SPEC-029B/C merged (#45/#46, verticals complete). SPEC-032 done on feat/spec-032 (0013 backfill; merge-removal gated on owner counts). Pending: push/PR approval; fe env blocks persist (pre-existing).
+- [x] SPEC-029B/C merged (#45/#46, verticals complete). SPEC-032 merged (#47/#49). SPEC-031 done on feat/spec-031 (server EPUB books, jszip; be 359u+48e2e green). Pending: push/PR approval; fe env blocks persist (pre-existing).
