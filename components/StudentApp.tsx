@@ -1184,6 +1184,7 @@ const StudentAppInner: React.FC<StudentAppProps> = ({ onSwitchToTeacher }) => {
                 <StoryDetails
                     story={currentStory}
                     persisted={Boolean(config.id)}
+                    bookId={config.type === 'story' ? config.id : undefined}
                     onBack={() => {
                         setStep('LIBRARY');
                         speakWithState("Volviendo a la biblioteca");
