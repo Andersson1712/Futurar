@@ -3,8 +3,8 @@
 - Status: **implemented** (approved 2026-10-08; branch `feat/spec-031-export`)
 - Depends on: SPEC-008 (books persistence + images), SPEC-006/007
   (jobs/SSE), SPEC-027 (correlation/metrics), SPEC-033 (cost)
-- Follow-ups: flyer PDF, deck PPTX, board PDF, retention janitor,
-  publish/sell (owner-side)
+- Follow-ups: flyer PDF (031B, done), deck PPTX, board PDF, retention
+  janitor, publish/sell (owner-side)
 
 ## Objective
 
@@ -55,6 +55,24 @@ is unit/E2E testable, and heavy libs stay out of student devices.
   via Context7. No other new dep.
 - Out: other formats, client PDF removal, publish/sell, new buckets,
   retention janitor.
+
+## 031B — Flyer PDF (designs) — implemented on `feat/spec-031-flyer-pdf`
+
+- Formats enum grows to `epub` + `pdf`, but PDF is designs-only in v1
+  (any other format×vertical combo → 501/400 with a clear message).
+- New `PdfBuilderService` (pdfkit, single page: title + message + image,
+  deterministic metadata). New `POST /api/v1/exports/designs/:id` +
+  design branch in service/runner (flyer image REQUIRED: generation
+  guarantees it, so a missing file fails loudly). Artifact
+  `exports/.../flyer.pdf`; download endpoint derives the format from the
+  job request.
+- Frontend: the existing "Descargar PDF" button uses the server flow for
+  designs (new `designId` prop), stays client-side jsPDF for books.
+- New dep: `pdfkit@^0.20.2` (+ `@types/pdfkit` dev), API validated via
+  Context7.
+- Verified: pdf builder 2/2, design-export E2E 4/4, full be 361u/52e2e
+  green, lint clean; frontend typecheck 0 new errors; Playwright download
+  spec runs in CI.
 
 ## Acceptance criteria
 

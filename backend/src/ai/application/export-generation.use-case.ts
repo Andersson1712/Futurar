@@ -11,7 +11,10 @@ export const EXPORT_GENERATION_QUEUE = 'export-generation';
 
 export interface ExportGenerationCommand extends RequestExportDto {
   userId: string;
-  bookId: string;
+  /** Set for book exports (epub). */
+  bookId?: string;
+  /** Set for design exports (pdf). */
+  designId?: string;
   /** SPEC-027: end-to-end correlation id (never persisted, logs only). */
   correlationId?: string;
 }

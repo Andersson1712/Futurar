@@ -1,4 +1,4 @@
-export const EXPORT_FORMATS = ['epub'] as const;
+export const EXPORT_FORMATS = ['epub', 'pdf'] as const;
 export type ExportFormat = (typeof EXPORT_FORMATS)[number];
 
 export const EXPORT_JOB_STATUSES = [

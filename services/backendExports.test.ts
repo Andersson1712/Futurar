@@ -5,6 +5,7 @@ import { API_BASE } from '../test/msw/handlers';
 import {
   getExportDownload,
   requestBookExport,
+  requestDesignExport,
 } from './backendExports';
 
 vi.mock('./supabase', () => ({
@@ -41,6 +42,23 @@ describe('backendExports (SPEC-031)', () => {
     expect(response).toEqual({ jobId: 'job-1', status: 'queued' });
     expect(typeof idempotencyKey).toBe('string');
     expect(body).toMatchObject({ format: 'epub' });
+  });
+
+  it('requests a design export with an idempotency key', async () => {
+    let body: unknown = null;
+
+    server.use(
+      http.post(`${API_BASE}/api/v1/exports/designs/:id`, async ({ request }) => {
+        body = await request.json();
+
+        return HttpResponse.json({ jobId: 'job-2', status: 'queued' }, { status: 202 });
+      }),
+    );
+
+    const response = await requestDesignExport('design-1', { format: 'pdf' });
+
+    expect(response).toEqual({ jobId: 'job-2', status: 'queued' });
+    expect(body).toMatchObject({ format: 'pdf' });
   });
 
   it('fetches the download URL for a ready job', async () => {

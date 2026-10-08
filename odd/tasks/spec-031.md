@@ -47,7 +47,28 @@ Direct-inline in bounded batches (delegation unavailable, disclosed since
 - Books/designs/presentations/boards flows untouched and green
 - All backend checks green; frontend typecheck 0 new errors
 
-## Commits (feat/spec-031-export)
+## Commits (feat/spec-031-export, merged #50)
 - b1270e5 feat(export): EPUB builder, generation service and runner (3/3 unit)
 - cc9583f feat(export): wiring, storage download, endpoints, flags and E2E (6/6 E2E)
 - d94339e feat(export): frontend service, details EPUB button, i18n and E2E
+- 344f8b2 docs(export) + 51e4c2e/67beb63/9a07ddb fix(e2e)
+
+## Commits (feat/spec-031-flyer-pdf)
+- c04a76d feat(export): flyer PDF builder with unit tests (2/2)
+- 1a44201 feat(export): flyer PDF service, runner, endpoint and E2E (4/4)
+- 36ab266 feat(export): design PDF button fork, service, i18n and E2E
+- 344f8b2 docs(export): SPEC-031 spec, task evidence, memory and plan sync
+- 51e4c2e / 67beb63 / 9a07ddb fix(e2e): book-export spec corrections (CI green)
+
+## 031B — Flyer PDF (diseños) — branch feat/spec-031-flyer-pdf
+
+- Scope: server PDF for designs only (other format×vertical combos → 501).
+  Same pipeline: `POST /exports/designs/:id` → job → download.
+  `pdfkit` (+ `@types/pdfkit` dev), API validated via Context7.
+- Frontend: existing "Descargar PDF" button uses server export for
+  designs (new `designId` prop), stays client-side jsPDF for books.
+- Tasks:
+- [x] 031B-1 pdfkit install + PDF builder + unit tests. Done: 2/2 green (real 1x1 PNG fixture — pdfkit rejects fake bytes, correctly).
+- [x] 031B-2 Service/runner branch (design load, strict image) + controller endpoint + E2E. Done: 4/4 E2E green; artifact path per format (book.epub kept, flyer.pdf new); download derives format from job.
+- [x] 031B-3 Frontend fork + E2E download spec. Done: designId prop, server flow for designs, client jsPDF untouched for books; caught missing frontend ExportFormat widening via typecheck.
+- [x] 031B-4 Verification + docs + MEMORY + commits + PR. Done: full be 361u/52e2e green, lint clean, typecheck 0 new errors.

@@ -109,6 +109,45 @@ export class ExportsController {
     });
   }
 
+  @Post('designs/:id')
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @UseGuards(AiEndpointsEnabledGuard, SupabaseAuthGuard)
+  @UseInterceptors(IdempotencyInterceptor)
+  @HttpCode(HttpStatus.ACCEPTED)
+  @ApiOperation({ summary: 'Request a flyer design export (async job)' })
+  @ApiHeader({
+    name: IDEMPOTENCY_KEY_HEADER,
+    required: true,
+    description: 'Unique 8-128 character key for this request',
+  })
+  @ApiAcceptedResponse({ type: GenerateBookResponseDto })
+  @ApiBadRequestResponse({ type: AiErrorDto })
+  @ApiConflictResponse({ type: AiErrorDto })
+  @ApiUnprocessableEntityResponse({ type: AiErrorDto })
+  @ApiBadGatewayResponse({ type: AiErrorDto })
+  @ApiTooManyRequestsResponse({ type: AiErrorDto })
+  @ApiServiceUnavailableResponse({ type: AiErrorDto })
+  async requestDesignExport(
+    @Param('id') designId: string,
+    @Body() dto: RequestExportDto,
+    @Req() request: AuthenticatedRequest,
+  ): Promise<GenerateBookResponseDto> {
+    if (!this.exportGeneration) {
+      throw new AiErrorException(
+        501,
+        'NOT_IMPLEMENTED',
+        'Export endpoints are disabled',
+      );
+    }
+
+    return this.exportGeneration.requestExport({
+      ...dto,
+      designId,
+      userId: request.user?.id ?? '',
+      correlationId: requestCorrelationId(request),
+    });
+  }
+
   @Get(':jobId/download')
   @UseGuards(AiEndpointsEnabledGuard, SupabaseAuthGuard)
   @ApiOperation({ summary: 'Get a short-lived download URL for an export' })
@@ -134,8 +173,12 @@ export class ExportsController {
       );
     }
 
+    const format =
+      (job.request as unknown as { format?: string }).format === 'pdf'
+        ? 'pdf'
+        : 'epub';
     const downloadUrl = await this.storage.signedUrl(
-      buildExportArtifactPath(userId, jobId),
+      buildExportArtifactPath(userId, jobId, format),
       EXPORT_DOWNLOAD_TTL_SECONDS,
     );
 
