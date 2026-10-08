@@ -3,8 +3,7 @@ import { AiErrorException } from '../../common/errors/ai-error.exception';
 import { AiEndpointsEnabledGuard } from './ai-endpoints-enabled.guard';
 
 function buildGuard(enabled?: unknown): AiEndpointsEnabledGuard {
-  const config =
-    enabled === undefined ? {} : { AI_ENDPOINTS_ENABLED: enabled };
+  const config = enabled === undefined ? {} : { AI_ENDPOINTS_ENABLED: enabled };
 
   return new AiEndpointsEnabledGuard(new ConfigService(config));
 }

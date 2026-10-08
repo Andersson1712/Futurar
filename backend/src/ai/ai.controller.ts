@@ -47,9 +47,12 @@ import { BOOK_GENERATION_USE_CASE } from './application/book-generation.use-case
 import type { BookGenerationUseCase } from './application/book-generation.use-case';
 import { DESIGN_GENERATION_USE_CASE } from './application/design-generation.use-case';
 import type { DesignGenerationUseCase } from './application/design-generation.use-case';
+import { PRESENTATION_GENERATION_USE_CASE } from './application/presentation-generation.use-case';
+import type { PresentationGenerationUseCase } from './application/presentation-generation.use-case';
 import { JobStatusStream } from './application/job-status.stream';
 import { GenerateBookRequestDto } from './dto/generate-book-request.dto';
 import { GenerateDesignRequestDto } from './dto/generate-design-request.dto';
+import { GeneratePresentationRequestDto } from './dto/generate-presentation-request.dto';
 import {
   GenerateBookResponseDto,
   JobStatusDto,
@@ -69,6 +72,13 @@ export class AiController {
     @Optional()
     @Inject(DESIGN_GENERATION_USE_CASE)
     private readonly designGeneration: DesignGenerationUseCase | undefined,
+    // Optional so pre-existing standalone AiController test modules (books,
+    // designs) keep resolving without the presentation provider; AiModule
+    // always provides it, and the handler below degrades to 501 when absent.
+    @Optional()
+    @Inject(PRESENTATION_GENERATION_USE_CASE)
+    private readonly presentationGeneration:
+      PresentationGenerationUseCase | undefined,
     private readonly jobStatusStream: JobStatusStream,
   ) {}
 
@@ -132,6 +142,43 @@ export class AiController {
     }
 
     return this.designGeneration.requestGeneration({
+      ...dto,
+      userId: request.user?.id ?? '',
+      correlationId: requestCorrelationId(request),
+    });
+  }
+
+  @Post('presentations/generate')
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @UseGuards(AiEndpointsEnabledGuard, SupabaseAuthGuard)
+  @UseInterceptors(IdempotencyInterceptor)
+  @HttpCode(HttpStatus.ACCEPTED)
+  @ApiOperation({ summary: 'Request AI presentation generation' })
+  @ApiHeader({
+    name: IDEMPOTENCY_KEY_HEADER,
+    required: true,
+    description: 'Unique 8-128 character key for this request',
+  })
+  @ApiAcceptedResponse({ type: GenerateBookResponseDto })
+  @ApiBadRequestResponse({ type: AiErrorDto })
+  @ApiConflictResponse({ type: AiErrorDto })
+  @ApiUnprocessableEntityResponse({ type: AiErrorDto })
+  @ApiBadGatewayResponse({ type: AiErrorDto })
+  @ApiTooManyRequestsResponse({ type: AiErrorDto })
+  @ApiServiceUnavailableResponse({ type: AiErrorDto })
+  async generatePresentation(
+    @Body() dto: GeneratePresentationRequestDto,
+    @Req() request: AuthenticatedRequest,
+  ): Promise<GenerateBookResponseDto> {
+    if (!this.presentationGeneration) {
+      throw new AiErrorException(
+        501,
+        'NOT_IMPLEMENTED',
+        'Presentation endpoints are disabled',
+      );
+    }
+
+    return this.presentationGeneration.requestGeneration({
       ...dto,
       userId: request.user?.id ?? '',
       correlationId: requestCorrelationId(request),

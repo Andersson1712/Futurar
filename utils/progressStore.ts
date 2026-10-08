@@ -9,7 +9,7 @@ export interface ProgressConfig {
   title?: string;
   content?: string;
   imageUrl?: string;
-  type: 'story' | 'design';
+  type: 'story' | 'design' | 'presentation';
 }
 
 export interface ViewerProgress {

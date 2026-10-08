@@ -13,6 +13,12 @@ import {
     getStudentDesign,
     listStudentDesigns,
 } from '../services/backendDesigns';
+import {
+    getStudentPresentation,
+    listStudentPresentations,
+    presentationDetailToStory,
+    presentationSummaryToStory,
+} from '../services/backendPresentations';
 import { MESSAGES, messageForErrorCode, t } from '../utils/messages';
 import { ApiError, NetworkError } from '../services/backendApi';
 import ScanningGrid from './ScanningGrid';
@@ -34,7 +40,7 @@ interface StudentLibraryProps {
 interface LibraryEntry {
     story: Story;
     isBackend: boolean;
-    kind: 'book' | 'design' | 'legacy';
+    kind: 'book' | 'design' | 'presentation' | 'legacy';
 }
 
 const StudentLibrary: React.FC<StudentLibraryProps> = ({
@@ -102,6 +108,17 @@ const StudentLibrary: React.FC<StudentLibraryProps> = ({
                 console.warn('Backend designs unavailable:', e);
             }
 
+            // Presentaciones (SPEC-029B) merge read-only alongside books.
+            let presentationStories: Story[] = [];
+            try {
+                const summaries = await listStudentPresentations(studentId);
+                presentationStories = summaries.map((summary) =>
+                    presentationSummaryToStory(summary, studentId),
+                );
+            } catch (e) {
+                console.warn('Backend presentations unavailable:', e);
+            }
+
             setEntries([
                 ...backendStories.map((story) => ({
                     story,
@@ -112,6 +129,11 @@ const StudentLibrary: React.FC<StudentLibraryProps> = ({
                     story,
                     isBackend: true,
                     kind: 'design' as const,
+                })),
+                ...presentationStories.map((story) => ({
+                    story,
+                    isBackend: true,
+                    kind: 'presentation' as const,
                 })),
                 ...legacyStories.map((story) => ({
                     story,
@@ -130,14 +152,21 @@ const StudentLibrary: React.FC<StudentLibraryProps> = ({
         const options: ScanOption[] = visibleEntries.map(({ story }) => ({
             id: story.id,
             label: story.title,
-            icon: story.type === 'design' ? 'brush' : 'auto_stories',
+            icon:
+                story.type === 'design'
+                    ? 'brush'
+                    : story.type === 'presentation'
+                      ? 'slideshow'
+                      : 'auto_stories',
             image: story.image_url || undefined,
             description:
                 story.type === 'design'
                     ? story.content || t('library.designDescription')
-                    : story.protagonist
-                      ? `${story.protagonist} en ${story.scenery}`
-                      : 'Cuento guardado',
+                    : story.type === 'presentation'
+                      ? story.content || t('library.presentationDescription')
+                      : story.protagonist
+                        ? `${story.protagonist} en ${story.scenery}`
+                        : 'Cuento guardado',
         }));
 
         // Add "Back to Menu" option at the end
@@ -175,6 +204,9 @@ const StudentLibrary: React.FC<StudentLibraryProps> = ({
             if (entry.kind === 'design') {
                 const design = await getStudentDesign(entry.story.id);
                 onSelectStory(designDetailToStory(design, studentId));
+            } else if (entry.kind === 'presentation') {
+                const presentation = await getStudentPresentation(entry.story.id);
+                onSelectStory(presentationDetailToStory(presentation, studentId));
             } else {
                 const book = await getStudentBook(entry.story.id);
                 onSelectStory(bookDetailToStory(book, studentId));
@@ -207,7 +239,9 @@ const StudentLibrary: React.FC<StudentLibraryProps> = ({
                     {openingId
                         ? openingEntry?.kind === 'design'
                             ? t('library.openDesign')
-                            : t('library.openStory')
+                            : openingEntry?.kind === 'presentation'
+                              ? t('library.openPresentation')
+                              : t('library.openStory')
                         : t('library.loading')}
                 </p>
             </div>

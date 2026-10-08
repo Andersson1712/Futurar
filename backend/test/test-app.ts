@@ -49,6 +49,14 @@ export const VALID_DESIGN_BODY = {
   style: 'Acuarela',
 } as const;
 
+export const VALID_PRESENTATION_TITLE = 'Los dinosaurios';
+
+export const VALID_PRESENTATION_BODY = {
+  topic: 'Los dinosaurios',
+  style: 'Acuarela',
+  slideCount: 5,
+} as const;
+
 export interface AiE2ETestContext {
   app: INestApplication<App>;
   mockTextGenerate: jest.Mock;
@@ -58,6 +66,8 @@ export interface AiE2ETestContext {
 export interface AiE2ETestAppOptions {
   designEndpointsEnabled?: boolean;
   designImagesEnabled?: boolean;
+  presentationEndpointsEnabled?: boolean;
+  presentationImagesEnabled?: boolean;
   /**
    * SPEC-033: when true, TEXT/IMAGE_GENERATOR are NOT stubbed — the real
    * OpenRouter adapters wire through ai.module (OPENROUTER_ENABLED=true)
@@ -93,6 +103,16 @@ function applyE2ETestEnv(options: AiE2ETestAppOptions = {}): void {
     delete process.env.DESIGN_IMAGES_ENABLED;
   } else {
     process.env.DESIGN_IMAGES_ENABLED = 'true';
+  }
+  if (options.presentationEndpointsEnabled === false) {
+    delete process.env.PRESENTATION_ENDPOINTS_ENABLED;
+  } else {
+    process.env.PRESENTATION_ENDPOINTS_ENABLED = 'true';
+  }
+  if (options.presentationImagesEnabled === false) {
+    delete process.env.PRESENTATION_IMAGES_ENABLED;
+  } else {
+    process.env.PRESENTATION_IMAGES_ENABLED = 'true';
   }
 }
 

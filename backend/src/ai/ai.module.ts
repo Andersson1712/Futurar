@@ -19,12 +19,25 @@ import {
 import { DesignOutputParser } from './application/design-output.parser';
 import { DesignOutputValidator } from './application/design-output.validator';
 import { DesignPromptBuilderService } from './application/design-prompt-builder.service';
+import { PresentationOutputParser } from './application/presentation-output.parser';
+import { PresentationOutputValidator } from './application/presentation-output.validator';
+import { PresentationPromptBuilderService } from './application/presentation-prompt-builder.service';
+import {
+  PRESENTATION_GENERATION_USE_CASE,
+  PRESENTATION_JOB_QUEUE,
+} from './application/presentation-generation.use-case';
+import { PresentationGenerationService } from './application/presentation-generation.service';
+import {
+  PresentationBullMqJobQueue,
+  PresentationGenerationRunner,
+} from './application/presentation-generation.runner';
 import { CircuitBreaker } from './application/circuit-breaker';
 import { GenerationRunner } from './application/generation-runner';
 import { JobStatusStream } from './application/job-status.stream';
 import { PromptBuilderService } from './application/prompt-builder.service';
 import { BooksModule } from '../books/books.module';
 import { DesignsModule } from '../designs/designs.module';
+import { PresentationsModule } from '../presentations/presentations.module';
 import { ProfilesModule } from '../profiles/profiles.module';
 import { IDEMPOTENCY_STORE } from '../common/idempotency/idempotency-store';
 import { InMemoryIdempotencyStore } from '../common/idempotency/in-memory-idempotency.store';
@@ -81,6 +94,7 @@ import {
     ObservabilityModule,
     BooksModule,
     DesignsModule,
+    PresentationsModule,
     ProfilesModule,
   ],
   controllers: [AiController, AiCredentialsController],
@@ -164,9 +178,14 @@ import {
     BookOutputValidator,
     DesignOutputParser,
     DesignOutputValidator,
+    PresentationPromptBuilderService,
+    PresentationOutputParser,
+    PresentationOutputValidator,
     BookPersistenceService,
     DesignGenerationService,
     DesignGenerationRunner,
+    PresentationGenerationService,
+    PresentationGenerationRunner,
     CircuitBreaker,
     InMemoryJobRepository,
     {
@@ -217,6 +236,10 @@ import {
       provide: DESIGN_GENERATION_USE_CASE,
       useClass: DesignGenerationService,
     },
+    {
+      provide: PRESENTATION_GENERATION_USE_CASE,
+      useClass: PresentationGenerationService,
+    },
     // DesignBullMqJobQueue lifecycle is factory-owned (same as
     // BullMqJobQueue): constructed only when QUEUE_DRIVER=bullmq so no
     // stray worker boots.
@@ -246,6 +269,39 @@ import {
         ConfigService,
         REDIS_CLIENT,
         DesignGenerationRunner,
+        JOB_REPOSITORY,
+        PinoLogger,
+      ],
+    },
+    // PresentationBullMqJobQueue lifecycle is factory-owned (same as
+    // BullMqJobQueue): constructed only when QUEUE_DRIVER=bullmq so no
+    // stray worker boots.
+    {
+      provide: PRESENTATION_JOB_QUEUE,
+      useFactory: (
+        configService: ConfigService,
+        redis: RedisClient,
+        runner: PresentationGenerationRunner,
+        jobs: JobRepository,
+        logger: PinoLogger,
+      ): JobQueue => {
+        if (resolveQueueDriver(configService) === 'bullmq') {
+          if (!redis) {
+            throw new Error('REDIS_URL is required for QUEUE_DRIVER=bullmq');
+          }
+
+          return new PresentationBullMqJobQueue(redis, runner, jobs, logger);
+        }
+
+        // InlineJobQueue only invokes run(jobId, correlationId), which the
+        // presentation runner implements; the cast keeps the shared queue
+        // code untouched (SPEC-029B: no book/design refactors).
+        return new InlineJobQueue(runner as unknown as GenerationRunner, jobs);
+      },
+      inject: [
+        ConfigService,
+        REDIS_CLIENT,
+        PresentationGenerationRunner,
         JOB_REPOSITORY,
         PinoLogger,
       ],
