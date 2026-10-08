@@ -46,5 +46,5 @@
 - Docs (SPEC-025): README EN + `README.es.md`, CONTRIBUTING/SECURITY/CODE_OF_CONDUCT, `docs/adr/` (6 ADRs), `docs/{guides,architecture,accessibility}` guides + `docs/i18n.md`; plain Markdown, no site generator.
 
 ## Next Steps
-- [ ] Owner: rotate key; `book-images` bucket; `AI_SECRETS_MASTER_KEY`; `LOG_LEVEL=info` in `backend/.env.example`; chore Vite/TS; applies 0011.
-- [x] SPEC-028/029/023C/033 merged (#37/#38/#40/#41). SPEC-029B done on feat/spec-029b (be 341u+32e2e green). Next: SPEC-029C. Pending: Git identity+commits, push/PR approval; fe tests blocked by env (vitest/vite silent, jest-dom v7 — proven on clean dev).
+- [ ] Owner: rotate key; `book-images` bucket; `AI_SECRETS_MASTER_KEY`; `LOG_LEVEL=info` in `backend/.env.example`; chore Vite/TS; applies 0011+0012.
+- [x] SPEC-029B merged (#45). SPEC-029C done on feat/spec-029c (be 356u+42e2e green, verticals complete). Pending: push/PR approval; fe tests blocked by env (proven on clean dev).
