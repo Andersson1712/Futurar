@@ -71,29 +71,6 @@ vi.mock('../services/backendDesigns', () => ({
   ),
 }));
 
-vi.mock('../services/supabase', () => {
-  function makeChain(): Record<string, unknown> {
-    const chain: Record<string, unknown> = {};
-    const self = () => chain;
-
-    chain.select = vi.fn(self);
-    chain.eq = vi.fn(self);
-    chain.order = vi.fn(self);
-    chain.then = (
-      resolve: (value: unknown) => unknown,
-      reject?: (reason: unknown) => unknown,
-    ) => Promise.resolve({ data: [], error: null }).then(resolve, reject);
-
-    return chain;
-  }
-
-  return {
-    supabase: {
-      from: vi.fn(() => makeChain()),
-    },
-  };
-});
-
 const BOOK_SUMMARY = {
   id: 'book-1',
   title: 'La aventura del dragón',
