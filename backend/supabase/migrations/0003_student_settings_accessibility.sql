@@ -12,6 +12,25 @@ alter table public.student_settings
   add column if not exists voice_gender text not null default 'auto'
     check (voice_gender in ('female', 'male', 'auto'));
 
-alter table public.student_settings
-  add constraint student_settings_font_size_check
-  check (font_size is null or font_size in ('normal', 'large', 'xlarge'));
+-- Guarded: re-running must not fail when the constraint already exists
+-- (plain ADD CONSTRAINT has no IF NOT EXISTS in Postgres).
+DO $$
+DECLARE
+  constraint_exists boolean;
+BEGIN
+  SELECT EXISTS (
+    SELECT 1 FROM pg_constraint c
+    JOIN pg_class t ON t.oid = c.conrelid
+    JOIN pg_namespace n ON n.oid = t.relnamespace
+    WHERE t.relname = 'student_settings'
+      AND n.nspname = 'public'
+      AND c.conname = 'student_settings_font_size_check'
+  ) INTO constraint_exists;
+
+  IF NOT constraint_exists THEN
+    ALTER TABLE public.student_settings
+      ADD CONSTRAINT student_settings_font_size_check
+      CHECK (font_size IS NULL OR font_size IN ('normal', 'large', 'xlarge'));
+  END IF;
+END
+$$;
