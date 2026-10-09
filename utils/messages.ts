@@ -145,6 +145,21 @@ export const TRANSLATIONS = {
   'credentials.disabled':
     'La gestión de claves está deshabilitada en el servidor',
 
+  'models.title': 'Modelos de IA',
+  'models.tab': 'Modelos IA',
+  'models.hint':
+    'Elegí los modelos de texto e imagen que usan tus creaciones, dentro del catálogo disponible.',
+  'models.loading': 'Cargando modelos...',
+  'models.textLabel': 'Modelo de texto',
+  'models.imageLabel': 'Modelo de imagen',
+  'models.save': 'Guardar modelos',
+  'models.restoreDefaults': 'Restaurar predeterminados',
+  'models.saved': 'Modelos guardados',
+  'models.error': 'Hubo un problema con los modelos. Intentá de nuevo.',
+  'models.invalidModel':
+    'Uno de los modelos elegidos ya no está disponible. Elegí otro del catálogo.',
+  'models.signInRequired': 'Iniciá sesión para elegir los modelos',
+
   'editor.birthdate': 'Fecha de nacimiento (opcional)',
   'editor.modules': 'Módulos habilitados',
   'editor.moduleCreate': 'Crear cuentos',

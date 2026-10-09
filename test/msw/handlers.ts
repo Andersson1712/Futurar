@@ -164,6 +164,24 @@ export const SAMPLE_PROFILE_OPTIONS = {
   ],
 };
 
+export const SAMPLE_MODEL_CATALOG = {
+  text: ['google/gemini-3.8-flash'],
+  image: [
+    'google/gemini-3.1-flash-image',
+    'openai/gpt-image-2',
+    'qwen/qwen-image-3-pro',
+  ],
+  defaults: {
+    text: 'google/gemini-3.8-flash',
+    image: 'google/gemini-3.1-flash-image',
+  },
+};
+
+export const SAMPLE_MODEL_PREFERENCE = {
+  textModel: 'google/gemini-3.8-flash',
+  imageModel: 'google/gemini-3.1-flash-image',
+};
+
 export function sseResponse(
   events: Array<{ type: string; data: unknown }>,
 ): HttpResponse<ReadableStream<Uint8Array>> {
@@ -412,4 +430,18 @@ export const handlers = [
   http.delete(`${API_BASE}/api/v1/ai/credentials/:provider`, () =>
     new HttpResponse(null, { status: 204 }),
   ),
+  http.get(`${API_BASE}/api/v1/ai/models`, () =>
+    HttpResponse.json(SAMPLE_MODEL_CATALOG),
+  ),
+  http.get(`${API_BASE}/api/v1/ai/model-preferences`, () =>
+    HttpResponse.json(SAMPLE_MODEL_PREFERENCE),
+  ),
+  http.put(`${API_BASE}/api/v1/ai/model-preferences`, async ({ request }) => {
+    const body = (await request.json()) as {
+      textModel?: string;
+      imageModel?: string;
+    };
+
+    return HttpResponse.json({ ...SAMPLE_MODEL_PREFERENCE, ...body });
+  }),
 ];
