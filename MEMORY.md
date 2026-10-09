@@ -49,4 +49,4 @@
 
 ## Next Steps
 - [ ] Owner: rotate key; `book-images` bucket; `AI_SECRETS_MASTER_KEY`; `LOG_LEVEL=info` in `backend/.env.example`; chore Vite/TS; applies 0011+0012.
-- [x] SPEC-029B/C merged (#45/#46, verticals complete). SPEC-032 merged (#47/#49). SPEC-031 merged (#50). SPEC-031B merged (#51, flyer PDF, pdfkit). Next: SPEC-033B/C follow-ups; fe env blocks persist (pre-existing).
+- [x] SPEC-031B merged (#51). SPEC-033B (per-teacher model selection) backend+frontend implemented on `feat/spec-033b-model-selection` (backend 378 tests green; migration 0014 owner-applied). Next: native review + PR to dev; then SPEC-033D (per-tenant keys), SPEC-033C (budgets). BLOCKER (pre-existing, not ours): frontend `vitest`/`vite build` crash on Windows/Node 24 from the native rollup binding (exit -1073741819); backend `npm test` scripts also fail at the cmd.exe shell (POSIX `NODE_OPTIONS=` prefix) — run with `$env:NODE_OPTIONS='--experimental-vm-modules'; npx jest`.

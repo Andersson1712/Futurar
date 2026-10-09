@@ -18,7 +18,7 @@ Leyenda:
 
 - Fase activa: **Fase 9 — Post-MVP (verticales + exportación completos; próximo SPEC-033B)**
 - Última tarea cerrada: exportación PDF server-side de flyers (SPEC-031B, PR #51 a dev)
-- Próxima tarea: SPEC-033B Selección de modelo por docente (spec a aprobar) — SPEC-030 TTS es-AR y SPEC-026 en pausa per owner
+- Próxima tarea: cerrar SPEC-033B (review + PR a dev); luego SPEC-033D — SPEC-030 TTS es-AR y SPEC-026 en pausa per owner
 - Rama de integración: `dev` (protegida con CI, 4 checks); `main` congelada y protegida.
 - Hito: 4 verticales en `dev` (cuentos, diseños #38, presentaciones #45, tableros #46) + backfill legacy 0013 (#47) + exportación EPUB/PDF (#50/#51) + retiro legacy (#49).
 
@@ -264,7 +264,7 @@ Leyenda:
 
 ### EPIC 9.5 — Multi-modelo (OpenRouter)
 - [x] SPEC-033: OpenRouter como segundo proveedor (allowlist curada texto/imagen, migración 0010, costo) — merge #41
-- [~] SPEC-033B: Selección de modelo por docente (aprobada 2026-10-09; en curso)
+- [~] SPEC-033B: Selección de modelo por docente (implementada en `feat/spec-033b-model-selection`; review/PR pendientes)
 - [ ] SPEC-033C: Budgets por tenant (follow-up, solo registro en 033)
 - [ ] SPEC-033D: Resolución de credenciales por tenant y por proveedor (split de 033B; aprobada 2026-10-09)
 
