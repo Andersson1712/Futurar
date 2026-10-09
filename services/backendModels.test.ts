@@ -29,6 +29,7 @@ describe('backendModels (SPEC-033B)', () => {
     expect(catalog.image.length).toBeGreaterThan(0);
     expect(catalog.defaults.text).toBe('google/gemini-3.8-flash');
     expect(catalog.defaults.image).toBe('google/gemini-3.1-flash-image');
+    expect(catalog.openRouterEnabled).toBe(true);
   });
 
   it('reads the current model preference', async () => {

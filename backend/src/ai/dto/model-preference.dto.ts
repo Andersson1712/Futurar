@@ -35,4 +35,10 @@ export class ModelCatalogDto {
   @ApiProperty({ type: [String] }) image!: string[];
 
   @ApiProperty({ type: ModelDefaultsDto }) defaults!: ModelDefaultsDto;
+
+  @ApiProperty({
+    description:
+      'Whether OpenRouter is enabled on the backend; the picker is inert when false',
+  })
+  openRouterEnabled!: boolean;
 }

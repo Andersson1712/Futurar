@@ -175,6 +175,7 @@ export const SAMPLE_MODEL_CATALOG = {
     text: 'google/gemini-3.8-flash',
     image: 'google/gemini-3.1-flash-image',
   },
+  openRouterEnabled: true,
 };
 
 export const SAMPLE_MODEL_PREFERENCE = {

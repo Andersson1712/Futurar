@@ -98,6 +98,7 @@ describe('AI model selection E2E (SPEC-033B, mocked HTTP)', () => {
       text: [TEXT_MODEL],
       image: [IMAGE_MODEL, 'openai/gpt-image-2', IMAGE_ALT],
       defaults: { text: TEXT_MODEL, image: IMAGE_MODEL },
+      openRouterEnabled: true,
     });
   });
 
@@ -172,5 +173,27 @@ describe('AI model selection E2E (SPEC-033B, mocked HTTP)', () => {
     const [, init] = imageCall as [string, RequestInit];
     const sent = JSON.parse(init.body as string) as Record<string, unknown>;
     expect(sent).toMatchObject({ model: IMAGE_ALT });
+  });
+});
+
+describe('AI model catalog with OpenRouter disabled E2E (SPEC-033B D6)', () => {
+  let app: INestApplication<App>;
+
+  beforeAll(async () => {
+    const context = await createAiE2ETestApp({ openRouterEnabled: false });
+    app = context.app;
+  }, 60_000);
+
+  afterAll(async () => {
+    await closeAiE2ETestApp(app);
+  });
+
+  it('033B-D6 reports openRouterEnabled false and stays a 200 catalog read', async () => {
+    const response = await request(app.getHttpServer())
+      .get('/api/v1/ai/models')
+      .set('Authorization', AUTH_HEADER)
+      .expect(200);
+
+    expect(response.body).toMatchObject({ openRouterEnabled: false });
   });
 });

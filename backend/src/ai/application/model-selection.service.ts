@@ -9,6 +9,7 @@ import {
   OPENROUTER_KNOWN_TEXT_MODELS,
   isKnownImageModel,
   isKnownTextModel,
+  isOpenRouterEnabled,
   resolveOpenRouterConfig,
 } from '../infrastructure/openrouter/openrouter.config';
 import {
@@ -21,6 +22,12 @@ export interface ModelCatalog {
   text: string[];
   image: string[];
   defaults: { text: string; image: string };
+  /**
+   * SPEC-033B (D6) — backend-owned OpenRouter enablement flag. The frontend
+   * renders the picker as disabled when this is false; it is never derived
+   * from a browser env var.
+   */
+  openRouterEnabled: boolean;
 }
 
 export interface ModelPreference {
@@ -73,6 +80,7 @@ export class ModelSelectionService {
         text: OPENROUTER_DEFAULTS.textModel,
         image: OPENROUTER_DEFAULTS.imageModel,
       },
+      openRouterEnabled: isOpenRouterEnabled(this.configService),
     };
   }
 

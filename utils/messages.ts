@@ -159,6 +159,8 @@ export const TRANSLATIONS = {
   'models.invalidModel':
     'Uno de los modelos elegidos ya no está disponible. Elegí otro del catálogo.',
   'models.signInRequired': 'Iniciá sesión para elegir los modelos',
+  'models.disabled':
+    'La selección de modelos está deshabilitada en el servidor.',
 
   'editor.birthdate': 'Fecha de nacimiento (opcional)',
   'editor.modules': 'Módulos habilitados',

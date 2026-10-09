@@ -88,6 +88,14 @@ const AiModelPanel: React.FC = () => {
       >
         {isLoading ? (
           <p className="text-gray-400">{t('models.loading')}</p>
+        ) : catalog && !catalog.openRouterEnabled ? (
+          <p
+            role="status"
+            aria-live="polite"
+            className="min-h-11 flex items-center text-gray-300"
+          >
+            {t('models.disabled')}
+          </p>
         ) : catalog ? (
           <>
             <div className="space-y-2">

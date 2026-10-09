@@ -75,6 +75,31 @@ describe('AiModelPanel (SPEC-033B)', () => {
     expect(saved?.imageModel).toBe('openai/gpt-image-2');
   });
 
+  it('renders a disabled state when the backend catalog reports OpenRouter off', async () => {
+    server.use(
+      http.get(`${API_BASE}/api/v1/ai/models`, () =>
+        HttpResponse.json({
+          ...SAMPLE_MODEL_CATALOG,
+          openRouterEnabled: false,
+        }),
+      ),
+    );
+
+    render(<AiModelPanel />);
+
+    const disabledMessage = await screen.findByText(t('models.disabled'));
+
+    expect(disabledMessage.getAttribute('role')).toBe('status');
+    expect(screen.queryByLabelText(t('models.textLabel'))).toBeNull();
+    expect(screen.queryByLabelText(t('models.imageLabel'))).toBeNull();
+    expect(
+      screen.queryByRole('button', { name: t('models.save') }),
+    ).toBeNull();
+    expect(
+      screen.queryByRole('button', { name: t('models.restoreDefaults') }),
+    ).toBeNull();
+  });
+
   it('shows a clear message when a model slug is rejected', async () => {
     server.use(
       http.put(`${API_BASE}/api/v1/ai/model-preferences`, () =>

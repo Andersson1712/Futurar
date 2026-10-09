@@ -9,6 +9,12 @@ export interface ModelCatalog {
   text: string[];
   image: string[];
   defaults: { text: string; image: string };
+  /**
+   * SPEC-033B (D6) — whether OpenRouter is enabled on the backend. The
+   * frontend renders the picker as disabled when false; this flag is owned
+   * by the backend and never read from a browser env var.
+   */
+  openRouterEnabled: boolean;
 }
 
 export interface ModelPreference {

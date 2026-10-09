@@ -52,7 +52,7 @@ function build(config: Record<string, unknown> = {}) {
 }
 
 describe('ModelSelectionService (SPEC-033B)', () => {
-  it('exposes the curated catalog with hard defaults', () => {
+  it('exposes the curated catalog with hard defaults and reports OpenRouter disabled by default', () => {
     const { service } = build();
 
     const catalog = service.catalog();
@@ -66,6 +66,13 @@ describe('ModelSelectionService (SPEC-033B)', () => {
       text: DEFAULT_TEXT,
       image: DEFAULT_IMAGE,
     });
+    expect(catalog.openRouterEnabled).toBe(false);
+  });
+
+  it('reports openRouterEnabled true when OPENROUTER_ENABLED is on', () => {
+    const { service } = build({ OPENROUTER_ENABLED: 'true' });
+
+    expect(service.catalog().openRouterEnabled).toBe(true);
   });
 
   it('falls back to the env default per vertical when no preference is stored', async () => {
