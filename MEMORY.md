@@ -5,9 +5,11 @@
 ## Current State
 - MVP: accessible story creation for severe motor disabilities, switch or direct input.
 - Frontend AI REMOVED (SPEC-001); generation gated by `AI_ENDPOINTS_ENABLED` until the key is rotated.
-- SPEC-002→025 done: Nest 12 AI backend, /api/v1, jobs/SSE, persistence,
+- SPEC-002→033 done: Nest 12 AI backend, /api/v1, jobs/SSE, persistence,
   frontend via backend, a11y, test infra + CI/governance, encrypted keys, profiles API,
-  contacts/dedications/favorites, actions/options catalog + limits, public docs. Legacy data pending SPEC-027.
+  contacts/dedications/favorites, actions/options catalog + limits, observability,
+  verticals, legacy backfill + retire, exports (EPUB/PDF), OpenRouter multi-model.
+  Legacy `stories` kept read-only as backup (SPEC-032).
 
 ## Architecture Decisions
 - Nest backend is the single source of truth for AI and data; the frontend uses
@@ -47,4 +49,4 @@
 
 ## Next Steps
 - [ ] Owner: rotate key; `book-images` bucket; `AI_SECRETS_MASTER_KEY`; `LOG_LEVEL=info` in `backend/.env.example`; chore Vite/TS; applies 0011+0012.
-- [x] SPEC-029B/C merged (#45/#46, verticals complete). SPEC-032 merged (#47/#49). SPEC-031 merged (#50). SPEC-031B done on feat/spec-031-flyer-pdf (flyer PDF, pdfkit; be 361u+52e2e green). Pending: push/PR approval; fe env blocks persist (pre-existing).
+- [x] SPEC-029B/C merged (#45/#46, verticals complete). SPEC-032 merged (#47/#49). SPEC-031 merged (#50). SPEC-031B merged (#51, flyer PDF, pdfkit). Next: SPEC-033B/C follow-ups; fe env blocks persist (pre-existing).
