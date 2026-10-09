@@ -1,10 +1,23 @@
 import { ConfigService } from '@nestjs/config';
 import { AiProviderError } from '../../ai.errors';
+import { ModelSelectionService } from '../../application/model-selection.service';
+import { InMemoryTeacherAiSettingsRepository } from '../../application/in-memory-teacher-ai-settings.repository';
+import { fakePinoLogger } from '../../../observability/fake-pino-logger';
 import type { OpenRouterSecretProvider } from './openrouter-client';
 import { OpenRouterClient } from './openrouter-client';
 import { OpenRouterTextAdapter } from './openrouter-text.adapter';
 
 const CHAT_COMPLETIONS_URL = 'https://openrouter.ai/api/v1/chat/completions';
+
+function buildModelSelection(
+  configService: ConfigService,
+): ModelSelectionService {
+  return new ModelSelectionService(
+    new InMemoryTeacherAiSettingsRepository(),
+    configService,
+    fakePinoLogger(),
+  );
+}
 
 function buildAdapter(
   fetchMock: jest.Mock,
@@ -18,7 +31,10 @@ function buildAdapter(
     ...config,
   });
   const client = new OpenRouterClient(configService, secrets);
-  const adapter = new OpenRouterTextAdapter(client, configService);
+  const adapter = new OpenRouterTextAdapter(
+    client,
+    buildModelSelection(configService),
+  );
   const fetchSpy = jest
     .spyOn(globalThis, 'fetch')
     .mockImplementation(fetchMock);
@@ -98,6 +114,33 @@ describe('OpenRouterTextAdapter (SPEC-033)', () => {
     ).toBeCloseTo(0.001, 6);
   });
 
+  it('resolves the model through ModelSelectionService with the request vertical (SPEC-033B)', async () => {
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValue(jsonResponse(chatBody('ok', 0)));
+    const configService = new ConfigService({});
+    const secrets = {
+      get: jest.fn().mockResolvedValue('or-test-key'),
+    } as unknown as OpenRouterSecretProvider;
+    const resolveText = jest.fn().mockResolvedValue('google/gemini-3.8-flash');
+    const modelSelection = {
+      resolveText,
+    } as unknown as ModelSelectionService;
+    const adapter = new OpenRouterTextAdapter(
+      new OpenRouterClient(configService, secrets),
+      modelSelection,
+    );
+    jest.spyOn(globalThis, 'fetch').mockImplementation(fetchMock);
+
+    await adapter.generate({
+      prompt: 'hi',
+      vertical: 'design',
+      tenantId: 't1',
+    });
+
+    expect(resolveText).toHaveBeenCalledWith('t1', 'design');
+  });
+
   it('sends the pinned default slug when no model is configured', async () => {
     const fetchMock = jest
       .fn()
@@ -108,7 +151,7 @@ describe('OpenRouterTextAdapter (SPEC-033)', () => {
     const configService = new ConfigService({});
     const adapter = new OpenRouterTextAdapter(
       new OpenRouterClient(configService, secrets),
-      configService,
+      buildModelSelection(configService),
     );
     jest.spyOn(globalThis, 'fetch').mockImplementation(fetchMock);
 
@@ -144,7 +187,10 @@ describe('OpenRouterTextAdapter (SPEC-033)', () => {
     } as unknown as OpenRouterSecretProvider;
     const configService = new ConfigService({});
     const client = new OpenRouterClient(configService, secrets);
-    const adapter = new OpenRouterTextAdapter(client, configService);
+    const adapter = new OpenRouterTextAdapter(
+      client,
+      buildModelSelection(configService),
+    );
     jest.spyOn(globalThis, 'fetch').mockImplementation(fetchMock);
 
     const error = await adapter.generate({ prompt: 'hi' }).then(
@@ -174,7 +220,7 @@ describe('OpenRouterTextAdapter (SPEC-033)', () => {
     const configService = new ConfigService({});
     const adapter = new OpenRouterTextAdapter(
       new OpenRouterClient(configService, secrets),
-      configService,
+      buildModelSelection(configService),
     );
 
     await expect(adapter.generate({ prompt: 'hi' })).rejects.toMatchObject({

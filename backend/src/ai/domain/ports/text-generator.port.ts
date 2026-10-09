@@ -1,3 +1,5 @@
+import type { GenerationVertical } from '../generation-vertical';
+
 export interface TextGenerationRequest {
   prompt: string;
   systemInstruction?: string;
@@ -5,6 +7,8 @@ export interface TextGenerationRequest {
   maxOutputTokens?: number;
   responseJsonSchema?: Record<string, unknown>;
   tenantId?: string;
+  // SPEC-033B: owning vertical; adapters default to 'book' when absent.
+  vertical?: GenerationVertical;
 }
 
 export interface TextGenerationUsage {

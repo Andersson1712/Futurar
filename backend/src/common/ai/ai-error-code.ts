@@ -12,4 +12,5 @@ export type AiErrorCode =
   | 'VALIDATION_FAILED'
   | 'LIMIT_EXCEEDED'
   | 'JOB_NOT_READY'
+  | 'INVALID_MODEL'
   | 'INTERNAL';

@@ -99,6 +99,7 @@ export class GenerationRunner {
         maxOutputTokens: BOOK_MAX_OUTPUT_TOKENS,
         responseJsonSchema: bookPrompt.responseJsonSchema,
         tenantId: job.userId,
+        vertical: 'book',
       }),
     );
     const payload = this.parser.parse(result.text);

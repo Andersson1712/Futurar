@@ -142,6 +142,7 @@ export class DesignGenerationRunner {
         maxOutputTokens: DESIGN_MAX_OUTPUT_TOKENS,
         responseJsonSchema: designPrompt.responseJsonSchema,
         tenantId: job.userId,
+        vertical: 'design',
       }),
     );
     const payload = this.parser.parse(result.text);
@@ -153,6 +154,8 @@ export class DesignGenerationRunner {
       prompt: design.imagePrompt,
       aspectRatio: DESIGN_IMAGE_ASPECT_RATIO,
       imageSize: DESIGN_IMAGE_SIZE,
+      tenantId: job.userId,
+      vertical: 'design',
     });
     const imagePath = buildDesignImagePath(job.userId, jobId);
     await this.storage.upload(imagePath, image.data, image.mimeType);

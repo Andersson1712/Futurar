@@ -105,6 +105,12 @@ import { OpenRouterTextAdapter } from './infrastructure/openrouter/openrouter-te
 import { isOpenRouterEnabled } from './infrastructure/openrouter/openrouter.config';
 import { AiCredentialsController } from './ai-credentials.controller';
 import { AiCredentialsService } from './ai-credentials.service';
+import { ModelCatalogController } from './model-catalog.controller';
+import { ModelSelectionService } from './application/model-selection.service';
+import { TEACHER_AI_SETTINGS_REPOSITORY } from './application/teacher-ai-settings.repository';
+import type { TeacherAiSettingsRepository } from './application/teacher-ai-settings.repository';
+import { InMemoryTeacherAiSettingsRepository } from './application/in-memory-teacher-ai-settings.repository';
+import { SupabaseTeacherAiSettingsRepository } from './application/supabase-teacher-ai-settings.repository';
 import {
   IMAGE_GENERATOR,
   SECRET_PROVIDER,
@@ -123,7 +129,12 @@ import {
     PresentationsModule,
     ProfilesModule,
   ],
-  controllers: [AiController, AiCredentialsController, ExportsController],
+  controllers: [
+    AiController,
+    AiCredentialsController,
+    ModelCatalogController,
+    ExportsController,
+  ],
   providers: [
     EnvSecretProvider,
     InMemoryCredentialRepository,
@@ -169,6 +180,19 @@ import {
     OpenRouterTextAdapter,
     OpenRouterImageAdapter,
     AiCredentialsService,
+    InMemoryTeacherAiSettingsRepository,
+    {
+      provide: TEACHER_AI_SETTINGS_REPOSITORY,
+      useFactory: (
+        supabaseService: SupabaseService,
+        memory: InMemoryTeacherAiSettingsRepository,
+      ): TeacherAiSettingsRepository =>
+        supabaseService.getClient()
+          ? new SupabaseTeacherAiSettingsRepository(supabaseService)
+          : memory,
+      inject: [SupabaseService, InMemoryTeacherAiSettingsRepository],
+    },
+    ModelSelectionService,
     {
       // Privacy gate (owner review, blocks activation): OpenRouter stays
       // off unless OPENROUTER_ENABLED=true (dev-only until reviewed).

@@ -20,11 +20,31 @@ export const OPENROUTER_IMAGE_ALTERNATES = [
   'qwen/qwen-image-3-pro',
 ] as const;
 
-const KNOWN_TEXT_MODELS: readonly string[] = [OPENROUTER_DEFAULTS.textModel];
-const KNOWN_IMAGE_MODELS: readonly string[] = [
+/**
+ * SPEC-033B — the curated catalog is the single source of truth for the
+ * teacher-facing model picker (`GET /ai/models`) and for allowlist
+ * validation at read/write time. Never expose a slug outside these sets.
+ */
+export const OPENROUTER_KNOWN_TEXT_MODELS: readonly string[] = [
+  OPENROUTER_DEFAULTS.textModel,
+];
+export const OPENROUTER_KNOWN_IMAGE_MODELS: readonly string[] = [
   OPENROUTER_DEFAULTS.imageModel,
   ...OPENROUTER_IMAGE_ALTERNATES,
 ];
+
+const KNOWN_TEXT_MODELS = OPENROUTER_KNOWN_TEXT_MODELS;
+const KNOWN_IMAGE_MODELS = OPENROUTER_KNOWN_IMAGE_MODELS;
+
+/** True when `slug` is a curated, teacher-selectable text model. */
+export function isKnownTextModel(slug: string): boolean {
+  return KNOWN_TEXT_MODELS.includes(slug);
+}
+
+/** True when `slug` is a curated, teacher-selectable image model. */
+export function isKnownImageModel(slug: string): boolean {
+  return KNOWN_IMAGE_MODELS.includes(slug);
+}
 
 export interface OpenRouterVerticalModels {
   textModel: string;
