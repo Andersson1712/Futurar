@@ -49,7 +49,7 @@ See `docs/specs/SPEC-033B.md` → Acceptance criteria.
 ## Verification evidence
 
 - Backend `npm run build` + `npm run lint`: clean. `npm test`: 71 suites /
-  378 tests green. `npm run test:e2e`: 9 suites / 57 tests green.
+  379 tests green. `npm run test:e2e`: 9 suites / 58 tests green.
   NOTE: the repo scripts `npm test` / `npm run test:e2e` fail at the shell
   on Windows (POSIX `NODE_OPTIONS=...` assignment under cmd.exe); re-run
   with `$env:NODE_OPTIONS='--experimental-vm-modules'` + `npx jest`.
@@ -67,15 +67,21 @@ See `docs/specs/SPEC-033B.md` → Acceptance criteria.
 - efc12a7 docs(spec): reconcile roadmap and split SPEC-033B/033D
 - ea4e40c feat(ai): per-teacher model selection from the curated allowlist
 - 9c17fbf feat(ai): teacher model picker panel and service
+- d74bbed docs(spec): record SPEC-033B evidence and environment blocker
+- 454d683 feat(ai): gate the model panel on OpenRouter enablement
 
 ## Open risks
 
-- D6 "hidden unless OpenRouter enabled": no frontend flag source exists, so
-  the panel is always visible and the preference is inert when the flag is
-  off. Needs a product decision (add a flag endpoint or accept inert).
+- D6 **RESOLVED** (commit `454d683`): `GET /ai/models` now returns
+  `openRouterEnabled` — the backend is the single source of truth (no
+  browser env var) — and `AiModelPanel` renders a localized disabled state
+  when off.
 - Supabase adapter lacks a dedicated unit test (in-memory + E2E cover it).
-- Strict RED-first was not captured for the storage/service/frontend new
-  modules (authored alongside their tests).
+- Strict RED-first was not captured for some new modules (authored alongside
+  their tests); the backend catalog spec captured a real RED.
+- Frontend `vitest`/`vite` cannot run in this environment (native rollup
+  crash, exit -1073741819); panel behavior verified via an esbuild+jsdom
+  harness. Confirm in CI.
 
 ## Next
 
