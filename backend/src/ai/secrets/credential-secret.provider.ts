@@ -1,12 +1,21 @@
-import { SecretName, SecretProvider } from './secret-provider';
+import {
+  SECRET_PROVIDERS,
+  SecretName,
+  SecretProvider,
+} from './secret-provider';
+import type { CredentialProvider } from './credential.repository';
 
 export interface CredentialSecretProviderPorts {
-  findActiveKey(tenantId: string): Promise<string | undefined>;
+  findActiveKey(
+    tenantId: string,
+    provider: CredentialProvider,
+  ): Promise<string | undefined>;
 }
 
 /**
  * Resolves tenant credentials first and falls back to the env provider
- * (dev/CI). The plaintext key never leaves this class.
+ * (dev/CI). The plaintext key never leaves this class. A stored but
+ * unreadable key fails loudly; only a missing/revoked row falls back.
  */
 export class CredentialSecretProvider implements SecretProvider {
   constructor(
@@ -15,14 +24,12 @@ export class CredentialSecretProvider implements SecretProvider {
   ) {}
 
   async get(name: SecretName, tenantId?: string): Promise<string | undefined> {
-    if (name === 'GEMINI_API_KEY' && tenantId) {
-      try {
-        const stored = await this.credentials.findActiveKey(tenantId);
+    const provider = SECRET_PROVIDERS[name];
 
-        if (stored) return stored;
-      } catch {
-        // Fall through to the env provider; failures are not leaked.
-      }
+    if (provider && tenantId) {
+      const stored = await this.credentials.findActiveKey(tenantId, provider);
+
+      if (stored) return stored;
     }
 
     return this.fallback.get(name, tenantId);

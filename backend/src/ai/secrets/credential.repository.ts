@@ -2,7 +2,8 @@ import type { EncryptedPayload } from './crypto.service';
 
 export const CREDENTIAL_REPOSITORY = Symbol('CREDENTIAL_REPOSITORY');
 
-export type CredentialProvider = 'gemini';
+export const CREDENTIAL_PROVIDERS = ['gemini', 'openrouter'] as const;
+export type CredentialProvider = (typeof CREDENTIAL_PROVIDERS)[number];
 export type CredentialStatus = 'active' | 'revoked';
 
 export interface CredentialMetadata {

@@ -11,8 +11,9 @@ import {
   validateSync,
 } from 'class-validator';
 import { parseMasterKey } from '../ai/secrets/crypto.service';
+import { CREDENTIAL_PROVIDERS } from '../ai/secrets/credential.repository';
 
-export const AI_PROVIDERS = ['gemini'] as const;
+export const AI_PROVIDERS = CREDENTIAL_PROVIDERS;
 export type AiProvider = (typeof AI_PROVIDERS)[number];
 
 const NODE_ENVS = ['development', 'production', 'test'] as const;
