@@ -26,7 +26,7 @@ export class CredentialSecretProvider implements SecretProvider {
   async get(name: SecretName, tenantId?: string): Promise<string | undefined> {
     const provider = SECRET_PROVIDERS[name];
 
-    if (provider && tenantId) {
+    if (tenantId) {
       const stored = await this.credentials.findActiveKey(tenantId, provider);
 
       if (stored) return stored;
