@@ -48,8 +48,8 @@ consulted. Independent, shippable defect.
   tests with observed RED→GREEN
 - [x] 033D-3 OpenRouter client typing + regression test proving both provider
   keys resolve independently
-- [~] 033D-4 Verify (unit/e2e/build/lint) + docs (MEMORY.md) + work-unit
-  commits; native review at closure
+- [x] 033D-4 Verify (unit/e2e/build/lint) + docs (MEMORY.md) + work-unit
+  commits; native review attempted (runtime ineligible — recorded unavailable)
 
 ## Route
 
@@ -81,7 +81,25 @@ See `docs/specs/SPEC-033D.md` → Acceptance criteria.
   written via a temp-dir author + `Copy-Item`, then verified with `git diff`.
   The global `opencode.jsonc` allow rule was corrected to `**/ai/secrets/**`
   (takes effect on the next opencode restart).
+- Independent verification (`gentle-ai-verify`, read-only) returned
+  `needs-attention`: one WARNING — the central `findActive(tenantId, provider)`
+  forwarding line had no test (reverting it kept every suite green). Corrected
+  in `42edf88` + `56b3254`: added `credential-resolver.spec.ts` (5 tests) and
+  made the secret→provider map a full `Record` so a future secret name cannot
+  silently skip tenant resolution. Post-correction: 70 suites / 372 tests
+  green; build and lint clean.
+- Native review: `gentle-ai review assess --base-ref dev --committed-only`
+  returned `risk: high`, `review_due_reason: high_risk`, but the active runtime
+  is not eligible for immutable receipt review (`unassessable`), so the native
+  lifecycle could not run here. Not a code finding; the RDD switch stays
+  user-owned.
+- Out-of-scope follow-up (pre-existing, not introduced): a Supabase query error
+  still collapses to `undefined` → env fallback; only decryption/storage faults
+  are loud.
 
 ## Commits
 
-- Pending.
+- `44bdede` fix(ai): resolve per-tenant credentials per provider (SPEC-033D)
+- `e27760e` docs(spec): record SPEC-033D verification and status
+- `42edf88` refactor(ai): make the secret-to-provider map exhaustive
+- `56b3254` test(ai): cover CredentialResolver provider forwarding (SPEC-033D)

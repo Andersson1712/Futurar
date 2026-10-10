@@ -67,14 +67,16 @@ tested on its own, and it unblocks per-teacher OpenRouter keys for 033B.
 
 ## Acceptance criteria
 
-- [ ] Saving an `openrouter` key via the API persists and returns it in
+- [x] Saving an `openrouter` key via the API persists and returns it in
   metadata (test).
-- [ ] With `OPENROUTER_ENABLED=true` and a per-tenant OpenRouter key, a
+- [x] With `OPENROUTER_ENABLED=true` and a per-tenant OpenRouter key, a
   generation uses that key (unit test with a fake resolver); with no row
   it falls back to env (unchanged).
-- [ ] Gemini path unchanged (existing credential tests green).
-- [ ] Backend `npm test`, `npm run test:e2e`, `npm run build`,
-  `npm run lint` green.
+- [x] Gemini path unchanged (existing credential tests green).
+- [x] Backend `npm test`, `npm run test:e2e`, `npm run build`,
+  `npm run lint` green. (On Windows the `npm test` / `test:e2e` scripts fail
+  at the cmd.exe shell because of their POSIX `NODE_OPTIONS=` prefix; the same
+  Jest runs pass via `npx jest`.)
 
 ## Edge cases
 
