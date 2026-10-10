@@ -4,6 +4,8 @@ export interface ScanOption {
   icon: string;
   image?: string;
   description?: string;
+  /** SPEC-023B: scan page (level) this option belongs to. */
+  level?: number;
 }
 
 export enum AppStep {
@@ -34,7 +36,7 @@ export interface StoryConfig {
   style: string;
   content?: string;
   imageUrl?: string;
-  type: 'story' | 'design';
+  type: 'story' | 'design' | 'presentation' | 'communication';
   date?: string;
   studentId?: string;
 }

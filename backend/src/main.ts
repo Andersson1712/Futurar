@@ -1,34 +1,45 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
+import { Logger } from 'nestjs-pino';
 import { AppModule } from './app.module';
+import { configureApp } from './app.setup';
+import { setupSwagger } from './config/swagger';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, { bufferLogs: true });
+  const logger = app.get(Logger);
 
-  // Habilitar CORS para el frontend
+  app.useLogger(logger);
+  configureApp(app);
+
+  // Enable CORS for the frontend.
+  // NOTE: every method the frontend sends (GET/POST/PUT/PATCH/DELETE) must be
+  // listed here, otherwise the preflight fails and the browser blocks the
+  // call (seen with PATCH /profiles/:id from the teacher panel).
   app.enableCors({
     origin: [
       'http://localhost:5173', // Vite dev
       'http://localhost:3000',
       'http://localhost:4173', // Vite preview
-      /\.vercel\.app$/,       // Cualquier dominio de Vercel
+      /\.vercel\.app$/, // Any Vercel domain
     ],
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'Idempotency-Key',
+      'x-correlation-id',
+    ],
     credentials: true,
   });
 
-  // Validación global de DTOs
-  app.useGlobalPipes(new ValidationPipe({
-    whitelist: true,
-    transform: true,
-    forbidNonWhitelisted: true,
-  }));
-
-  // Puerto configurable
+  // Configurable port.
   const port = process.env.PORT || 3001;
+
+  setupSwagger(app);
+
   await app.listen(port);
 
-  console.log(`🚀 Backend API running on http://localhost:${port}`);
-  console.log(`📚 AI endpoints available at http://localhost:${port}/ai`);
+  logger.log(`Backend API running on http://localhost:${port}/api/v1`);
 }
-bootstrap();
+
+void bootstrap();

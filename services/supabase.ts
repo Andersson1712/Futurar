@@ -92,37 +92,6 @@ export const createStory = async (story: Database['public']['Tables']['stories']
     return data;
 };
 
-export const updateStoryDedication = async (
-    storyId: string,
-    dedication: {
-        dedication_to: string;
-        dedication_reason: string;
-        dedication_position: 'start' | 'end';
-    }
-) => {
-    const { data, error } = await supabase
-        .from('stories')
-        .update(dedication)
-        .eq('id', storyId)
-        .select()
-        .single();
-
-    if (error) throw error;
-    return data;
-};
-
-export const toggleStoryFavorite = async (storyId: string, isFavorite: boolean) => {
-    const { data, error } = await supabase
-        .from('stories')
-        .update({ is_favorite: isFavorite })
-        .eq('id', storyId)
-        .select()
-        .single();
-
-    if (error) throw error;
-    return data;
-};
-
 export const deleteStory = async (storyId: string) => {
     const { error } = await supabase
         .from('stories')
@@ -176,69 +145,6 @@ export const endSession = async (sessionId: string) => {
 
     if (error) throw error;
     return data;
-};
-
-// =============================================
-// API de Configuración de IA
-// =============================================
-
-export const getAIConfig = async (teacherId: string) => {
-    const { data, error } = await supabase
-        .from('ai_config')
-        .select('*')
-        .eq('teacher_id', teacherId)
-        .single();
-
-    // Si no existe, retornar null (el usuario aún no ha configurado)
-    if (error && error.code === 'PGRST116') {
-        return null;
-    }
-    if (error) throw error;
-    return data;
-};
-
-export const createAIConfig = async (
-    config: Database['public']['Tables']['ai_config']['Insert']
-) => {
-    const { data, error } = await supabase
-        .from('ai_config')
-        .insert(config)
-        .select()
-        .single();
-
-    if (error) throw error;
-    return data;
-};
-
-export const updateAIConfig = async (
-    teacherId: string,
-    config: Partial<Database['public']['Tables']['ai_config']['Update']>
-) => {
-    const { data, error } = await supabase
-        .from('ai_config')
-        .update(config)
-        .eq('teacher_id', teacherId)
-        .select()
-        .single();
-
-    if (error) throw error;
-    return data;
-};
-
-export const upsertAIConfig = async (
-    teacherId: string,
-    config: Partial<Database['public']['Tables']['ai_config']['Insert']>
-) => {
-    // Intentar obtener configuración existente
-    const existing = await getAIConfig(teacherId);
-
-    if (existing) {
-        // Actualizar
-        return updateAIConfig(teacherId, config);
-    } else {
-        // Crear nueva
-        return createAIConfig({ teacher_id: teacherId, ...config });
-    }
 };
 
 // =============================================

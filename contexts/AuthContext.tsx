@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '../services/supabase';
+import { clearStorySettings } from '../utils/storySettings';
+import { clearProgress } from '../utils/progressStore';
 import type { Teacher } from '../types/database';
 
 interface AuthContextType {
@@ -159,7 +161,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     const logout = async () => {
         await supabase.auth.signOut();
+        clearStorySettings();
+        clearProgress();
         setTeacher(null);
+        setError(null);
     };
 
     const value: AuthContextType = {

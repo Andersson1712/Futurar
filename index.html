@@ -16,7 +16,7 @@
             theme: {
                 extend: {
                     colors: {
-                        primary: "#137fec",
+                        primary: "#0b6bd3",
                         "background-dark": "#0B1116",
                         "surface-dark": "#16202a",
                         "border-accent": "#233648"
@@ -50,9 +50,95 @@
         }
 
         /* Base */
+        html,
+        body {
+            min-height: 100dvh;
+        }
+
+        /* Foco visible siempre (WCAG 2.4.7 / 2.4.11) */
+        :focus-visible {
+            outline: 3px solid #ffffff;
+            outline-offset: 2px;
+        }
+
         body {
             cursor: pointer;
             user-select: none;
+            overflow-x: hidden;
+            touch-action: pan-y;
+            overscroll-behavior-y: none;
+        }
+
+        /* Centrado seguro: evita clip del contenido alto dentro de flex */
+        .safe-center {
+            justify-content: safe center;
+        }
+
+        /* Opción activa del menú de controles (barrido por switch) */
+        .menu-option[data-active='true'] {
+            outline: 3px solid #ffffff;
+            outline-offset: 2px;
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        /* Accesibilidad por perfil (SPEC-015) */
+        html[data-line-height='normal'] body {
+            line-height: 1.5;
+        }
+
+        html[data-line-height='relaxed'] body {
+            line-height: 1.8;
+        }
+
+        html[data-line-height='loose'] body {
+            line-height: 2.1;
+        }
+
+        html[data-line-height='relaxed'] p,
+        html[data-line-height='relaxed'] li,
+        html[data-line-height='loose'] p,
+        html[data-line-height='loose'] li {
+            line-height: inherit;
+        }
+
+        html[data-uppercase='true'] body {
+            text-transform: uppercase;
+        }
+
+        html[data-bold-titles='true'] h1,
+        html[data-bold-titles='true'] h2,
+        html[data-bold-titles='true'] h3,
+        html[data-bold-titles='true'] h4 {
+            font-weight: 900;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+
+            *,
+            *::before,
+            *::after {
+                animation-duration: 0.001ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.001ms !important;
+                scroll-behavior: auto !important;
+            }
+
+            .scan-progress-bar {
+                animation: none !important;
+            }
+        }
+
+        @media (prefers-contrast: more) {
+            body {
+                color: #ffffff;
+            }
+
+            button,
+            [data-option],
+            [role='button'] {
+                outline: 1px solid rgba(255, 255, 255, 0.7);
+                outline-offset: 1px;
+            }
         }
 
         /* Scroll personalizado */
@@ -148,7 +234,7 @@
     </style>
 </head>
 
-<body class="bg-background-dark text-white font-display overflow-hidden select-none">
+<body class="bg-background-dark text-white font-display select-none">
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
 </body>

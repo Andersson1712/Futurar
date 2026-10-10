@@ -1,6 +1,26 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../services/supabase';
-import type { Student, StudentSettings, StudentElement } from '../types/database';
+import {
+    createActionItem,
+    deleteActionItem,
+    listActionOptions,
+    listActions,
+    listProfileItems,
+    saveProfileItems,
+    updateOption,
+    type ActionOptionPayload,
+    type OptionPatch,
+    type ProfileItemPayload,
+} from '../services/backendActions';
+import {
+    createProfileContact,
+    deleteProfileContact,
+    listProfileContacts,
+    updateProfileContact,
+    type ProfileContactPayload,
+} from '../services/backendContacts';
+import type { Student, StudentSettings } from '../types/database';
+import { ApiError } from '../services/backendApi';
+import { t } from '../utils/messages';
 
 interface StudentWithSettings extends Student {
     student_settings?: StudentSettings | null;
@@ -14,7 +34,7 @@ interface StudentEditorProps {
 }
 
 // Icon mapping based on element name keywords
-const getIconForLabel = (label: string, category: 'protagonist' | 'scenario' | 'mission' | 'style'): string => {
+const getIconForLabel = (label: string, category: string): string => {
     const labelLower = label.toLowerCase();
 
     // Protagonist icons
@@ -68,30 +88,52 @@ const getIconForLabel = (label: string, category: 'protagonist' | 'scenario' | '
 };
 
 // Element section component
+interface ElementEntry {
+    id: string;
+    label: string;
+    icon: string;
+    isEnabled: boolean;
+    level: number;
+}
+
 interface ElementSectionProps {
     title: string;
-    category: 'protagonist' | 'scenario' | 'mission' | 'style';
-    elements: StudentElement[];
+    icon: string;
+    elements: ElementEntry[];
     onToggle: (id: string, enabled: boolean) => void;
     onDelete: (id: string) => void;
     onAdd: (label: string) => void;
     maxEnabled: number;
+    maxPerPage: number;
+    optionId: string;
+    onSaveQuota: (optionId: string, patch: OptionPatch) => void;
 }
 
 const ElementSection: React.FC<ElementSectionProps> = ({
     title,
-    category,
+    icon,
     elements,
     onToggle,
     onDelete,
     onAdd,
-    maxEnabled
+    maxEnabled,
+    maxPerPage,
+    optionId,
+    onSaveQuota
 }) => {
     const [newLabel, setNewLabel] = useState('');
     const [showAddForm, setShowAddForm] = useState(false);
+    // SPEC-023C quota editor: local draft follows the stored quota and is
+    // only pushed through onSaveQuota (PATCH options/:id) on explicit save.
+    const [quotaMaxEnabled, setQuotaMaxEnabled] = useState(String(maxEnabled));
+    const [quotaMaxPerPage, setQuotaMaxPerPage] = useState(String(maxPerPage));
 
-    const enabledCount = elements.filter(e => e.is_enabled).length;
-    const canEnableMore = enabledCount < maxEnabled;
+    const enabledCount = elements.filter(e => e.isEnabled).length;
+    const levelCount = (level: number) =>
+        elements.filter(e => e.isEnabled && e.level === level).length;
+    const canEnable = (element: ElementEntry) =>
+        element.isEnabled ||
+        (enabledCount < maxEnabled && levelCount(element.level) < maxPerPage);
 
     const handleAdd = () => {
         if (newLabel.trim()) {
@@ -101,37 +143,99 @@ const ElementSection: React.FC<ElementSectionProps> = ({
         }
     };
 
+    const handleSaveQuota = () => {
+        const parsedMaxEnabled = Number.parseInt(quotaMaxEnabled, 10);
+        const parsedMaxPerPage = Number.parseInt(quotaMaxPerPage, 10);
+
+        if (
+            !Number.isInteger(parsedMaxEnabled) ||
+            !Number.isInteger(parsedMaxPerPage)
+        ) {
+            return;
+        }
+
+        onSaveQuota(optionId, {
+            // Server clamps to 1-12 (UpdateOptionDto); mirror the range here
+            // so an out-of-range draft never leaves the editor.
+            maxEnabled: Math.min(12, Math.max(1, parsedMaxEnabled)),
+            maxPerPage: Math.min(12, Math.max(1, parsedMaxPerPage)),
+        });
+    };
+
     return (
         <div className="bg-background-dark rounded-xl p-4 border border-border-accent">
             <div className="flex items-center justify-between mb-4">
-                <h3 className="font-bold text-lg flex items-center gap-2">
+                {/* h2 under the page h1: axe heading-order stays clean. */}
+                <h2 className="font-bold text-lg flex items-center gap-2">
                     <span className="material-symbols-outlined text-primary">
-                        {category === 'protagonist' ? 'face' :
-                            category === 'scenario' ? 'landscape' :
-                                category === 'mission' ? 'flag' : 'palette'}
+                        {icon}
                     </span>
                     {title}
-                </h3>
+                </h2>
                 <span className={`text-sm font-bold px-2 py-1 rounded-full ${enabledCount >= maxEnabled ? 'bg-amber-500/20 text-amber-400' : 'bg-primary/20 text-primary'
                     }`}>
-                    {enabledCount}/{maxEnabled} habilitados
+                    {enabledCount}/{maxEnabled} habilitados · {maxPerPage}/página
                 </span>
+            </div>
+
+            {/* SPEC-023C quota editor: raising the quota lets the teacher
+                enable more items; the client-side toggle/add caps stay. */}
+            <div className="flex flex-wrap items-end gap-2 mb-4">
+                <label
+                    htmlFor={`quota-max-enabled-${optionId}`}
+                    className="flex flex-col gap-1 text-sm font-medium text-gray-400"
+                >
+                    {t('editor.quotaMaxEnabled')}
+                    <input
+                        id={`quota-max-enabled-${optionId}`}
+                        type="number"
+                        min={1}
+                        max={12}
+                        value={quotaMaxEnabled}
+                        onChange={(e) => setQuotaMaxEnabled(e.target.value)}
+                        aria-label={t('editor.quotaMaxEnabled')}
+                        className="w-20 min-h-11 bg-surface-dark border border-border-accent rounded-lg px-3 py-2 text-white focus:border-primary focus:outline-none"
+                    />
+                </label>
+                <label
+                    htmlFor={`quota-max-per-page-${optionId}`}
+                    className="flex flex-col gap-1 text-sm font-medium text-gray-400"
+                >
+                    {t('editor.quotaMaxPerPage')}
+                    <input
+                        id={`quota-max-per-page-${optionId}`}
+                        type="number"
+                        min={1}
+                        max={12}
+                        value={quotaMaxPerPage}
+                        onChange={(e) => setQuotaMaxPerPage(e.target.value)}
+                        aria-label={t('editor.quotaMaxPerPage')}
+                        className="w-20 min-h-11 bg-surface-dark border border-border-accent rounded-lg px-3 py-2 text-white focus:border-primary focus:outline-none"
+                    />
+                </label>
+                <button
+                    type="button"
+                    onClick={handleSaveQuota}
+                    className="min-h-11 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg font-bold transition-colors"
+                >
+                    {t('editor.quotaSave')}
+                </button>
             </div>
 
             <div className="space-y-2 mb-4">
                 {elements.map(element => (
                     <div
                         key={element.id}
-                        className={`flex items-center justify-between p-3 rounded-lg border transition-all ${element.is_enabled
+                        className={`flex items-center justify-between p-3 rounded-lg border transition-all ${element.isEnabled
                             ? 'bg-primary/10 border-primary/30'
                             : 'bg-white/5 border-white/10'
                             }`}
                     >
                         <div className="flex items-center gap-3">
-                            <span className={`material-symbols-outlined ${element.is_enabled ? 'text-primary' : 'text-gray-500'}`}>
+                            <span className={`material-symbols-outlined ${element.isEnabled ? 'text-primary' : 'text-gray-400'}`}>
                                 {element.icon}
                             </span>
-                            <span className={element.is_enabled ? 'text-white' : 'text-gray-400'}>
+                            <span className={element.isEnabled ? 'text-white' : 'text-gray-400'}>
                                 {element.label}
                             </span>
                         </div>
@@ -139,17 +243,22 @@ const ElementSection: React.FC<ElementSectionProps> = ({
                             {/* Toggle button */}
                             <button
                                 type="button"
+                                aria-label={`${element.label}: ${element.isEnabled ? t('editor.disable') : t('editor.enable')}`}
                                 onClick={() => {
-                                    if (!element.is_enabled && !canEnableMore) {
-                                        alert(`Solo puedes tener ${maxEnabled} elementos habilitados. Deshabilita uno primero.`);
+                                    if (!canEnable(element)) {
+                                        alert(
+                                            enabledCount >= maxEnabled
+                                                ? t('editor.limitOption')
+                                                : t('editor.limitPage'),
+                                        );
                                         return;
                                     }
-                                    onToggle(element.id, !element.is_enabled);
+                                    onToggle(element.id, !element.isEnabled);
                                 }}
-                                className={`relative w-12 h-6 rounded-full transition-colors ${element.is_enabled ? 'bg-primary' : 'bg-gray-600'
+                                className={`relative w-12 h-6 rounded-full transition-colors ${element.isEnabled ? 'bg-primary' : 'bg-gray-600'
                                     }`}
                             >
-                                <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full transition-transform ${element.is_enabled ? 'translate-x-6' : 'translate-x-0.5'
+                                <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full transition-transform ${element.isEnabled ? 'translate-x-6' : 'translate-x-0.5'
                                     }`} />
                             </button>
                             {/* Delete button */}
@@ -169,7 +278,7 @@ const ElementSection: React.FC<ElementSectionProps> = ({
                 ))}
 
                 {elements.length === 0 && (
-                    <p className="text-gray-500 text-center py-4">No hay elementos. Agrega uno nuevo.</p>
+                    <p className="text-gray-400 text-center py-4">No hay elementos. Agrega uno nuevo.</p>
                 )}
             </div>
 
@@ -223,14 +332,22 @@ const StudentEditor: React.FC<StudentEditorProps> = ({
     onCancel,
     iconOptions
 }) => {
-    const [activeTab, setActiveTab] = useState<'profile' | 'config' | 'elements'>('profile');
+    const [activeTab, setActiveTab] = useState<'profile' | 'config' | 'elements' | 'contacts'>('profile');
     const [isLoadingElements, setIsLoadingElements] = useState(false);
+
+    const initialModules =
+        student?.student_settings?.modules &&
+        typeof student.student_settings.modules === 'object' &&
+        !Array.isArray(student.student_settings.modules)
+            ? (student.student_settings.modules as Record<string, boolean>)
+            : {};
 
     // Student Data
     const [formData, setFormData] = useState({
         name: student?.name || '',
         avatar_icon: student?.avatar_icon || 'face',
         age: student?.age?.toString() || '',
+        birthdate: student?.birthdate || '',
         notes: student?.notes || '',
         is_active: student?.is_active ?? true
     });
@@ -240,14 +357,38 @@ const StudentEditor: React.FC<StudentEditorProps> = ({
         scan_interval: student?.student_settings?.scan_interval || 3000,
         scan_columns: student?.student_settings?.scan_columns || 2,
         voice_feedback: student?.student_settings?.voice_feedback ?? true,
-        sound_enabled: student?.student_settings?.sound_enabled ?? true
+        sound_enabled: student?.student_settings?.sound_enabled ?? true,
+        sweep_enabled: student?.student_settings?.sweep_enabled ?? true,
+        input_mode: (student?.student_settings?.input_mode as string) || 'scan',
+        font_size: (student?.student_settings?.font_size as string) || 'normal',
+        line_height: (student?.student_settings?.line_height as string) || 'normal',
+        bold_titles: student?.student_settings?.bold_titles ?? false,
+        uppercase: student?.student_settings?.uppercase ?? false,
+        voice_gender: (student?.student_settings?.voice_gender as string) || 'auto',
+        modules: {
+            create: initialModules.create ?? true,
+            library: initialModules.library ?? true,
+            design: initialModules.design ?? false
+        },
+        book_story_size: (student?.student_settings?.book_story_size as string) || 'medium',
+        book_audience: (student?.student_settings?.book_audience as string) || 'child'
     });
 
-    // Elements Data
-    const [protagonists, setProtagonists] = useState<StudentElement[]>([]);
-    const [scenarios, setScenarios] = useState<StudentElement[]>([]);
-    const [missions, setMissions] = useState<StudentElement[]>([]);
-    const [styles, setStyles] = useState<StudentElement[]>([]);
+    // Elements Data (SPEC-023 catalog)
+    const [catalogOptions, setCatalogOptions] = useState<ActionOptionPayload[]>([]);
+    const [profileItems, setProfileItems] = useState<Record<string, ProfileItemPayload>>({});
+    const [elementsMessage, setElementsMessage] = useState<string | null>(null);
+
+    // Contacts Data (SPEC-022)
+    const [contacts, setContacts] = useState<ProfileContactPayload[]>([]);
+    const [isLoadingContacts, setIsLoadingContacts] = useState(false);
+    const [editingContactId, setEditingContactId] = useState<string | null>(null);
+    const [contactMessage, setContactMessage] = useState<string | null>(null);
+    const [contactForm, setContactForm] = useState({
+        name: '',
+        relationship: '',
+        reason: ''
+    });
 
     // Load elements when tab is selected and student exists
     useEffect(() => {
@@ -256,22 +397,104 @@ const StudentEditor: React.FC<StudentEditorProps> = ({
         }
     }, [activeTab, student?.id]);
 
+    // Load contacts when tab is selected and student exists
+    useEffect(() => {
+        if (activeTab === 'contacts' && student?.id) {
+            void loadContacts();
+        }
+    }, [activeTab, student?.id]);
+
+    const loadContacts = async () => {
+        if (!student?.id) return;
+
+        setIsLoadingContacts(true);
+        try {
+            setContacts(await listProfileContacts(student.id));
+        } catch (err) {
+            console.error('Error loading contacts:', err);
+        } finally {
+            setIsLoadingContacts(false);
+        }
+    };
+
+    const resetContactForm = () => {
+        setContactForm({ name: '', relationship: '', reason: '' });
+        setEditingContactId(null);
+    };
+
+    const showContactMessage = (message: string) => {
+        setContactMessage(message);
+        setTimeout(() => setContactMessage(null), 3000);
+    };
+
+    const handleSaveContact = async () => {
+        if (
+            !student?.id ||
+            !contactForm.name.trim() ||
+            !contactForm.relationship.trim()
+        ) {
+            return;
+        }
+
+        const input = {
+            name: contactForm.name.trim(),
+            relationship: contactForm.relationship.trim(),
+            dedicationReason: contactForm.reason.trim() || undefined
+        };
+
+        try {
+            if (editingContactId) {
+                await updateProfileContact(editingContactId, input);
+            } else {
+                await createProfileContact(student.id, input);
+            }
+
+            resetContactForm();
+            showContactMessage(t('editor.contactSaved'));
+            await loadContacts();
+        } catch (err) {
+            console.error('Error saving contact:', err);
+            showContactMessage(t('editor.contactError'));
+        }
+    };
+
+    const handleEditContact = (contact: ProfileContactPayload) => {
+        setEditingContactId(contact.id);
+        setContactForm({
+            name: contact.name,
+            relationship: contact.relationship,
+            reason: contact.dedicationReason ?? ''
+        });
+    };
+
+    const handleDeleteContact = async (contactId: string) => {
+        try {
+            await deleteProfileContact(contactId);
+            if (editingContactId === contactId) resetContactForm();
+            await loadContacts();
+        } catch (err) {
+            console.error('Error deleting contact:', err);
+            showContactMessage(t('editor.contactRemoveError'));
+        }
+    };
+
     const loadElements = async () => {
         if (!student?.id) return;
 
         setIsLoadingElements(true);
         try {
-            const [protRes, scenRes, missRes, styleRes] = await Promise.all([
-                supabase.from('student_protagonists').select('*').eq('student_id', student.id),
-                supabase.from('student_scenarios').select('*').eq('student_id', student.id),
-                supabase.from('student_missions').select('*').eq('student_id', student.id),
-                supabase.from('student_styles').select('*').eq('student_id', student.id)
+            const [actions, items] = await Promise.all([
+                listActions(),
+                listProfileItems(student.id)
             ]);
+            const createAction = actions.find((action) => action.code === 'create');
 
-            setProtagonists(protRes.data || []);
-            setScenarios(scenRes.data || []);
-            setMissions(missRes.data || []);
-            setStyles(styleRes.data || []);
+            setCatalogOptions(
+                createAction ? await listActionOptions(createAction.id) : []
+            );
+            setProfileItems(
+                Object.fromEntries(items.map((item) => [item.itemId, item]))
+            );
         } catch (err) {
             console.error('Error loading elements:', err);
         } finally {
@@ -279,41 +502,62 @@ const StudentEditor: React.FC<StudentEditorProps> = ({
         }
     };
 
-    // Element CRUD operations
-    type ElementTable = 'student_protagonists' | 'student_scenarios' | 'student_missions' | 'student_styles';
+    const handleToggleElement = async (itemId: string, enabled: boolean) => {
+        if (!student?.id) return;
 
-    const handleToggleElement = async (table: ElementTable, id: string, enabled: boolean) => {
+        setElementsMessage(null);
         try {
-            await supabase.from(table).update({ is_enabled: enabled }).eq('id', id);
-            loadElements(); // Reload to sync state
+            const saved = await saveProfileItems(student.id, [
+                { itemId, isEnabled: enabled }
+            ]);
+            setProfileItems(
+                Object.fromEntries(saved.map((item) => [item.itemId, item]))
+            );
         } catch (err) {
             console.error('Error toggling element:', err);
+            if (err instanceof ApiError && err.code === 'LIMIT_EXCEEDED') {
+                setElementsMessage(t('editor.limitExceeded'));
+            }
         }
     };
 
-    const handleDeleteElement = async (table: ElementTable, id: string) => {
+    const handleDeleteElement = async (itemId: string) => {
         try {
-            await supabase.from(table).delete().eq('id', id);
-            loadElements();
+            await deleteActionItem(itemId);
+            await loadElements();
         } catch (err) {
             console.error('Error deleting element:', err);
         }
     };
 
-    const handleAddElement = async (table: ElementTable, label: string, category: 'protagonist' | 'scenario' | 'mission' | 'style') => {
-        if (!student?.id) return;
-
+    const handleAddElement = async (
+        optionId: string,
+        label: string,
+        category: string
+    ) => {
         const icon = getIconForLabel(label, category);
+
         try {
-            await supabase.from(table).insert({
-                student_id: student.id,
-                label,
-                icon,
-                is_enabled: true
-            });
-            loadElements();
+            await createActionItem(optionId, { label, icon });
+            await loadElements();
         } catch (err) {
             console.error('Error adding element:', err);
+        }
+    };
+
+    // SPEC-023C: teacher-facing quota editor backed by PATCH options/:id.
+    const handleSaveQuota = async (optionId: string, patch: OptionPatch) => {
+        setElementsMessage(null);
+        try {
+            const updated = await updateOption(optionId, patch);
+            setCatalogOptions((prev) =>
+                prev.map((option) =>
+                    option.id === optionId ? { ...option, ...updated } : option,
+                ),
+            );
+        } catch (err) {
+            console.error('Error saving quota:', err);
+            setElementsMessage(t('editor.quotaError'));
         }
     };
 
@@ -330,6 +574,7 @@ const StudentEditor: React.FC<StudentEditorProps> = ({
                 name: formData.name.trim(),
                 avatar_icon: formData.avatar_icon,
                 age: formData.age ? parseInt(formData.age) : null,
+                birthdate: formData.birthdate || null,
                 notes: formData.notes.trim() || null,
                 is_active: formData.is_active
             },
@@ -337,19 +582,29 @@ const StudentEditor: React.FC<StudentEditorProps> = ({
                 scan_interval: settingsData.scan_interval,
                 scan_columns: settingsData.scan_columns,
                 voice_feedback: settingsData.voice_feedback,
-                sound_enabled: settingsData.sound_enabled
+                sound_enabled: settingsData.sound_enabled,
+                sweep_enabled: settingsData.sweep_enabled,
+                input_mode: settingsData.input_mode,
+                font_size: settingsData.font_size,
+                line_height: settingsData.line_height,
+                bold_titles: settingsData.bold_titles,
+                uppercase: settingsData.uppercase,
+                voice_gender: settingsData.voice_gender,
+                modules: settingsData.modules,
+                book_story_size: settingsData.book_story_size,
+                book_audience: settingsData.book_audience
             }
         );
     };
 
     return (
-        <div className="h-screen bg-background-dark text-white p-6 flex flex-col overflow-hidden">
-            <div className="max-w-4xl mx-auto flex flex-col h-full overflow-hidden">
+        <div className="min-h-[100dvh] bg-background-dark text-white p-6 flex flex-col">
+            <div className="w-full max-w-4xl mx-auto flex flex-col flex-1 min-h-0">
                 {/* Header */}
                 <div className="flex items-center gap-4 mb-4">
                     <button
                         onClick={onCancel}
-                        className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                        className="p-2 min-w-11 min-h-11 hover:bg-white/10 rounded-lg transition-colors"
                     >
                         <span className="material-symbols-outlined">arrow_back</span>
                     </button>
@@ -390,9 +645,21 @@ const StudentEditor: React.FC<StudentEditorProps> = ({
                             Elementos de Creación
                         </button>
                     )}
+                    {student && (
+                        <button
+                            onClick={() => setActiveTab('contacts')}
+                            className={`px-4 py-3 font-bold border-b-2 transition-colors whitespace-nowrap flex items-center gap-2 ${activeTab === 'contacts'
+                                ? 'border-primary text-primary'
+                                : 'border-transparent text-gray-400 hover:text-white'
+                                }`}
+                        >
+                            <span className="material-symbols-outlined text-sm">contacts</span>
+                            {t('editor.contacts')}
+                        </button>
+                    )}
                 </div>
 
-                <form onSubmit={handleSubmit} className="bg-surface-dark rounded-2xl p-8 border border-border-accent flex-1 flex flex-col overflow-hidden">
+                <form onSubmit={handleSubmit} className="bg-surface-dark rounded-2xl p-8 border border-border-accent flex-1 flex flex-col">
 
                     {activeTab === 'profile' && (
                         <div className="animate-fade-in flex-1 overflow-y-auto">
@@ -447,6 +714,19 @@ const StudentEditor: React.FC<StudentEditorProps> = ({
                                         placeholder="Ej: 8"
                                         min="1"
                                         max="99"
+                                    />
+                                </div>
+
+                                {/* Fecha de nacimiento */}
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-400 mb-2">
+                                        {t('editor.birthdate')}
+                                    </label>
+                                    <input
+                                        type="date"
+                                        value={formData.birthdate}
+                                        onChange={(e) => setFormData(prev => ({ ...prev, birthdate: e.target.value }))}
+                                        className="w-full bg-background-dark border border-border-accent rounded-xl px-4 py-3 text-white focus:border-primary focus:outline-none"
                                     />
                                 </div>
                             </div>
@@ -567,6 +847,241 @@ const StudentEditor: React.FC<StudentEditorProps> = ({
                                 </label>
                             </div>
 
+                            {/* Barrido automático */}
+                            <div className="p-4 bg-background-dark rounded-xl border border-border-accent">
+                                <label className="flex items-center justify-between cursor-pointer">
+                                    <div>
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <span className="material-symbols-outlined text-primary">motion_photos_on</span>
+                                            <span className="font-bold">Barrido automático</span>
+                                        </div>
+                                        <p className="text-sm text-gray-400">
+                                            Avanza solo por las opciones cada {settingsData.scan_interval / 1000} segundos
+                                        </p>
+                                    </div>
+                                    <input
+                                        type="checkbox"
+                                        checked={settingsData.sweep_enabled}
+                                        onChange={(e) => setSettingsData(prev => ({ ...prev, sweep_enabled: e.target.checked }))}
+                                        className="size-6 accent-[#137fec]"
+                                    />
+                                </label>
+                            </div>
+
+                            {/* Modo de entrada */}
+                            <div className="p-4 bg-background-dark rounded-xl border border-border-accent">
+                                <label className="block font-bold mb-4 flex items-center gap-2">
+                                    <span className="material-symbols-outlined text-primary">touch_app</span>
+                                    Modo de entrada
+                                </label>
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                    {[
+                                        { value: 'scan', label: 'Barrido' },
+                                        { value: 'switch', label: 'Pulsador' },
+                                        { value: 'mouse', label: 'Mouse' },
+                                        { value: 'touch', label: 'Táctil' }
+                                    ].map(opt => (
+                                        <button
+                                            key={opt.value}
+                                            type="button"
+                                            onClick={() => setSettingsData(prev => ({ ...prev, input_mode: opt.value }))}
+                                            className={`py-3 px-2 rounded-xl border-2 font-bold transition-all ${settingsData.input_mode === opt.value
+                                                ? 'border-primary bg-primary/20 text-white'
+                                                : 'border-white/10 hover:border-white/30 text-gray-400'
+                                                }`}
+                                        >
+                                            {opt.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Texto */}
+                            <div className="p-4 bg-background-dark rounded-xl border border-border-accent space-y-5">
+                                <label className="block font-bold flex items-center gap-2">
+                                    <span className="material-symbols-outlined text-primary">format_size</span>
+                                    Texto
+                                </label>
+
+                                <div>
+                                    <p className="text-sm text-gray-400 mb-2">Tamaño de letra</p>
+                                    <div className="flex gap-3">
+                                        {[
+                                            { value: 'normal', label: '16' },
+                                            { value: 'large', label: '19' },
+                                            { value: 'xlarge', label: '22' }
+                                        ].map(opt => (
+                                            <button
+                                                key={opt.value}
+                                                type="button"
+                                                onClick={() => setSettingsData(prev => ({ ...prev, font_size: opt.value }))}
+                                                className={`size-12 rounded-xl border-2 flex items-center justify-center text-lg font-bold transition-all ${settingsData.font_size === opt.value
+                                                    ? 'border-primary bg-primary/20 text-white'
+                                                    : 'border-white/10 hover:border-white/30 text-gray-400'
+                                                    }`}
+                                            >
+                                                {opt.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <p className="text-sm text-gray-400 mb-2">Interlineado</p>
+                                    <div className="flex flex-wrap gap-3">
+                                        {[
+                                            { value: 'normal', label: 'Normal' },
+                                            { value: 'relaxed', label: 'Amplio' },
+                                            { value: 'loose', label: 'Muy amplio' }
+                                        ].map(opt => (
+                                            <button
+                                                key={opt.value}
+                                                type="button"
+                                                onClick={() => setSettingsData(prev => ({ ...prev, line_height: opt.value }))}
+                                                className={`py-3 px-4 rounded-xl border-2 text-sm font-bold transition-all ${settingsData.line_height === opt.value
+                                                    ? 'border-primary bg-primary/20 text-white'
+                                                    : 'border-white/10 hover:border-white/30 text-gray-400'
+                                                    }`}
+                                            >
+                                                {opt.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <label className="flex items-center justify-between cursor-pointer">
+                                    <span className="font-bold">Títulos en negrita</span>
+                                    <input
+                                        type="checkbox"
+                                        checked={settingsData.bold_titles}
+                                        onChange={(e) => setSettingsData(prev => ({ ...prev, bold_titles: e.target.checked }))}
+                                        className="size-6 accent-[#137fec]"
+                                    />
+                                </label>
+
+                                <label className="flex items-center justify-between cursor-pointer">
+                                    <span className="font-bold">Mayúsculas en toda la plataforma</span>
+                                    <input
+                                        type="checkbox"
+                                        checked={settingsData.uppercase}
+                                        onChange={(e) => setSettingsData(prev => ({ ...prev, uppercase: e.target.checked }))}
+                                        className="size-6 accent-[#137fec]"
+                                    />
+                                </label>
+                            </div>
+
+                            {/* Voz */}
+                            <div className="p-4 bg-background-dark rounded-xl border border-border-accent">
+                                <label className="block font-bold mb-4 flex items-center gap-2">
+                                    <span className="material-symbols-outlined text-primary">record_voice_over</span>
+                                    Tipo de voz
+                                </label>
+                                <div className="flex flex-wrap gap-3">
+                                    {[
+                                        { value: 'auto', label: 'Automática' },
+                                        { value: 'female', label: 'Femenina' },
+                                        { value: 'male', label: 'Masculina' }
+                                    ].map(opt => (
+                                        <button
+                                            key={opt.value}
+                                            type="button"
+                                            onClick={() => setSettingsData(prev => ({ ...prev, voice_gender: opt.value }))}
+                                            className={`py-3 px-4 rounded-xl border-2 text-sm font-bold transition-all ${settingsData.voice_gender === opt.value
+                                                ? 'border-primary bg-primary/20 text-white'
+                                                : 'border-white/10 hover:border-white/30 text-gray-400'
+                                                }`}
+                                        >
+                                            {opt.label}
+                                        </button>
+                                    ))}
+                                </div>
+                                <p className="mt-3 text-xs text-gray-400">
+                                    Si el dispositivo no tiene voz es-AR se usa es-US (limitación del sistema).
+                                </p>
+                            </div>
+
+                            {/* Módulos */}
+                            <div className="p-4 bg-background-dark rounded-xl border border-border-accent">
+                                <label className="block font-bold mb-4 flex items-center gap-2">
+                                    <span className="material-symbols-outlined text-primary">widgets</span>
+                                    {t('editor.modules')}
+                                </label>
+                                <div className="space-y-3">
+                                    {([
+                                        { key: 'create', label: t('editor.moduleCreate') },
+                                        { key: 'library', label: t('editor.moduleLibrary') },
+                                        { key: 'design', label: t('editor.moduleDesign') }
+                                    ] as const).map(module => (
+                                        <label key={module.key} className="flex items-center justify-between cursor-pointer">
+                                            <span className="font-bold">{module.label}</span>
+                                            <input
+                                                type="checkbox"
+                                                checked={settingsData.modules[module.key]}
+                                                onChange={(e) => setSettingsData(prev => ({
+                                                    ...prev,
+                                                    modules: { ...prev.modules, [module.key]: e.target.checked }
+                                                }))}
+                                                className="size-6 accent-[#137fec]"
+                                            />
+                                        </label>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Complejidad del cuento */}
+                            <div className="p-4 bg-background-dark rounded-xl border border-border-accent">
+                                <label className="block font-bold mb-4 flex items-center gap-2">
+                                    <span className="material-symbols-outlined text-primary">auto_stories</span>
+                                    {t('editor.bookComplexity')}
+                                </label>
+                                <div className="flex flex-wrap gap-3">
+                                    {[
+                                        { value: 'short', label: t('editor.bookShort') },
+                                        { value: 'medium', label: t('editor.bookMedium') },
+                                        { value: 'long', label: t('editor.bookLong') }
+                                    ].map(opt => (
+                                        <button
+                                            key={opt.value}
+                                            type="button"
+                                            onClick={() => setSettingsData(prev => ({ ...prev, book_story_size: opt.value }))}
+                                            className={`py-3 px-4 rounded-xl border-2 text-sm font-bold transition-all ${settingsData.book_story_size === opt.value
+                                                ? 'border-primary bg-primary/20 text-white'
+                                                : 'border-white/10 hover:border-white/30 text-gray-400'
+                                                }`}
+                                        >
+                                            {opt.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Audiencia */}
+                            <div className="p-4 bg-background-dark rounded-xl border border-border-accent">
+                                <label className="block font-bold mb-4 flex items-center gap-2">
+                                    <span className="material-symbols-outlined text-primary">groups</span>
+                                    {t('editor.bookAudience')}
+                                </label>
+                                <div className="flex flex-wrap gap-3">
+                                    {[
+                                        { value: 'child', label: t('editor.audienceChild') },
+                                        { value: 'teen', label: t('editor.audienceTeen') },
+                                        { value: 'adult', label: t('editor.audienceAdult') }
+                                    ].map(opt => (
+                                        <button
+                                            key={opt.value}
+                                            type="button"
+                                            onClick={() => setSettingsData(prev => ({ ...prev, book_audience: opt.value }))}
+                                            className={`py-3 px-4 rounded-xl border-2 text-sm font-bold transition-all ${settingsData.book_audience === opt.value
+                                                ? 'border-primary bg-primary/20 text-white'
+                                                : 'border-white/10 hover:border-white/30 text-gray-400'
+                                                }`}
+                                        >
+                                            {opt.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
                         </div>
                     )}
 
@@ -576,61 +1091,187 @@ const StudentEditor: React.FC<StudentEditorProps> = ({
                                 <div className="flex items-center justify-center py-12">
                                     <span className="material-symbols-outlined text-4xl text-primary animate-spin">progress_activity</span>
                                 </div>
+                            ) : catalogOptions.length === 0 ? (
+                                <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl">
+                                    <p className="text-amber-400 text-sm flex items-center gap-2">
+                                        <span className="material-symbols-outlined">info</span>
+                                        {t('editor.catalogEmpty')}
+                                    </p>
+                                </div>
                             ) : (
                                 <div className="space-y-6">
                                     <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl mb-6">
                                         <p className="text-amber-400 text-sm flex items-center gap-2">
                                             <span className="material-symbols-outlined">info</span>
-                                            Puedes habilitar hasta <strong>4 elementos</strong> por categoría. El icono se genera automáticamente según el nombre.
+                                            {t('editor.catalogHint')}
                                         </p>
                                     </div>
 
-                                    <ElementSection
-                                        title="Personajes"
-                                        category="protagonist"
-                                        elements={protagonists}
-                                        maxEnabled={4}
-                                        onToggle={(id, enabled) => handleToggleElement('student_protagonists', id, enabled)}
-                                        onDelete={(id) => handleDeleteElement('student_protagonists', id)}
-                                        onAdd={(label) => handleAddElement('student_protagonists', label, 'protagonist')}
-                                    />
+                                    {elementsMessage && (
+                                        <div
+                                            role="alert"
+                                            className="p-4 bg-red-500/20 border border-red-500/50 rounded-xl mb-6 text-red-300 flex items-center gap-2"
+                                        >
+                                            <span className="material-symbols-outlined">error</span>
+                                            {elementsMessage}
+                                        </div>
+                                    )}
 
-                                    <ElementSection
-                                        title="Escenarios"
-                                        category="scenario"
-                                        elements={scenarios}
-                                        maxEnabled={4}
-                                        onToggle={(id, enabled) => handleToggleElement('student_scenarios', id, enabled)}
-                                        onDelete={(id) => handleDeleteElement('student_scenarios', id)}
-                                        onAdd={(label) => handleAddElement('student_scenarios', label, 'scenario')}
-                                    />
-
-                                    <ElementSection
-                                        title="Misiones"
-                                        category="mission"
-                                        elements={missions}
-                                        maxEnabled={4}
-                                        onToggle={(id, enabled) => handleToggleElement('student_missions', id, enabled)}
-                                        onDelete={(id) => handleDeleteElement('student_missions', id)}
-                                        onAdd={(label) => handleAddElement('student_missions', label, 'mission')}
-                                    />
-
-                                    <ElementSection
-                                        title="Estilos Visuales"
-                                        category="style"
-                                        elements={styles}
-                                        maxEnabled={4}
-                                        onToggle={(id, enabled) => handleToggleElement('student_styles', id, enabled)}
-                                        onDelete={(id) => handleDeleteElement('student_styles', id)}
-                                        onAdd={(label) => handleAddElement('student_styles', label, 'style')}
-                                    />
+                                    {catalogOptions.map((option) => (
+                                        <ElementSection
+                                            key={option.id}
+                                            title={option.label}
+                                            icon={option.icon}
+                                            maxEnabled={option.maxEnabled}
+                                            maxPerPage={option.maxPerPage}
+                                            optionId={option.id}
+                                            onSaveQuota={(id, patch) => void handleSaveQuota(id, patch)}
+                                            elements={option.items.map((item) => ({
+                                                id: item.id,
+                                                label: item.label,
+                                                icon: item.icon,
+                                                level: item.level,
+                                                isEnabled:
+                                                    profileItems[item.id]?.isEnabled ??
+                                                    item.isActive
+                                            }))}
+                                            onToggle={(id, enabled) => void handleToggleElement(id, enabled)}
+                                            onDelete={(id) => void handleDeleteElement(id)}
+                                            onAdd={(label) => void handleAddElement(option.id, label, option.code)}
+                                        />
+                                    ))}
                                 </div>
                             )}
                         </div>
                     )}
 
-                    {/* Footer Actions */}
-                    <div className="flex gap-4 mt-8 pt-6 border-t border-border-accent">
+                    {activeTab === 'contacts' && student && (
+                        <div className="animate-fade-in flex-1 overflow-y-auto">
+                            <div className="p-4 bg-background-dark rounded-xl border border-border-accent mb-6">
+                                <h3 className="font-bold text-lg flex items-center gap-2 mb-4">
+                                    <span className="material-symbols-outlined text-primary">person_add</span>
+                                    {editingContactId
+                                        ? t('editor.contacts')
+                                        : t('editor.contactAdd')}
+                                </h3>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-400 mb-2">
+                                            {t('editor.contactName')} *
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={contactForm.name}
+                                            onChange={(e) => setContactForm(prev => ({ ...prev, name: e.target.value }))}
+                                            maxLength={80}
+                                            className="w-full min-h-11 bg-surface-dark border border-border-accent rounded-xl px-4 py-3 text-white focus:border-primary focus:outline-none"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-400 mb-2">
+                                            {t('editor.contactRelationship')} *
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={contactForm.relationship}
+                                            onChange={(e) => setContactForm(prev => ({ ...prev, relationship: e.target.value }))}
+                                            maxLength={40}
+                                            className="w-full min-h-11 bg-surface-dark border border-border-accent rounded-xl px-4 py-3 text-white focus:border-primary focus:outline-none"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-400 mb-2">
+                                            {t('editor.contactReason')}
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={contactForm.reason}
+                                            onChange={(e) => setContactForm(prev => ({ ...prev, reason: e.target.value }))}
+                                            maxLength={200}
+                                            className="w-full min-h-11 bg-surface-dark border border-border-accent rounded-xl px-4 py-3 text-white focus:border-primary focus:outline-none"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="flex gap-3 mt-4">
+                                    <button
+                                        type="button"
+                                        onClick={() => void handleSaveContact()}
+                                        disabled={!contactForm.name.trim() || !contactForm.relationship.trim()}
+                                        className="min-h-11 px-6 py-3 bg-primary hover:bg-primary/80 rounded-xl font-bold disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                    >
+                                        {t('editor.contactAdd')}
+                                    </button>
+                                    {editingContactId && (
+                                        <button
+                                            type="button"
+                                            onClick={resetContactForm}
+                                            className="min-h-11 px-6 py-3 bg-white/10 hover:bg-white/20 rounded-xl font-bold transition-colors"
+                                        >
+                                            Cancelar
+                                        </button>
+                                    )}
+                                </div>
+                                {contactMessage && (
+                                    <p className="mt-3 text-sm text-primary font-bold" role="status">
+                                        {contactMessage}
+                                    </p>
+                                )}
+                            </div>
+
+                            {isLoadingContacts ? (
+                                <div className="flex items-center justify-center py-12">
+                                    <span className="material-symbols-outlined text-4xl text-primary animate-spin">progress_activity</span>
+                                </div>
+                            ) : contacts.length === 0 ? (
+                                <p className="text-center text-gray-400 py-8">
+                                    {t('editor.contactsEmpty')}
+                                </p>
+                            ) : (
+                                <ul className="space-y-3">
+                                    {contacts.map((contact) => (
+                                        <li
+                                            key={contact.id}
+                                            className="flex items-center justify-between gap-4 p-4 bg-background-dark rounded-xl border border-border-accent"
+                                        >
+                                            <div>
+                                                <p className="font-bold">
+                                                    {contact.name}
+                                                    <span className="ml-2 text-sm text-gray-400">
+                                                        {contact.relationship}
+                                                    </span>
+                                                </p>
+                                                {contact.dedicationReason && (
+                                                    <p className="text-sm text-gray-400">
+                                                        {contact.dedicationReason}
+                                                    </p>
+                                                )}
+                                            </div>
+                                            <div className="flex gap-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleEditContact(contact)}
+                                                    aria-label={`${t('editor.contacts')}: ${contact.name}`}
+                                                    className="min-w-11 min-h-11 flex items-center justify-center bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
+                                                >
+                                                    <span className="material-symbols-outlined">edit</span>
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => void handleDeleteContact(contact.id)}
+                                                    aria-label={`${t('editor.contactDelete')}: ${contact.name}`}
+                                                    className="min-w-11 min-h-11 flex items-center justify-center bg-red-500/20 hover:bg-red-500/30 text-red-300 rounded-lg transition-colors"
+                                                >
+                                                    <span className="material-symbols-outlined">delete</span>
+                                                </button>
+                                            </div>
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Footer Actions */}                    <div className="flex gap-4 mt-8 pt-6 border-t border-border-accent">
                         <button
                             type="button"
                             onClick={onCancel}

@@ -55,12 +55,17 @@ export const useInputDevice = ({
         }
     }, [enabled, keys]);
 
-    // Manejar eventos de clic
-    const handleClick = useCallback((e: MouseEvent) => {
+    // Manejar eventos de puntero: sólo activa cuando el pointerdown no cae
+    // sobre un elemento interactivo ni sobre una opción auto-seleccionable
+    // (SPEC-011: lo presionado gana al foco del barrido).
+    const handlePointerDown = useCallback((e: PointerEvent) => {
         if (!enabled) return;
-        // Solo activar si el clic no es en un elemento interactivo específico
-        const target = e.target as HTMLElement;
-        if (target.closest('input, textarea, select, [data-no-scan]')) {
+        const target = e.target as HTMLElement | null;
+        if (
+            target?.closest(
+                'input, textarea, select, button, a, [data-option], [data-no-scan]'
+            )
+        ) {
             return;
         }
         onActivateRef.current();
@@ -145,13 +150,13 @@ export const useInputDevice = ({
         if (!enabled) return;
 
         window.addEventListener('keydown', handleKeyDown);
-        window.addEventListener('click', handleClick);
+        window.addEventListener('pointerdown', handlePointerDown);
 
         return () => {
             window.removeEventListener('keydown', handleKeyDown);
-            window.removeEventListener('click', handleClick);
+            window.removeEventListener('pointerdown', handlePointerDown);
         };
-    }, [enabled, handleKeyDown, handleClick]);
+    }, [enabled, handleKeyDown, handlePointerDown]);
 
     // Intentar reconectar dispositivos HID previamente conectados
     useEffect(() => {

@@ -289,6 +289,15 @@ export type Database = {
                     theme: string | null
                     updated_at: string | null
                     voice_feedback: boolean | null
+                    sweep_enabled: boolean
+                    input_mode: string
+                    line_height: string
+                    bold_titles: boolean
+                    uppercase: boolean
+                    voice_gender: string
+                    modules: Json
+                    book_story_size: string
+                    book_audience: string
                 }
                 Insert: {
                     content_filter_level?: string | null
@@ -305,6 +314,15 @@ export type Database = {
                     theme?: string | null
                     updated_at?: string | null
                     voice_feedback?: boolean | null
+                    sweep_enabled?: boolean
+                    input_mode?: string
+                    line_height?: string
+                    bold_titles?: boolean
+                    uppercase?: boolean
+                    voice_gender?: string
+                    modules?: Json
+                    book_story_size?: string
+                    book_audience?: string
                 }
                 Update: {
                     content_filter_level?: string | null
@@ -321,6 +339,15 @@ export type Database = {
                     theme?: string | null
                     updated_at?: string | null
                     voice_feedback?: boolean | null
+                    sweep_enabled?: boolean
+                    input_mode?: string
+                    line_height?: string
+                    bold_titles?: boolean
+                    uppercase?: boolean
+                    voice_gender?: string
+                    modules?: Json
+                    book_story_size?: string
+                    book_audience?: string
                 }
                 Relationships: [
                     {
@@ -336,6 +363,7 @@ export type Database = {
                 Row: {
                     age: number | null
                     avatar_icon: string | null
+                    birthdate: string | null
                     created_at: string | null
                     id: string
                     is_active: boolean | null
@@ -358,6 +386,7 @@ export type Database = {
                 Update: {
                     age?: number | null
                     avatar_icon?: string | null
+                    birthdate?: string | null
                     created_at?: string | null
                     id?: string
                     is_active?: boolean | null

@@ -1,17 +1,38 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { APP_GUARD } from '@nestjs/core';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { AIModule } from './ai/ai.module';
+import { AiModule } from './ai/ai.module';
+import { BooksModule } from './books/books.module';
+import { ProfilesModule } from './profiles/profiles.module';
+import { ObservabilityModule } from './observability/observability.module';
+import { validateEnv } from './config/env.validation';
+import { SupabaseModule } from './supabase/supabase.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
+      validate: validateEnv,
     }),
-    AIModule,
+    ThrottlerModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => [
+        {
+          ttl: configService.get<number>('THROTTLE_TTL_MS') ?? 60_000,
+          limit: configService.get<number>('THROTTLE_LIMIT') ?? 60,
+        },
+      ],
+    }),
+    SupabaseModule,
+    ObservabilityModule,
+    BooksModule,
+    ProfilesModule,
+    AiModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService, { provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
-export class AppModule { }
+export class AppModule {}

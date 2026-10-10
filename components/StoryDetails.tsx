@@ -1,11 +1,22 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Story } from '../types/database';
-import { supabase } from '../services/supabase';
 import { generateStoryPDF } from '../utils/pdfGenerator';
 import { speak } from '../utils/speech';
+import { t } from '../utils/messages';
+import { ApiError } from '../services/backendApi';
+import { followJob } from '../services/bookGeneration';
+import {
+  getExportDownload,
+  requestBookExport,
+  requestDesignExport,
+} from '../services/backendExports';
+import { useDialogA11y } from '../hooks/useDialogA11y';
 
 interface StoryDetailsProps {
     story: Story;
+    persisted?: boolean;
+    bookId?: string;
+    designId?: string;
     onBack: () => void;
     onRead: () => void;
     onGoMenu: () => void;
@@ -14,6 +25,9 @@ interface StoryDetailsProps {
 
 const StoryDetails: React.FC<StoryDetailsProps> = ({
     story,
+    persisted = false,
+    bookId,
+    designId,
     onBack,
     onRead,
     onGoMenu,
@@ -21,44 +35,151 @@ const StoryDetails: React.FC<StoryDetailsProps> = ({
 }) => {
     const [isExporting, setIsExporting] = useState(false);
     const [showDedicationModal, setShowDedicationModal] = useState(false);
-    const [dedicationText, setDedicationText] = useState('');
-    const [dedicationPosition, setDedicationPosition] = useState<'start' | 'end'>('start');
+    const [dedicationText, setDedicationText] = useState(
+        story.dedication_to ?? ''
+    );
+    const [dedicationPosition, setDedicationPosition] = useState<'start' | 'end'>(
+        story.dedication_position === 'end' ? 'end' : 'start'
+    );
     const [exportStatus, setExportStatus] = useState('');
+    const [isExportingEpub, setIsExportingEpub] = useState(false);
+    const [epubStatus, setEpubStatus] = useState('');
+    const [isExportingDesignPdf, setIsExportingDesignPdf] = useState(false);
+    const [designPdfStatus, setDesignPdfStatus] = useState('');
     const [isSaving, setIsSaving] = useState(false);
     const [hasSaved, setHasSaved] = useState(false);
+    const dedicationDialogRef = useRef<HTMLDivElement>(null);
 
-    const handleSave = async () => {
+    useDialogA11y(
+        dedicationDialogRef,
+        showDedicationModal,
+        () => setShowDedicationModal(false)
+    );
+
+    const handleSave = () => {
         if (isSaving || hasSaved) return;
-        setIsSaving(true);
-        if (voiceEnabled) speak('Guardando tu cuento en la biblioteca...');
 
-        try {
-            const { error } = await supabase.from('stories').insert({
-                student_id: story.student_id,
-                title: story.title,
-                content: story.content,
-                protagonist: story.protagonist,
-                scenery: story.scenery,
-                mission: story.mission,
-                style: story.style,
-                image_url: story.image_url,
-                type: 'story'
-            });
-
-            if (error) throw error;
-
+        // Books generated through the backend are already persisted (SPEC-008).
+        if (persisted) {
             setHasSaved(true);
-            if (voiceEnabled) speak('¡Cuento guardado con éxito!');
-        } catch (err) {
-            console.error('Error saving story:', err);
-            if (voiceEnabled) speak('Hubo un problema al guardar el cuento.');
-        } finally {
-            setIsSaving(false);
+            if (voiceEnabled) speak('Tu cuento ya está guardado en tu biblioteca');
+            return;
         }
+
+        // SPEC-032: no legacy fallback. Never mark an unpersisted story saved.
+        if (voiceEnabled) speak('Hubo un problema al guardar el cuento.');
     };
 
     const handleExportClick = () => {
         setShowDedicationModal(true);
+    };
+
+    // SPEC-031B: server-side flyer PDF (designs keep no client PDF path:
+    // the dedication modal flow below is books-only).
+    const handleGenerateDesignPDF = async () => {
+        if (!designId || isExportingDesignPdf) return;
+
+        const controller = new AbortController();
+        setIsExportingDesignPdf(true);
+        setDesignPdfStatus(t('reader.designPdfGenerating'));
+        if (voiceEnabled) speak(t('reader.designPdfGenerating'));
+
+        try {
+            const job = await requestDesignExport(
+                designId,
+                { format: 'pdf' },
+                { signal: controller.signal },
+            );
+            const finalStatus = await followJob(job.jobId, {
+                signal: controller.signal,
+            });
+
+            if (finalStatus.status === 'failed' || !finalStatus.bookId) {
+                throw new ApiError({
+                    statusCode: 502,
+                    code: finalStatus.error?.code ?? 'INTERNAL',
+                    message:
+                        finalStatus.error?.message ?? 'export failed',
+                });
+            }
+
+            const { downloadUrl } = await getExportDownload(job.jobId, {
+                signal: controller.signal,
+            });
+            const link = document.createElement('a');
+            link.href = downloadUrl;
+            link.download = `${story.title}.pdf`;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+
+            setDesignPdfStatus(t('reader.designPdfReady'));
+            if (voiceEnabled) speak(t('reader.designPdfReady'));
+        } catch (err) {
+            if (err instanceof DOMException && err.name === 'AbortError') {
+                return;
+            }
+
+            setDesignPdfStatus(t('reader.designPdfFailed'));
+            if (voiceEnabled) speak(t('reader.designPdfFailed'));
+        } finally {
+            setIsExportingDesignPdf(false);
+            setTimeout(() => setDesignPdfStatus(''), 5000);
+        }
+    };
+
+    // SPEC-031: server-side EPUB through the export job pipeline.
+    const handleGenerateEPUB = async () => {
+        if (!bookId || isExportingEpub) return;
+
+        const controller = new AbortController();
+        setIsExportingEpub(true);
+        setEpubStatus(t('reader.epubGenerating'));
+        if (voiceEnabled) speak(t('reader.epubGenerating'));
+
+        try {
+            const job = await requestBookExport(
+                bookId,
+                { format: 'epub' },
+                { signal: controller.signal },
+            );
+            const finalStatus = await followJob(job.jobId, {
+                signal: controller.signal,
+            });
+
+            if (finalStatus.status === 'failed' || !finalStatus.bookId) {
+                throw new ApiError({
+                    statusCode: 502,
+                    code: finalStatus.error?.code ?? 'INTERNAL',
+                    message: finalStatus.error?.message ?? 'export failed',
+                });
+            }
+
+            const { downloadUrl } = await getExportDownload(job.jobId, {
+                signal: controller.signal,
+            });
+            const link = document.createElement('a');
+            link.href = downloadUrl;
+            link.download = `${story.title}.epub`;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+
+            setEpubStatus(t('reader.epubReady'));
+            if (voiceEnabled) speak(t('reader.epubReady'));
+        } catch (err) {
+            if (err instanceof DOMException && err.name === 'AbortError') {
+                return;
+            }
+
+            // Any export failure speaks the same localized message: the
+            // button context already says what failed.
+            setEpubStatus(t('reader.epubFailed'));
+            if (voiceEnabled) speak(t('reader.epubFailed'));
+        } finally {
+            setIsExportingEpub(false);
+            setTimeout(() => setEpubStatus(''), 5000);
+        }
     };
 
     const handleGeneratePDF = async () => {
@@ -156,12 +277,28 @@ const StoryDetails: React.FC<StoryDetailsProps> = ({
                         </button>
 
                         <button
-                            onClick={handleExportClick}
-                            className="flex-1 min-w-[200px] py-4 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-2xl font-bold text-xl text-white flex items-center justify-center gap-3 transition-all hover:scale-105"
+                            onClick={designId ? handleGenerateDesignPDF : handleExportClick}
+                            disabled={isExportingDesignPdf}
+                            className="flex-1 min-w-[200px] py-4 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-2xl font-bold text-xl text-white flex items-center justify-center gap-3 transition-all hover:scale-105 disabled:opacity-40"
                         >
                             <span className="material-symbols-outlined text-3xl">picture_as_pdf</span>
-                            Descargar PDF
+                            {isExportingDesignPdf
+                                ? (designPdfStatus || t('reader.designPdfGenerating'))
+                                : 'Descargar PDF'}
                         </button>
+
+                        {bookId && (
+                            <button
+                                onClick={handleGenerateEPUB}
+                                disabled={isExportingEpub}
+                                className="flex-1 min-w-[200px] py-4 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-2xl font-bold text-xl text-white flex items-center justify-center gap-3 transition-all hover:scale-105 disabled:opacity-40"
+                            >
+                                <span className="material-symbols-outlined text-3xl">book</span>
+                                {isExportingEpub
+                                    ? (epubStatus || t('reader.epubGenerating'))
+                                    : t('reader.epubDownload')}
+                            </button>
+                        )}
 
                         <button
                             onClick={handleSave}
@@ -187,11 +324,23 @@ const StoryDetails: React.FC<StoryDetailsProps> = ({
                         </button>
                     </div>
 
+                    {epubStatus && !isExportingEpub && (
+                        <p aria-live="polite" className="text-sm text-gray-400 text-center">
+                            {epubStatus}
+                        </p>
+                    )}
+
+                    {designPdfStatus && !isExportingDesignPdf && (
+                        <p aria-live="polite" className="text-sm text-gray-400 text-center">
+                            {designPdfStatus}
+                        </p>
+                    )}
+
                     <div className="p-6 bg-white/5 rounded-2xl border border-white/10">
-                        <h3 className="text-lg font-bold text-gray-300 mb-2 flex items-center gap-2">
+                        <h2 className="text-lg font-bold text-gray-300 mb-2 flex items-center gap-2">
                             <span className="material-symbols-outlined text-yellow-500">lightbulb</span>
                             Detalles de la Misión
-                        </h3>
+                        </h2>
                         <p className="text-gray-400">
                             {story.mission}
                         </p>
@@ -202,7 +351,13 @@ const StoryDetails: React.FC<StoryDetailsProps> = ({
             {/* Modal de Dedicatoria */}
             {showDedicationModal && (
                 <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                    <div className="bg-slate-900 border border-slate-700 rounded-3xl p-8 max-w-lg w-full shadow-2xl animate-scale-in">
+                    <div
+                        ref={dedicationDialogRef}
+                        role="dialog"
+                        aria-modal="true"
+                        aria-label="Agregar Dedicatoria"
+                        className="bg-slate-900 border border-slate-700 rounded-3xl p-8 max-w-lg w-full shadow-2xl animate-scale-in"
+                    >
                         <div className="flex items-center justify-between mb-6">
                             <h2 className="text-2xl font-bold text-white flex items-center gap-2">
                                 <span className="material-symbols-outlined text-primary">favorite</span>
@@ -210,7 +365,7 @@ const StoryDetails: React.FC<StoryDetailsProps> = ({
                             </h2>
                             <button
                                 onClick={() => setShowDedicationModal(false)}
-                                className="text-gray-400 hover:text-white"
+                                className="p-2 min-w-11 min-h-11 text-gray-400 hover:text-white"
                                 disabled={isExporting}
                             >
                                 <span className="material-symbols-outlined">close</span>
@@ -222,6 +377,9 @@ const StoryDetails: React.FC<StoryDetailsProps> = ({
                                 <label className="block text-sm font-bold text-gray-400 mb-2">
                                     Mensaje especial
                                 </label>
+                                <p className="text-xs text-gray-500 mb-2">
+                                    {t('reader.dedicationPrivacy')}
+                                </p>
                                 <textarea
                                     value={dedicationText}
                                     onChange={(e) => setDedicationText(e.target.value)}
