@@ -67,8 +67,16 @@ See `docs/specs/SPEC-033D.md` → Acceptance criteria.
   resolved `env-key` instead of the stored tenant key; decryption failure
   resolved to `env-key` instead of rejecting; `AI_PROVIDER=openrouter` rejected
   by `@IsIn`.
-- Backend GREEN: focused 4 suites / 37 tests; full unit 69 suites / 367 tests;
-  e2e 8 suites / 52 tests; `npm run build` clean; `npm run lint` clean.
+- Backend GREEN: focused 4 suites / 37 tests; full unit 70 suites / 372 tests
+  (after the correction); e2e 8 suites / 52 tests; `npm run build` clean;
+  `npm run lint` clean.
+- E2E harness gotcha (pre-existing; reproduced on clean `dev`, NOT a 033D
+  regression): `ConfigModule.forRoot` evaluates at import time, so
+  `test-app.ts`'s late `process.env` assignment loses to the local `.env`;
+  without `AI_ENDPOINTS_ENABLED=true` (plus mock keys / Supabase vars) already
+  exported in the shell, every AI request returns 503 `AI_ENDPOINTS_DISABLED`.
+  Confirmed 8 suites / 52 tests green with those vars exported +
+  `npx jest --config ./test/jest-e2e.json --runInBand`.
 - Parent spot check (re-run): focused 4 suites / 37 tests green; `nest build`
   clean.
 - Baseline note: this branch derives from `dev`; the local counts are
