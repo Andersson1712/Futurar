@@ -72,6 +72,12 @@ describe('validateEnv', () => {
     );
   });
 
+  it('accepts openrouter as an AI_PROVIDER (SPEC-033D)', () => {
+    expect(validateEnv({ AI_PROVIDER: 'openrouter' }).AI_PROVIDER).toBe(
+      'openrouter',
+    );
+  });
+
   it('rejects an unsupported AI_PROVIDER', () => {
     expect(() => validateEnv({ AI_PROVIDER: 'openai' })).toThrow(
       /Invalid environment configuration/,

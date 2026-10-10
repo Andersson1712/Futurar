@@ -2,6 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AiProviderError } from '../../ai.errors';
 import { SECRET_PROVIDER } from '../../tokens';
+import type { SecretName } from '../../secrets/secret-provider';
 
 export const OPENROUTER_API_BASE_URL = 'https://openrouter.ai/api/v1';
 export const OPENROUTER_TEXT_TIMEOUT_MS = 60_000;
@@ -13,13 +14,12 @@ interface PostOptions {
 }
 
 /**
- * Minimal key-resolution surface the client needs. The shared
- * SecretProvider types its key as the Gemini literal, so the client
- * depends on this structural interface instead (same DB → env fallback
- * flow at runtime via the SECRET_PROVIDER token).
+ * Minimal key-resolution surface the client needs. It mirrors the shared
+ * SecretProvider key union (DB → env fallback at runtime via the
+ * SECRET_PROVIDER token) while allowing a nullish return.
  */
 export interface OpenRouterSecretProvider {
-  get(name: string, tenantId?: string): Promise<string | null | undefined>;
+  get(name: SecretName, tenantId?: string): Promise<string | null | undefined>;
 }
 
 /**

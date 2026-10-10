@@ -62,6 +62,20 @@ describe('AiCredentialsService (SPEC-020)', () => {
     });
   });
 
+  it('lists and revokes an openrouter credential (SPEC-033D)', async () => {
+    const { service } = buildService();
+
+    await service.save('teacher-1', 'openrouter', API_KEY);
+
+    const list = await service.list('teacher-1');
+    expect(list).toHaveLength(1);
+    expect(list[0].provider).toBe('openrouter');
+
+    await service.revoke('teacher-1', 'openrouter');
+    const after = await service.list('teacher-1');
+    expect(after[0].status).toBe('revoked');
+  });
+
   it('rejects invalid keys and providers', async () => {
     const { service } = buildService();
 

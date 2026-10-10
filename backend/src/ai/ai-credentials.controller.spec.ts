@@ -74,6 +74,19 @@ describe('AiCredentialsController (SPEC-020)', () => {
     expect(JSON.stringify(response.body)).not.toContain(API_KEY);
   });
 
+  it('saves an openrouter key and never returns it (SPEC-033D)', async () => {
+    const response = await request(app.getHttpServer())
+      .put('/api/v1/ai/credentials/openrouter')
+      .send({ apiKey: API_KEY })
+      .expect(200);
+
+    expect(response.body).toMatchObject({
+      provider: 'openrouter',
+      status: 'active',
+    });
+    expect(JSON.stringify(response.body)).not.toContain(API_KEY);
+  });
+
   it('lists metadata only and revokes with 204', async () => {
     await request(app.getHttpServer())
       .put('/api/v1/ai/credentials/gemini')
