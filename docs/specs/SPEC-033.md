@@ -1,6 +1,6 @@
 # SPEC-033 — Multi-model generation via OpenRouter (curated catalog)
 
-- Status: **proposed**
+- Status: **implemented** (merged #41; follow-ups 033B per-teacher model selection, 033C tenant budgets)
 - Depends on: SPEC-002 (ports), SPEC-004/005 (prompts/validation),
   SPEC-006/007 (jobs/SSE), SPEC-008 (persistence/audit), SPEC-020
   (per-teacher encrypted credentials), SPEC-027 (metrics/usage),

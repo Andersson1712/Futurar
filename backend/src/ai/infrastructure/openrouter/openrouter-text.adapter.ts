@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { AiProviderError, toProviderError } from '../../ai.errors';
+import { ModelSelectionService } from '../../application/model-selection.service';
 import type {
   TextGenerationRequest,
   TextGenerationResult,
@@ -11,7 +11,6 @@ import {
   OPENROUTER_TEXT_TIMEOUT_MS,
   OpenRouterClient,
 } from './openrouter-client';
-import { resolveOpenRouterConfig } from './openrouter.config';
 
 interface OpenRouterChatResponse {
   choices?: Array<{ message?: { content?: string | null } }>;
@@ -36,15 +35,18 @@ interface OpenRouterChatResponse {
 export class OpenRouterTextAdapter implements TextGeneratorPort {
   constructor(
     private readonly client: OpenRouterClient,
-    private readonly configService: ConfigService,
+    private readonly modelSelection: ModelSelectionService,
   ) {}
 
   async generate(
     request: TextGenerationRequest,
   ): Promise<TextGenerationResult> {
-    // Single shared instance serves the book vertical; per-teacher model
-    // selection is SPEC-033B (out of scope here).
-    const model = resolveOpenRouterConfig(this.configService).book.textModel;
+    // SPEC-033B: resolve per teacher (owner = request tenantId) and per
+    // vertical instead of hardcoding `.book`; defaults to 'book' when absent.
+    const model = await this.modelSelection.resolveText(
+      request.tenantId,
+      request.vertical ?? 'book',
+    );
 
     try {
       const response = await this.client.post<OpenRouterChatResponse>(

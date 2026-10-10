@@ -1,19 +1,20 @@
 import { Injectable, Optional } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { AiProviderError, toProviderError } from '../../ai.errors';
+import { ModelSelectionService } from '../../application/model-selection.service';
 import type {
   ImageGenerationRequest,
   ImageGenerationResult,
+  ImageGenerationUsage,
   ImageGeneratorPort,
 } from '../../domain/ports/image-generator.port';
 import {
   OPENROUTER_IMAGE_TIMEOUT_MS,
   OpenRouterClient,
 } from './openrouter-client';
-import { resolveOpenRouterConfig } from './openrouter.config';
 
 interface OpenRouterImageResponse {
   data?: Array<{ b64_json?: string }>;
+  usage?: { cost?: number };
 }
 
 /**
@@ -26,16 +27,19 @@ interface OpenRouterImageResponse {
 export class OpenRouterImageAdapter implements ImageGeneratorPort {
   constructor(
     private readonly client: OpenRouterClient,
-    private readonly configService: ConfigService,
+    private readonly modelSelection: ModelSelectionService,
     @Optional() private readonly timeoutMs?: number,
   ) {}
 
   async generate(
     request: ImageGenerationRequest,
   ): Promise<ImageGenerationResult> {
-    // Single shared instance serves the book vertical; per-teacher model
-    // selection is SPEC-033B (out of scope here).
-    const model = resolveOpenRouterConfig(this.configService).book.imageModel;
+    // SPEC-033B: resolve per teacher (owner = request tenantId) and per
+    // vertical instead of hardcoding `.book`; defaults to 'book' when absent.
+    const model = await this.modelSelection.resolveImage(
+      request.tenantId,
+      request.vertical ?? 'book',
+    );
 
     try {
       const response = await this.client.post<OpenRouterImageResponse>(
@@ -65,9 +69,18 @@ export class OpenRouterImageAdapter implements ImageGeneratorPort {
         data: Buffer.from(b64, 'base64'),
         mimeType: 'image/png',
         model,
+        usage: mapUsage(response.usage),
       };
     } catch (error) {
       throw toProviderError(error);
     }
   }
+}
+
+function mapUsage(
+  usage: OpenRouterImageResponse['usage'],
+): ImageGenerationUsage | undefined {
+  if (!usage) return undefined;
+
+  return { costUsd: usage.cost };
 }

@@ -16,11 +16,11 @@ Leyenda:
 
 ## Estado actual
 
-- Fase activa: **Fase 9 — Post-MVP (verticales completos; próximo SPEC-031 exportación)**
-- Última tarea cerrada: retiro de lecturas/escrituras legacy de `stories` (PR #49 a dev)
-- Próxima tarea: SPEC-031 Exportar PDF/EPUB (spec pendiente) — SPEC-026 en pausa per owner
+- Fase activa: **Fase 9 — Post-MVP (verticales + exportación completos; próximo SPEC-033B)**
+- Última tarea cerrada: exportación PDF server-side de flyers (SPEC-031B, PR #51 a dev)
+- Próxima tarea: cerrar SPEC-033B (review + PR a dev); luego SPEC-033D — SPEC-030 TTS es-AR y SPEC-026 en pausa per owner
 - Rama de integración: `dev` (protegida con CI, 4 checks); `main` congelada y protegida.
-- Hito: 4 verticales en `dev` (cuentos, diseños #38, presentaciones #45, tableros #46) + backfill legacy 0013 (#47) + fix 0003 (#48).
+- Hito: 4 verticales en `dev` (cuentos, diseños #38, presentaciones #45, tableros #46) + backfill legacy 0013 (#47) + exportación EPUB/PDF (#50/#51) + retiro legacy (#49).
 
 ---
 
@@ -109,7 +109,7 @@ Leyenda:
 - [x] SPEC-011: Fix pointerdown con data-option
 - [x] SPEC-011: Cancelar timer del barrido al interactuar
 - [x] SPEC-011: Test: foco en A, click en B → selecciona B
-- [ ] SPEC-015: Modos por perfil (movido desde SPEC-011)
+- [x] SPEC-015: Modos por perfil (movido desde SPEC-011)
 
 ### EPIC 4.2 — Scroll bloqueado
 - [x] SPEC-012: Quitar overflow:hidden global
@@ -253,8 +253,10 @@ Leyenda:
 - [ ] SPEC-030: Migrar manteniendo fallback local
 
 ### EPIC 9.3 — Exportación y venta
-- [ ] SPEC-031: Exportar PDF/EPUB
-- [ ] SPEC-031: Publicar y vender
+- [x] SPEC-031: Exportación server-side EPUB (libros) — merge #50
+- [x] SPEC-031B: Exportación server-side PDF (flyers de diseños) — merge #51
+- [ ] SPEC-031 follow-up: otros formatos/verticales (deck PPTX, board PDF) + janitor de retención
+- [ ] SPEC-031 follow-up: Publicar y vender (owner-side)
 
 ### EPIC 9.4 — Crecimiento del sistema
 - [ ] Backlog (ex SPEC-032, número reasignado al backfill legacy): Diseñador UX para opciones de libro
@@ -262,8 +264,9 @@ Leyenda:
 
 ### EPIC 9.5 — Multi-modelo (OpenRouter)
 - [x] SPEC-033: OpenRouter como segundo proveedor (allowlist curada texto/imagen, migración 0010, costo) — merge #41
-- [ ] SPEC-033B: Selección de modelo por docente (follow-up)
+- [~] SPEC-033B: Selección de modelo por docente (implementada en `feat/spec-033b-model-selection`; review/PR pendientes)
 - [ ] SPEC-033C: Budgets por tenant (follow-up, solo registro en 033)
+- [ ] SPEC-033D: Resolución de credenciales por tenant y por proveedor (split de 033B; aprobada 2026-10-09)
 
 ---
 
@@ -311,10 +314,18 @@ Leyenda:
 | SPEC-029B | Presentaciones (decks 5/8/10) | implementado (#45) | owner | 2026-10-07 |
 | SPEC-029C | Comunicación (tableros + vista de uso) | implementado (#46) | owner | 2026-10-08 |
 | SPEC-032 | Backfill `stories`→`books` (0013) + retiro legacy frontend | implementado (#47/#49) | owner | 2026-10-08 |
+| SPEC-031 | Exportación server-side: EPUB de libros | implementado (#50) | owner | 2026-10-08 |
+| SPEC-031B | Exportación server-side: PDF de flyers (diseños) | implementado (#51) | owner | 2026-10-08 |
 | SPEC-033 | OpenRouter multi-modelo (allowlist curada) | implementado (#41) | owner | 2026-10-03 |
+| SPEC-033B | Selección de modelo por docente (catálogo curado) | aprobada | owner | 2026-10-09 |
+| SPEC-033D | Credenciales por tenant y por proveedor | aprobada | owner | 2026-10-09 |
 
 ## Notas
 
+- Reconciliación 2026-10-09: `plan.md` y `MEMORY.md` alineados con `dev`. Cerrados
+  SPEC-015 (modos por perfil; ya estaba en código con `input_mode`), SPEC-031 (EPUB,
+  #50) y SPEC-031B (PDF flyers, #51); SPEC-033 core ya estaba en #41 (su spec
+  pendiente de marcar como implementado). Próximo trabajo real: SPEC-033B.
 - Mantener este archivo enfocado en roadmap. No duplicar MEMORY.md.
 - Al cerrar una tarea: marcar [x], actualizar "Estado actual", registrar SPEC.
 - Si una tarea se descarta: marcar [-] y anotar motivo en Notas.

@@ -1,3 +1,5 @@
+import type { GenerationVertical } from '../generation-vertical';
+
 export type ImageSize = '1K' | '2K' | '4K';
 
 export interface ImageGenerationRequest {
@@ -5,6 +7,8 @@ export interface ImageGenerationRequest {
   aspectRatio?: string;
   imageSize?: ImageSize;
   tenantId?: string;
+  // SPEC-033B: owning vertical; adapters default to 'book' when absent.
+  vertical?: GenerationVertical;
 }
 
 export interface ImageGenerationUsage {
