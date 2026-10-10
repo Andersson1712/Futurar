@@ -29,6 +29,7 @@ import {
   type AuthenticatedRequest,
 } from '../common/guards/supabase-auth.guard';
 import { AiCredentialsService } from './ai-credentials.service';
+import { CREDENTIAL_PROVIDERS } from './secrets/credential.repository';
 import { CredentialMetadataDto, SaveCredentialDto } from './dto/credential.dto';
 
 @ApiTags('ai')
@@ -52,7 +53,7 @@ export class AiCredentialsController {
   @Put(':provider')
   @UseGuards(SupabaseAuthGuard)
   @ApiOperation({ summary: 'Create or rotate a provider credential' })
-  @ApiParam({ name: 'provider', enum: ['gemini'] })
+  @ApiParam({ name: 'provider', enum: [...CREDENTIAL_PROVIDERS] })
   @ApiBody({ type: SaveCredentialDto })
   @ApiOkResponse({ type: CredentialMetadataDto })
   @ApiBadRequestResponse({ type: AiErrorDto })
@@ -68,7 +69,7 @@ export class AiCredentialsController {
   @UseGuards(SupabaseAuthGuard)
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Revoke the active provider credential' })
-  @ApiParam({ name: 'provider', enum: ['gemini'] })
+  @ApiParam({ name: 'provider', enum: [...CREDENTIAL_PROVIDERS] })
   @ApiNoContentResponse()
   @ApiNotFoundResponse({ type: AiErrorDto })
   async revoke(
