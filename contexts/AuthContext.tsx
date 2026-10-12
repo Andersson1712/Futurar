@@ -78,6 +78,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                 return false;
             }
 
+            // Reflect the session immediately: the SIGNED_IN event may not have
+            // run by the time the caller awaits login().
+            setIsAuthenticated(Boolean(data.session));
             return Boolean(data.user);
         } catch (err) {
             setError('Error al iniciar sesión');
