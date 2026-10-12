@@ -16,11 +16,11 @@ Leyenda:
 
 ## Estado actual
 
-- Fase activa: **Fase 9 — Post-MVP (verticales + exportación completos; próximo SPEC-033B)**
-- Última tarea cerrada: exportación PDF server-side de flyers (SPEC-031B, PR #51 a dev)
-- Próxima tarea: cerrar SPEC-033B (review + PR a dev); luego SPEC-033D — SPEC-030 TTS es-AR y SPEC-026 en pausa per owner
+- Fase activa: **Fase 9 — Post-MVP (verticales + exportación + multi-modelo completos; próximo SPEC-033C)**
+- Última tarea cerrada: selección de modelo por docente (SPEC-033B, PR #54 a dev); antes, credenciales por tenant y proveedor (SPEC-033D, PR #52)
+- Próxima tarea: SPEC-033C (budgets por tenant) — SPEC-030 TTS es-AR y SPEC-026 en pausa per owner
 - Rama de integración: `dev` (protegida con CI, 4 checks); `main` congelada y protegida.
-- Hito: 4 verticales en `dev` (cuentos, diseños #38, presentaciones #45, tableros #46) + backfill legacy 0013 (#47) + exportación EPUB/PDF (#50/#51) + retiro legacy (#49).
+- Hito: 4 verticales en `dev` (cuentos, diseños #38, presentaciones #45, tableros #46) + backfill legacy 0013 (#47) + exportación EPUB/PDF (#50/#51) + retiro legacy (#49) + multi-modelo OpenRouter (#41) con credenciales por tenant (#52) y modelo por docente (#54); migración 0014 aplicada por owner.
 
 ---
 
@@ -200,12 +200,13 @@ Leyenda:
 ## Fase 7 — Proceso, gobernanza y open source
 
 ### EPIC 7.1 — Git flow
-- [x] SPEC-024: Proteger main (PR, review, CI, linear, no force push) — merge #33
-- [x] SPEC-024: commitlint + husky — merge #35
-- [x] SPEC-024: PR template con checklist a11y y tests — merge #33
-- [x] SPEC-024: Issue templates — merge #33
-- [x] SPEC-024: CODEOWNERS — merge #33
-- [x] SPEC-024: Squash merge por defecto — merge #33
+- [x] Gobernanza (sin SPEC vigente; el número 024 fue reasignado a student entry): Proteger main (PR, review, CI, linear, no force push) — merge #44
+- [x] Gobernanza: commitlint en CI — merge #35
+- [ ] Gobernanza: husky (hooks locales) — nunca mergeado; vive solo en `origin/feat/spec-024-repo-governance`
+- [x] Gobernanza: PR template con checklist a11y y tests — merge #44
+- [x] Gobernanza: Issue templates — merge #44
+- [x] Gobernanza: CODEOWNERS — commit 32a3459 (SPEC-001)
+- [x] Gobernanza: Squash merge por defecto — merge #44
 
 ### EPIC 7.2 — Documentación
 - [x] SPEC-025: README.md (en) + README.es.md (es)
@@ -264,9 +265,9 @@ Leyenda:
 
 ### EPIC 9.5 — Multi-modelo (OpenRouter)
 - [x] SPEC-033: OpenRouter como segundo proveedor (allowlist curada texto/imagen, migración 0010, costo) — merge #41
-- [~] SPEC-033B: Selección de modelo por docente (implementada en `feat/spec-033b-model-selection`; review/PR pendientes)
+- [x] SPEC-033B: Selección de modelo por docente (catálogo curado) — merge #54; migración 0014 aplicada por owner
 - [ ] SPEC-033C: Budgets por tenant (follow-up, solo registro en 033)
-- [ ] SPEC-033D: Resolución de credenciales por tenant y por proveedor (split de 033B; aprobada 2026-10-09)
+- [x] SPEC-033D: Resolución de credenciales por tenant y por proveedor (split de 033B) — merge #52
 
 ---
 
@@ -305,7 +306,8 @@ Leyenda:
 | SPEC-022 | Contactos, dedicatorias y favoritos | implementado | owner | 2026-10-03 |
 | SPEC-023 | Catálogo acciones/opciones + permisos | implementado | owner | 2026-10-03 |
 | SPEC-023B | Límites por pantalla + paginación wizard | implementado (#29) | owner | 2026-10-03 |
-| SPEC-024 | Git flow, commitlint, templates, CODEOWNERS | implementado (#33/#35) | owner | 2026-10-03 |
+| SPEC-023C | Catálogo introductorio para docentes nuevos | implementado (#40) | owner | 2026-10-03 |
+| SPEC-024 | Public student kiosk entry | implementado (#33) | owner | 2026-10-03 |
 | SPEC-025 | Documentación pública + ADRs + guías | implementado (#31) | owner | 2026-10-03 |
 | SPEC-026 | Licencia, versionado y publicación | en pausa per owner | — | — |
 | SPEC-027 | Observabilidad backend (correlation, pino, métricas, health) | implementado (#34) | owner | 2026-10-03 |
@@ -317,8 +319,8 @@ Leyenda:
 | SPEC-031 | Exportación server-side: EPUB de libros | implementado (#50) | owner | 2026-10-08 |
 | SPEC-031B | Exportación server-side: PDF de flyers (diseños) | implementado (#51) | owner | 2026-10-08 |
 | SPEC-033 | OpenRouter multi-modelo (allowlist curada) | implementado (#41) | owner | 2026-10-03 |
-| SPEC-033B | Selección de modelo por docente (catálogo curado) | aprobada | owner | 2026-10-09 |
-| SPEC-033D | Credenciales por tenant y por proveedor | aprobada | owner | 2026-10-09 |
+| SPEC-033B | Selección de modelo por docente (catálogo curado) | implementado (#54) | owner | 2026-10-09 |
+| SPEC-033D | Credenciales por tenant y por proveedor | implementado (#52) | owner | 2026-10-09 |
 
 ## Notas
 
@@ -326,6 +328,10 @@ Leyenda:
   SPEC-015 (modos por perfil; ya estaba en código con `input_mode`), SPEC-031 (EPUB,
   #50) y SPEC-031B (PDF flyers, #51); SPEC-033 core ya estaba en #41 (su spec
   pendiente de marcar como implementado). Próximo trabajo real: SPEC-033B.
+- Reconciliación 2026-10-11: cerrados SPEC-033B (#54) y SPEC-033D (#52). Este archivo
+  dejó de registrar notas por SPEC después de SPEC-023; el estado compacto vive en
+  `MEMORY.md`. Deriva corregida: husky nunca se mergeó (el número 024 fue reasignado
+  a student entry y la gobernanza entró por los PRs de rescate #35 y #44).
 - Mantener este archivo enfocado en roadmap. No duplicar MEMORY.md.
 - Al cerrar una tarea: marcar [x], actualizar "Estado actual", registrar SPEC.
 - Si una tarea se descarta: marcar [-] y anotar motivo en Notas.
