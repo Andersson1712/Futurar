@@ -1,17 +1,13 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs';
-import { join, relative } from 'node:path';
+import { join, relative, sep } from 'node:path';
 
 const ROOT = process.cwd();
 const SCAN_DIRS = ['components', 'contexts', 'hooks'];
 const IMPORT_PATTERN =
   /import\s*\{[^}]*\bsupabase\b[^}]*\}\s*from\s*['"][^'"]*services\/supabase['"]/;
+const DATA_CALL_PATTERNS = [/\.from\(\s*['"]/, /\.rpc\(/];
 
-const ALLOWED = new Set([
-  'components/StoryDetails.tsx',
-  'components/StoryReader.tsx',
-  'components/StudentLibrary.tsx',
-  'contexts/AuthContext.tsx',
-]);
+const ALLOWED = new Set(['contexts/AuthContext.tsx']);
 
 function walk(dir) {
   const files = [];
@@ -30,24 +26,39 @@ function walk(dir) {
   return files;
 }
 
-const offenders = [];
+const importOffenders = [];
+const dataCallOffenders = [];
 
 for (const dir of SCAN_DIRS) {
   for (const file of walk(join(ROOT, dir))) {
-    const relativePath = relative(ROOT, file);
+    const relativePath = relative(ROOT, file).split(sep).join('/');
+    const source = readFileSync(file, 'utf8');
 
-    if (ALLOWED.has(relativePath)) continue;
-    if (IMPORT_PATTERN.test(readFileSync(file, 'utf8'))) {
-      offenders.push(relativePath);
+    if (!ALLOWED.has(relativePath) && IMPORT_PATTERN.test(source)) {
+      importOffenders.push(relativePath);
+    }
+
+    if (DATA_CALL_PATTERNS.some((pattern) => pattern.test(source))) {
+      dataCallOffenders.push(relativePath);
     }
   }
 }
 
-if (offenders.length > 0) {
+if (importOffenders.length > 0) {
   console.error(
     'Direct Supabase client imports are not allowed outside services/ (SPEC-010):',
   );
-  for (const file of offenders) console.error(`  - ${file}`);
+  for (const file of importOffenders) console.error(`  - ${file}`);
+}
+
+if (dataCallOffenders.length > 0) {
+  console.error(
+    'Direct Supabase data calls are not allowed; use the backend API instead (SPEC-034):',
+  );
+  for (const file of dataCallOffenders) console.error(`  - ${file}`);
+}
+
+if (importOffenders.length > 0 || dataCallOffenders.length > 0) {
   process.exit(1);
 }
 
