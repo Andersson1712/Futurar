@@ -2,10 +2,8 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { supabase } from '../services/supabase';
 import { clearStorySettings } from '../utils/storySettings';
 import { clearProgress } from '../utils/progressStore';
-import type { Teacher } from '../types/database';
 
 interface AuthContextType {
-    teacher: Teacher | null;
     isLoading: boolean;
     error: string | null;
     login: (email: string, password: string) => Promise<boolean>;
@@ -29,7 +27,7 @@ interface AuthProviderProps {
 }
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-    const [teacher, setTeacher] = useState<Teacher | null>(null);
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -39,16 +37,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             try {
                 const { data: { session } } = await supabase.auth.getSession();
 
-                if (session?.user) {
-                    // Cargar perfil del docente
-                    const { data: teacherData } = await supabase
-                        .from('teachers')
-                        .select('*')
-                        .eq('id', session.user.id)
-                        .single();
-
-                    setTeacher(teacherData);
-                }
+                setIsAuthenticated(Boolean(session?.user));
             } catch (err) {
                 console.error('Error verificando sesión:', err);
             } finally {
@@ -59,17 +48,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         checkSession();
 
         // Escuchar cambios de autenticación
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
             if (event === 'SIGNED_IN' && session?.user) {
-                const { data: teacherData } = await supabase
-                    .from('teachers')
-                    .select('*')
-                    .eq('id', session.user.id)
-                    .single();
-
-                setTeacher(teacherData);
+                setIsAuthenticated(true);
             } else if (event === 'SIGNED_OUT') {
-                setTeacher(null);
+                setIsAuthenticated(false);
             }
         });
 
@@ -95,18 +78,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                 return false;
             }
 
-            if (data.user) {
-                const { data: teacherData } = await supabase
-                    .from('teachers')
-                    .select('*')
-                    .eq('id', data.user.id)
-                    .single();
-
-                setTeacher(teacherData);
-                return true;
-            }
-
-            return false;
+            return Boolean(data.user);
         } catch (err) {
             setError('Error al iniciar sesión');
             return false;
@@ -120,10 +92,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setIsLoading(true);
 
         try {
-            // Registrar usuario en Supabase Auth
+            // Register the auth user; the database trigger creates the teacher row.
             const { data, error: authError } = await supabase.auth.signUp({
                 email,
-                password
+                password,
+                options: {
+                    data: { name }
+                }
             });
 
             if (authError) {
@@ -131,26 +106,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                 return false;
             }
 
-            if (data.user) {
-                // Crear perfil de docente
-                const { error: profileError } = await supabase
-                    .from('teachers')
-                    .insert({
-                        id: data.user.id,
-                        email,
-                        name,
-                        role: 'teacher'
-                    });
-
-                if (profileError) {
-                    setError('Error al crear perfil');
-                    return false;
-                }
-
-                return true;
-            }
-
-            return false;
+            return Boolean(data.user);
         } catch (err) {
             setError('Error al registrarse');
             return false;
@@ -163,18 +119,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         await supabase.auth.signOut();
         clearStorySettings();
         clearProgress();
-        setTeacher(null);
+        setIsAuthenticated(false);
         setError(null);
     };
 
     const value: AuthContextType = {
-        teacher,
         isLoading,
         error,
         login,
         register,
         logout,
-        isAuthenticated: !!teacher
+        isAuthenticated
     };
 
     return (
