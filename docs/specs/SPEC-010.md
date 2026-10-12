@@ -19,6 +19,8 @@
   exception → SPEC-021, legacy `stories` read-only → SPEC-010 follow-up).
 - Verification: `npm run typecheck`, `npm run check:supabase`, `npm run build`
   all green; login/logout manual flow unchanged.
+- D2 `teachers` exception closed by SPEC-034: the `handle_new_teacher()` trigger
+  owns the row and the frontend no longer reads or writes `public.teachers`.
 
 ## Objective
 Make the frontend use Supabase **only for Auth**: every backend request carries
