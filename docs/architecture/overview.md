@@ -1,7 +1,10 @@
 # Visión de arquitectura
 
-> Última revisión: 2026-10-01 · Fuente de verdad: [`AGENTS.md`](../../AGENTS.md),
+> Última revisión: 2026-10-12 · Fuente de verdad: [`AGENTS.md`](../../AGENTS.md),
 > [`MEMORY.md`](../../MEMORY.md) y los [specs](../specs/).
+>
+> Para el onboarding técnico, el estado del proyecto y las reglas de trabajo, ver
+> [`guides/desarrollador.es.md`](../guides/desarrollador.es.md).
 
 ## Principio rector
 
@@ -15,7 +18,7 @@ Navegador (React 19 + Vite)
   ▼                                                        ▼
 Supabase Auth  ───────────────────────────────►  API NestJS (NestJS 12, /api/v1)
                                                     │            │
-                                       Supabase (Postgres)   Gemini (solo backend)
+                                       Supabase (Postgres)   Gemini + OpenRouter (solo backend)
 ```
 
 ## Componentes
@@ -23,18 +26,20 @@ Supabase Auth  ─────────────────────�
 | Componente | Responsabilidad |
 |---|---|
 | Frontend (raíz) | Componentes accesibles con barrido, contextos, hooks, `services/backend*` |
-| Backend `src/ai` | Puertos de dominio + adaptadores Gemini (texto/imagen/TTS), prompts versionados, validación |
+| Backend `src/ai` | Puertos de dominio + adaptadores Gemini (texto/imagen/TTS) y OpenRouter (texto/imagen); prompts versionados, validación, exports, credenciales y catálogo de modelos |
 | Backend `src/jobs` | Generación asíncrona, SSE, reintentos, circuit breaker, idempotencia |
 | Backend `src/books` | Persistencia y versionado de libros, soft delete, URLs firmadas de imágenes |
 | Backend `src/profiles` | Perfiles, settings de accesibilidad, contactos/dedicatorias, favoritos |
 | Backend `src/actions` | Catálogo Acción → Opción → Ítem y permisos por perfil |
-| Backend `src/admin` | Credenciales de IA por docente (metadata) |
+| Backend `src/{designs,presentations,communications}` | Los otros tres verticales: flyers, decks y tableros AAC |
+| Backend `src/ai/secrets` | Credenciales de IA cifradas, por docente y por proveedor (la API devuelve solo metadata) |
 | Supabase | Postgres + Auth + Storage (bucket privado de imágenes) |
 
 ## Puertos y adaptadores
 
-- `src/ai/domain/ports` define las interfaces (`TextProvider`, `ImageProvider`,
-  `TtsProvider`); `src/ai/providers/gemini` implementa los adaptadores.
+- `src/ai/domain/ports` define las interfaces de texto, imagen y TTS;
+  `src/ai/infrastructure/gemini` y `src/ai/infrastructure/openrouter` las
+  implementan. **TTS es solo Gemini.** OpenRouter queda detrás de un gate.
 - Los repositorios tienen versión **Supabase** y **in-memory** (fallback de dev y
   CI). Deben comportarse igual: los tests cubren la paridad.
 - La selección se hace por configuración (`SupabaseService.getClient()`,
@@ -42,10 +47,11 @@ Supabase Auth  ─────────────────────�
 
 ## Flujo de generación (jobs + SSE)
 
-1. `POST /api/v1/ai/books/generate` (con `Idempotency-Key`) valida el DTO, resuelve
-   defaults del perfil y encola un job.
+1. `POST /api/v1/ai/{books,designs,presentations,communications}/generate` (con
+   `Idempotency-Key`) valida el DTO, resuelve defaults del perfil y encola un job.
 2. El worker (inline o BullMQ) llama al proveedor, valida la salida contra el
-   schema, modera por audiencia y persiste el libro (`books`/`book_versions`).
+   schema, modera por audiencia y persiste el resultado en la tabla del vertical
+   (`books`/`book_versions`, `designs`, `presentations`, `communications`).
 3. El cliente sigue `GET /ai/jobs/:id/events` (SSE con auth por header) y cae a
    polling si hace falta. Imágenes opcionales en bucket privado con URLs firmadas
    (nunca persistidas).
@@ -89,7 +95,14 @@ Supabase Auth  ─────────────────────�
 
 - Tablas principales: `actions`, `action_options`, `action_option_items`,
   `profile_actions`, `profile_option_items`, `profiles`/`students`,
-  `profile_contacts`, `student_settings`, `books`, `book_versions`,
-  `generation_jobs`, `ai_credentials`.
-- Migraciones en `backend/supabase/migrations/` (aplicar en orden). El frontend
-  solo lee/usa Supabase Auth; `npm run check:supabase` lo garantiza.
+  `profile_contacts`, `student_settings`, `books`, `book_versions`, `designs`,
+  `presentations`, `communications`, `generation_jobs`, `ai_credentials`,
+  `teacher_ai_settings`.
+- Migraciones en `backend/supabase/migrations/`: 16, de `0000` a `0015`, a aplicar en
+  orden. Todas son re-ejecutables. El frontend solo usa Supabase Auth;
+  `npm run check:supabase` lo garantiza (bloquea imports y llamadas `.from(`/`.rpc(`).
+- **RLS**: encendido en las tablas backend-only; apagado en `teachers`, `stories` y
+  `usage_sessions` por decisión del owner (SPEC-034 D4), porque toda fundación
+  autenticada puede ver a todos los docentes.
+- La fila de `teachers` la crea la base de datos, no el frontend: trigger
+  `handle_new_teacher()` sobre `auth.users` (migración `0015`).
