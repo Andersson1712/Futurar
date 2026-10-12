@@ -1,14 +1,14 @@
 # SPEC-034 — Teacher identity ownership moves to the backend
 
-- **Status**: proposed (2026-10-11)
+- **Status**: accepted (2026-10-11). RLS scope revised by owner decision — see D4.
 - **Phase**: Fase 9 — Post-MVP (architecture debt; closes the SPEC-010 D2 exception)
 - **Depends on**: SPEC-010 (session and data access audit), SPEC-021 (backend data ownership)
 - **Blocks**: nothing
 
 ## Objective
 
-Remove every `public.teachers` access from the frontend, make the database the sole
-owner of the teacher identity row, and re-enable row level security on that table.
+Remove every `public.teachers` access from the frontend and make the database the sole
+owner of the teacher identity row. Row level security is explicitly out of scope; see D4.
 
 ## Why
 
@@ -31,10 +31,8 @@ this data (D2, audit row "teachers | D2 exception") and explicitly left a `/me` 
 out of scope. SPEC-021 delivered student profiles, not teacher identity, so the
 exception outlived its trigger.
 
-Net effect today: `public.teachers` has RLS disabled, so the public anon key can read
-and write the whole table — teacher emails, names and roles — through the Supabase REST
-endpoint. Nothing else depends on the row: no migration declares a foreign key to
-`public.teachers`, and the backend never queries it.
+The row is inert: no migration declares a foreign key to `public.teachers`, and neither
+the backend nor any frontend consumer queries it.
 
 ## Current behavior (audit)
 
@@ -73,50 +71,56 @@ Stale surface found alongside the violation:
 
 ## Decisions
 
-**D1 (recommended) — `isAuthenticated` derives from the Supabase session.**
-Replace `!!teacher` with `!!session`. `getSession` and `onAuthStateChange` are auth-only
-and remain allowed, so this deletes all three reads without new backend surface.
+**D1 (accepted) — `isAuthenticated` derives from the Supabase session.** Replace
+`!!teacher` with session presence. `getSession` and `onAuthStateChange` are auth-only and
+remain allowed, so this deletes all three reads without new backend surface.
 Alternative: keep a `teacher`-backed flag, which preserves the coupling for no
 user-visible benefit.
 
-**D2 (recommended) — the database creates the teacher row, through a `security definer`
+**D2 (accepted) — the database creates the teacher row, through a `security definer`
 trigger on `auth.users`.** Migration `0015` adds the trigger and backfills rows for
 existing `auth.users`. Rejected alternatives: a backend `GET /api/v1/me` endpoint (new
 HTTP surface plus a frontend round trip to return data no client reads today), and
-keeping the frontend INSERT (impossible once D4 lands, and already broken when email
-confirmation is enabled — see Edge cases).
+keeping the frontend INSERT (already broken when email confirmation is enabled — see
+Edge cases).
 
-**D3 (recommended) — drop `teacher` from the auth context.** `AuthContextType.teacher`
-and the `Teacher` import go away; the provider exposes `isAuthenticated`, `isLoading`,
+**D3 (accepted) — drop `teacher` from the auth context.** `AuthContextType.teacher` and
+the `Teacher` import go away; the provider exposes `isAuthenticated`, `isLoading`,
 `error`, `login`, `register` and `logout`. No consumer changes. Alternative: keep the
 field, which requires a backend fetch to fill it.
 
-**D4 (recommended) — enable row level security on `public.teachers` with no policies.**
-The backend uses the `service_role` key and bypasses RLS; anon gets nothing. This turns
-the rule into something the database enforces.
+**D4 (owner decision, 2026-10-11) — row level security stays disabled on
+`public.teachers`, `stories` and `usage_sessions`.** The owner's model is that the tenant
+is the foundation, teachers sign in through Supabase Auth, and every authenticated
+foundation is allowed to see every teacher, so there is no per-row scoping to express.
+`0000_bootstrap.sql:144-146` already records that posture, and this spec does not change
+it.
 
-**D5 (recommended) — stop the guard from being a blanket exemption.** Reduce `ALLOWED`
-in `scripts/check-supabase-imports.mjs` to `contexts/AuthContext.tsx`, and add a rule
-that fails when a scanned file contains `\.from\(\s*['"]` or `\.rpc\(`. Auth calls
+Recorded for future readers, not as a blocker: "RLS disabled" is broader than
+"authenticated only". PostgREST serves these tables to the `anon` role too, so the same
+read and write access an authenticated foundation has is also reachable with the public
+anon key and no session. The owner's model expressed exactly would be two statements —
+`enable row level security` plus `create policy ... for all to authenticated using (true)
+with check (true)` — which the owner has seen and deferred. Revisit in its own spec if
+the exposure ever needs closing; it is independent of everything below.
+
+**D5 (accepted) — stop the guard from being a blanket exemption.** Reduce `ALLOWED` in
+`scripts/check-supabase-imports.mjs` to `contexts/AuthContext.tsx`, and add a rule that
+fails when a scanned file contains `\.from\(\s*['"]` or `\.rpc\(`. Auth calls
 (`supabase.auth.*`) stay legal. The quote after the parenthesis matters: `Array.from(`
 appears in production code at `components/FloatingControls.tsx:47` and
 `hooks/useDialogA11y.ts:28` and must not trip the check.
 
-**D6 (optional) — the same migration enables RLS on `stories` and `usage_sessions`.**
-`0000_bootstrap.sql:145-146` disables RLS on both for the same reason. The frontend has
-already been retired from them: SPEC-032 removed the `stories` reads and writes, and the
-`usage_sessions` helpers are dead. Accept, or split into its own spec — neither is
-required for the `teachers` fix.
-
-**D7 (optional) — delete the dead `services/supabase.ts` helpers.** All 11 named exports
-and the default export are unused; only the `supabase` client survives. Accept, or defer
-to the same cleanup as `DEFAULT_TEACHER_ID`.
+**D6 (accepted) — delete the dead `services/supabase.ts` helpers.** All 11 named exports
+and the default export are unused; only the `supabase` client survives. Deleting them
+shrinks the surface the rule is meant to protect. `DEFAULT_TEACHER_ID` and
+`GlobalConfigModal.teacherId` are the same class of dead code and are left as follow-up
+to keep this change reviewable.
 
 ## Contract
 
 ### Migration `backend/supabase/migrations/0015_teacher_identity.sql`
 
-- `alter table public.teachers enable row level security;` — no policies are created.
 - `create or replace function public.handle_new_teacher()` returning trigger, language
   plpgsql, `security definer`, `set search_path = public`, inserting
   `(id, email, name, role)` from `new.id`, `new.email`,
@@ -129,6 +133,7 @@ to the same cleanup as `DEFAULT_TEACHER_ID`.
   (id, email, name, role) select id, email,
   coalesce(raw_user_meta_data->>'name', email), 'teacher' from auth.users
   on conflict (id) do nothing;`
+- No RLS statement (D4).
 - Re-runnable, like every other migration in this repo (cf. #48).
 
 ### Frontend `contexts/AuthContext.tsx`
@@ -138,7 +143,7 @@ to the same cleanup as `DEFAULT_TEACHER_ID`.
 - `register` calls
   `supabase.auth.signUp({ email, password, options: { data: { name } } })` so the
   trigger can read the display name from `raw_user_meta_data`.
-- `isAuthenticated` becomes `!!session`; `teacher` and the `Teacher` import are removed.
+- `isAuthenticated` reflects the session; `teacher` and the `Teacher` import are removed.
 - No `supabase.from(...)` call remains.
 
 ### Frontend `scripts/check-supabase-imports.mjs`
@@ -146,6 +151,11 @@ to the same cleanup as `DEFAULT_TEACHER_ID`.
 - `ALLOWED` becomes `['contexts/AuthContext.tsx']`.
 - New failing patterns inside scanned files: `\.from\(\s*['"]` and `\.rpc\(`.
 - Same exit code (1) and message style as today.
+
+### Frontend `services/supabase.ts`
+
+- Keep the `supabase` client export. Remove the 11 dead data helpers and the default
+  export.
 
 ## File impact
 
@@ -158,15 +168,15 @@ Touched:
 
 - `contexts/AuthContext.tsx`
 - `scripts/check-supabase-imports.mjs`
+- `services/supabase.ts`
 - `components/a11y.test.tsx` (its Supabase mock no longer needs the data chain)
 - `docs/specs/SPEC-010.md` (mark the D2 exception as closed)
 - `MEMORY.md`, `plan.md`
 
-Out of scope, tracked but not changed here: `services/supabase.ts` helpers (D7),
-`DEFAULT_TEACHER_ID` and `GlobalConfigModal.teacherId`, `stories` and `usage_sessions`
-RLS (D6 if declined), the pending Vite 6→8 and frontend TypeScript 5.8→6/7 chore, and
-the stale `Status:` headers in `docs/specs/SPEC-023C.md`, `SPEC-024.md`, `SPEC-033B.md`
-and `SPEC-033D.md`.
+Out of scope, tracked but not changed here: row level security on `teachers`, `stories`
+and `usage_sessions` (D4), `DEFAULT_TEACHER_ID` and `GlobalConfigModal.teacherId`, the
+pending Vite 6→8 and frontend TypeScript 5.8→6/7 chore, and the stale `Status:` headers
+in `docs/specs/SPEC-023C.md`, `SPEC-024.md`, `SPEC-033B.md` and `SPEC-033D.md`.
 
 ## Acceptance criteria
 
@@ -174,12 +184,11 @@ and `SPEC-033D.md`.
 - [ ] `contexts/AuthContext.tsx` imports `supabase` only for `supabase.auth.*`.
 - [ ] `npm run check:supabase` passes with the reduced allowlist and the new rules.
 - [ ] `npm run check:supabase` fails on a deliberate `supabase.from('teachers')` probe.
-- [ ] `npm run typecheck` and `npm test` pass.
+- [ ] `npm run typecheck` passes.
 - [ ] `AuthProvider` no longer exposes `teacher` and no consumer breaks.
 - [ ] `register` creates exactly one `teachers` row per new user, with email
       confirmation both disabled and enabled.
 - [ ] Migration `0015` re-runs without error and without duplicating the trigger.
-- [ ] `public.teachers` reports RLS enabled and an anon-key REST read returns no rows.
 - [ ] Backend suite green: `$env:NODE_OPTIONS='--experimental-vm-modules'; npx jest`.
 
 ## Edge cases
@@ -220,9 +229,7 @@ npx jest --config ./test/jest-e2e.json --runInBand
 Manual:
 
 - Apply `0015` in the Supabase SQL editor, then re-run it to confirm idempotency.
-- Confirm `select relrowsecurity from pg_class where relname = 'teachers'` is true.
 - Sign up a new teacher and confirm exactly one `teachers` row appears.
-- Confirm an anon-key REST read of `teachers` returns no rows.
 
 ## Versions
 
