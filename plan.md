@@ -17,10 +17,10 @@ Leyenda:
 ## Estado actual
 
 - Fase activa: **Fase 9 — Post-MVP (verticales + exportación + multi-modelo completos; próximo SPEC-033C)**
-- Última tarea cerrada: selección de modelo por docente (SPEC-033B, PR #54 a dev); antes, credenciales por tenant y proveedor (SPEC-033D, PR #52)
+- Última tarea cerrada: identidad del docente en el backend (SPEC-034, PR #57 a dev); antes, selección de modelo por docente (SPEC-033B, PR #54)
 - Próxima tarea: SPEC-033C (budgets por tenant) — SPEC-030 TTS es-AR y SPEC-026 en pausa per owner
 - Rama de integración: `dev` (protegida con CI, 4 checks); `main` congelada y protegida.
-- Hito: 4 verticales en `dev` (cuentos, diseños #38, presentaciones #45, tableros #46) + backfill legacy 0013 (#47) + exportación EPUB/PDF (#50/#51) + retiro legacy (#49) + multi-modelo OpenRouter (#41) con credenciales por tenant (#52) y modelo por docente (#54); migración 0014 aplicada por owner.
+- Hito: 4 verticales en `dev` (cuentos, diseños #38, presentaciones #45, tableros #46) + backfill legacy 0013 (#47) + exportación EPUB/PDF (#50/#51) + retiro legacy (#49) + multi-modelo OpenRouter (#41) con credenciales por tenant (#52) y modelo por docente (#54) + identidad del docente en la base (#57); migración 0014 aplicada por owner y 0015 pendiente de aplicar por owner.
 
 ---
 
@@ -269,6 +269,12 @@ Leyenda:
 - [ ] SPEC-033C: Budgets por tenant (follow-up, solo registro en 033)
 - [x] SPEC-033D: Resolución de credenciales por tenant y por proveedor (split de 033B) — merge #52
 
+### EPIC 9.6 — Deuda de arquitectura y datos
+- [x] SPEC-034: Identidad del docente en el backend — el frontend deja de leer y escribir `teachers`; trigger `handle_new_teacher()` sobre `auth.users` (migración 0015) — merge #57
+- [ ] Deuda (SPEC-034 D4): RLS sigue apagado en `teachers`/`stories`/`usage_sessions` por decisión del owner — cerrar en su propio SPEC si hiciera falta
+- [ ] Deuda: `e2e/student-entry.spec.ts:33` afirma un spinner transitorio con el timeout default (5 s) y es flaky
+- [ ] Deuda: `services/supabase.ts` mantiene un fallback hardcodeado de URL + anon key; conviene dejarlo solo por env
+
 ---
 
 ## Reglas de secuencia
@@ -321,6 +327,7 @@ Leyenda:
 | SPEC-033 | OpenRouter multi-modelo (allowlist curada) | implementado (#41) | owner | 2026-10-03 |
 | SPEC-033B | Selección de modelo por docente (catálogo curado) | implementado (#54) | owner | 2026-10-09 |
 | SPEC-033D | Credenciales por tenant y por proveedor | implementado (#52) | owner | 2026-10-09 |
+| SPEC-034 | Identidad del docente en el backend (frontend sin acceso a `teachers`) | implementado (#57) | owner | 2026-10-11 |
 
 ## Notas
 
@@ -332,6 +339,9 @@ Leyenda:
   dejó de registrar notas por SPEC después de SPEC-023; el estado compacto vive en
   `MEMORY.md`. Deriva corregida: husky nunca se mergeó (el número 024 fue reasignado
   a student entry y la gobernanza entró por los PRs de rescate #35 y #44).
+- Reconciliación 2026-10-12: abierto EPIC 9.6 (deuda de arquitectura y datos) y
+  registrado SPEC-034 (#57), que cierra la excepción D2 de SPEC-010. La decisión D4
+  (RLS apagado en `teachers`/`stories`/`usage_sessions`) queda como deuda declarada.
 - Mantener este archivo enfocado en roadmap. No duplicar MEMORY.md.
 - Al cerrar una tarea: marcar [x], actualizar "Estado actual", registrar SPEC.
 - Si una tarea se descarta: marcar [-] y anotar motivo en Notas.
