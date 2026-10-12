@@ -43,7 +43,7 @@
 - Profiles (SPEC-021): `ProfilesModule` CRUD scoped by JWT teacher, soft delete (`is_active=false`), `PUT /settings`, read-only `GET /options`; generation defaults from `book_story_size`/`book_audience` (fallback medium/child); frontend only via `services/backendProfiles.ts`.
 - Contacts/dedications (SPEC-022): `profile_contacts` (1:N, cascade) via `ProfilesModule`; book-level `dedication_to/reason/position` + `is_favorite` with PUT/DELETE `/books/:id/dedication` and PUT `/books/:id/favorite`; reader modal uses contacts, PDF prefills; legacy `stories` stay read-only.
 - Actions catalog (SPEC-023/023B): `actions → action_options → action_option_items` per teacher + `profile_actions`/`profile_option_items`; profile create seeds defaults and `modules` mirrors actions; `GET /profiles/:id/options` returns enabled items of every level (`level`/`sortOrder`); limits enforced on save (`max_enabled` per option, `action_options.max_per_page` per level, migration 0008) → 422 `LIMIT_EXCEEDED`; wizard pages by level via `utils/optionPages` + "Más opciones" + page indicator.
-- Docs (SPEC-025): README EN + `README.es.md`, CONTRIBUTING/SECURITY/CODE_OF_CONDUCT, `docs/adr/` (7 ADRs), `docs/{guides,architecture,accessibility}` guides + `docs/i18n.md`; plain Markdown, no site generator.
+- Docs (SPEC-025): README EN + `README.es.md`, CONTRIBUTING/SECURITY/CODE_OF_CONDUCT, `docs/adr/` (6 ADRs), `docs/{guides,architecture,accessibility}` guides + `docs/i18n.md`; plain Markdown, no site generator.
 
 ## Next Steps
 - [ ] Owner: rotate key; `book-images` bucket; `AI_SECRETS_MASTER_KEY`; `LOG_LEVEL=info` in `backend/.env.example`; apply migrations 0011+0012 and 0015; chore Vite/TS.
