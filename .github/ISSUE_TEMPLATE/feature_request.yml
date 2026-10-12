@@ -1,0 +1,40 @@
+name: Feature request
+description: Propose a new capability or improvement.
+title: "[Feature]: "
+labels: ["enhancement", "triage"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem / need
+      description: What user need does this solve? Who benefits?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: How should it work with a single switch?
+    validations:
+      required: true
+  - type: textarea
+    id: accessibility
+    attributes:
+      label: Accessibility considerations
+      description: One-switch flow, targets, contrast, reduced motion, scroll.
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Accessibility / single-switch
+        - Scanner / wizard
+        - Book generation
+        - Library / reader
+        - Teacher panel / profiles
+        - Backend / API
+        - Other
+    validations:
+      required: true

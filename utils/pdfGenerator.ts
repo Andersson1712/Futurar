@@ -1,6 +1,5 @@
 import { jsPDF } from 'jspdf';
-import { generateStoryImage } from '../services/ai';
-import { getChapterImage } from './images';
+import { getChapterImage, getRandomImage } from './images';
 
 interface Dedication {
     text: string;
@@ -70,26 +69,18 @@ export const generateStoryPDF = async ({
         const margin = 20;
         const contentWidth = pageWidth - (margin * 2);
 
-        // Imagen de Portada (IA)
+        // Imagen de Portada (local, sin IA)
         try {
             // Check if we have a cover image (index 0)
-            let finalCoverData = images[0];
+            let finalCoverData = images[0] || getRandomImage(scenery);
 
-            if (!finalCoverData) {
-                const coverPrompt = `Portada de libro infantil. Título: ${title}. Protagonista: ${protagonist}. Escenario: ${scenery}. Estilo: ${style}. Sin texto.`;
-                const coverBase64 = await generateStoryImage(coverPrompt, style);
-                finalCoverData = coverBase64;
-            }
-
-            if (finalCoverData && finalCoverData.startsWith('http')) {
+            if (finalCoverData.startsWith('http')) {
                 finalCoverData = await loadImage(finalCoverData);
             }
 
-            if (finalCoverData) {
-                const imgWidth = 120;
-                const imgHeight = 120;
-                doc.addImage(finalCoverData, 'PNG', (pageWidth - imgWidth) / 2, 70, imgWidth, imgHeight);
-            }
+            const imgWidth = 120;
+            const imgHeight = 120;
+            doc.addImage(finalCoverData, 'PNG', (pageWidth - imgWidth) / 2, 70, imgWidth, imgHeight);
         } catch (e) {
             console.warn('Could not load cover image', e);
         }
@@ -146,7 +137,7 @@ export const generateStoryPDF = async ({
             const section = chapterSections[idx];
             const chapterNum = idx + 1;
 
-            onProgress?.(`Generando imagen para capítulo ${chapterNum}...`);
+            onProgress?.(`Preparando capítulo ${chapterNum}...`);
             doc.addPage();
 
             // Fondo página
@@ -160,45 +151,26 @@ export const generateStoryPDF = async ({
 
             let currentY = 30;
 
-            // Generar imagen de capítulo
+            // Imagen de capítulo (local, sin IA)
             try {
-                let finalImgData = images[chapterNum];
+                let finalImgData = images[chapterNum] || getChapterImage(scenery, chapterNum);
 
-                if (!finalImgData) {
-                    const sceneContent = section.substring(0, 150).replace(/\n/g, ' ');
-                    const imgPrompt = `Ilustración de cuento infantil. Capítulo ${chapterNum}. Protagonista: ${protagonist}. Escenario: ${scenery}. Acción: ${sceneContent}. Estilo: ${style}.`;
-                    const imgData = await generateStoryImage(imgPrompt, style);
-                    finalImgData = imgData;
-                }
-
-                if (finalImgData && finalImgData.startsWith('http')) {
+                if (finalImgData.startsWith('http')) {
                     finalImgData = await loadImage(finalImgData);
                 }
 
-                if (finalImgData) {
-                    const imgW = contentWidth;
-                    const imgH = 100;
-                    doc.addImage(finalImgData, 'PNG', margin, currentY, imgW, imgH);
+                const imgW = contentWidth;
+                const imgH = 100;
+                doc.addImage(finalImgData, 'PNG', margin, currentY, imgW, imgH);
 
-                    doc.setDrawColor(150, 130, 100);
-                    doc.setLineWidth(0.5);
-                    doc.rect(margin, currentY, imgW, imgH);
+                doc.setDrawColor(150, 130, 100);
+                doc.setLineWidth(0.5);
+                doc.rect(margin, currentY, imgW, imgH);
 
-                    currentY += imgH + 15;
-                }
+                currentY += imgH + 15;
             } catch (e) {
-                console.warn(`Could not gen image for chapter ${idx + 1}`, e);
-                // Fallback attempt
-                try {
-                    const fallbackUrl = getChapterImage(scenery, chapterNum);
-                    const imgBase64 = await loadImage(fallbackUrl);
-                    const imgW = contentWidth;
-                    const imgH = 80;
-                    doc.addImage(imgBase64, 'JPEG', margin, currentY, imgW, imgH);
-                    currentY += imgH + 15;
-                } catch (e2) {
-                    currentY += 10;
-                }
+                console.warn(`Could not load image for chapter ${idx + 1}`, e);
+                currentY += 10;
             }
 
             // Título del capítulo

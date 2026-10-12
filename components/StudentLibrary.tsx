@@ -4,7 +4,28 @@
  */
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { supabase } from '../services/supabase';
+import { getStudentBook, listStudentBooks } from '../services/backendBooks';
+import { bookDetailToStory, bookSummaryToStory } from '../services/bookMappers';
+import {
+    designDetailToStory,
+    designSummaryToStory,
+    getStudentDesign,
+    listStudentDesigns,
+} from '../services/backendDesigns';
+import {
+    getStudentPresentation,
+    listStudentPresentations,
+    presentationDetailToStory,
+    presentationSummaryToStory,
+} from '../services/backendPresentations';
+import {
+    communicationDetailToStory,
+    communicationSummaryToStory,
+    getStudentCommunication,
+    listStudentCommunications,
+} from '../services/backendCommunications';
+import { MESSAGES, messageForErrorCode, t } from '../utils/messages';
+import { ApiError, NetworkError } from '../services/backendApi';
 import ScanningGrid from './ScanningGrid';
 import { speak, stopSpeaking } from '../utils/speech';
 import type { Story } from '../types/database';
@@ -21,6 +42,12 @@ interface StudentLibraryProps {
     onBack: () => void;
 }
 
+interface LibraryEntry {
+    story: Story;
+    isBackend: boolean;
+    kind: 'book' | 'design' | 'presentation' | 'communication';
+}
+
 const StudentLibrary: React.FC<StudentLibraryProps> = ({
     studentId,
     studentName,
@@ -31,56 +58,137 @@ const StudentLibrary: React.FC<StudentLibraryProps> = ({
     onSelectStory,
     onBack,
 }) => {
-    const [stories, setStories] = useState<Story[]>([]);
+    const [entries, setEntries] = useState<LibraryEntry[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [openingId, setOpeningId] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
 
-    // Fetch stories for this student
+    const visibleEntries = useMemo(
+        () =>
+            showFavoritesOnly
+                ? entries.filter(({ story }) => story.is_favorite)
+                : entries,
+        [entries, showFavoritesOnly],
+    );
+
+    // Backend library (SPEC-008/029/029B/029C): books, designs,
+    // presentations and boards. Legacy `stories` are no longer read
+    // (SPEC-032 backfill verified empty); the table stays as rollback safety.
     useEffect(() => {
         const fetchStories = async () => {
-            try {
-                setIsLoading(true);
-                const { data, error: dbError } = await supabase
-                    .from('stories')
-                    .select('*')
-                    .eq('student_id', studentId)
-                    .order('created_at', { ascending: false });
+            setIsLoading(true);
+            setError(null);
 
-                if (dbError) throw dbError;
-                setStories(data || []);
-            } catch (e: any) {
-                console.error('Error loading stories:', e);
-                setError(e.message);
-            } finally {
-                setIsLoading(false);
+            let backendStories: Story[] = [];
+            try {
+                const summaries = await listStudentBooks(studentId);
+                backendStories = summaries.map((summary) =>
+                    bookSummaryToStory(summary, studentId),
+                );
+            } catch (e) {
+                console.warn('Backend library unavailable:', e);
             }
+
+            // Diseños (SPEC-029) merge read-only alongside books.
+            let designStories: Story[] = [];
+            try {
+                const summaries = await listStudentDesigns(studentId);
+                designStories = summaries.map((summary) =>
+                    designSummaryToStory(summary, studentId),
+                );
+            } catch (e) {
+                console.warn('Backend designs unavailable:', e);
+            }
+
+            // Presentaciones (SPEC-029B) merge read-only alongside books.
+            let presentationStories: Story[] = [];
+            try {
+                const summaries = await listStudentPresentations(studentId);
+                presentationStories = summaries.map((summary) =>
+                    presentationSummaryToStory(summary, studentId),
+                );
+            } catch (e) {
+                console.warn('Backend presentations unavailable:', e);
+            }
+
+            // Tableros (SPEC-029C) merge read-only alongside books.
+            let communicationStories: Story[] = [];
+            try {
+                const summaries = await listStudentCommunications(studentId);
+                communicationStories = summaries.map((summary) =>
+                    communicationSummaryToStory(summary, studentId),
+                );
+            } catch (e) {
+                console.warn('Backend boards unavailable:', e);
+            }
+
+            setEntries([
+                ...backendStories.map((story) => ({
+                    story,
+                    isBackend: true,
+                    kind: 'book' as const,
+                })),
+                ...designStories.map((story) => ({
+                    story,
+                    isBackend: true,
+                    kind: 'design' as const,
+                })),
+                ...presentationStories.map((story) => ({
+                    story,
+                    isBackend: true,
+                    kind: 'presentation' as const,
+                })),
+                ...communicationStories.map((story) => ({
+                    story,
+                    isBackend: true,
+                    kind: 'communication' as const,
+                })),
+            ]);
+            setIsLoading(false);
         };
 
-        fetchStories();
+        void fetchStories();
     }, [studentId]);
 
     // Convert stories to scan options
     const storyOptions: ScanOption[] = useMemo(() => {
-        const options: ScanOption[] = stories.map(story => ({
+        const options: ScanOption[] = visibleEntries.map(({ story }) => ({
             id: story.id,
             label: story.title,
-            icon: story.type === 'design' ? 'brush' : 'auto_stories',
+            icon:
+                story.type === 'design'
+                    ? 'brush'
+                    : story.type === 'presentation'
+                      ? 'slideshow'
+                      : story.type === 'communication'
+                        ? 'forum'
+                        : 'auto_stories',
             image: story.image_url || undefined,
-            description: `${story.protagonist} en ${story.scenery}`,
+            description:
+                story.type === 'design'
+                    ? story.content || t('library.designDescription')
+                    : story.type === 'presentation'
+                      ? story.content || t('library.presentationDescription')
+                      : story.type === 'communication'
+                        ? story.content || t('library.communicationDescription')
+                        : story.protagonist
+                          ? `${story.protagonist} en ${story.scenery}`
+                          : 'Cuento guardado',
         }));
 
         // Add "Back to Menu" option at the end
         options.push({
             id: 'back',
-            label: 'Volver al Menú',
+            label: t('library.backToMenu'),
             icon: 'arrow_back',
         });
 
         return options;
-    }, [stories]);
+    }, [visibleEntries]);
 
-    // Handle story selection
-    const handleSelect = (opt: ScanOption) => {
+    // Handle story selection: backend books need their detail first
+    const handleSelect = async (opt: ScanOption) => {
         stopSpeaking();
 
         if (opt.id === 'back') {
@@ -89,21 +197,61 @@ const StudentLibrary: React.FC<StudentLibraryProps> = ({
             return;
         }
 
-        const selectedStory = stories.find(s => s.id === opt.id);
-        if (selectedStory) {
-            if (voiceEnabled) speak(`Abriendo ${selectedStory.title}`);
-            onSelectStory(selectedStory);
+        const entry = entries.find((item) => item.story.id === opt.id);
+        if (!entry) return;
+
+        if (voiceEnabled) speak(`Abriendo ${entry.story.title}`);
+
+        setOpeningId(entry.story.id);
+        try {
+            if (entry.kind === 'design') {
+                const design = await getStudentDesign(entry.story.id);
+                onSelectStory(designDetailToStory(design, studentId));
+            } else if (entry.kind === 'presentation') {
+                const presentation = await getStudentPresentation(entry.story.id);
+                onSelectStory(presentationDetailToStory(presentation, studentId));
+            } else if (entry.kind === 'communication') {
+                const board = await getStudentCommunication(entry.story.id);
+                onSelectStory(communicationDetailToStory(board, studentId));
+            } else {
+                const book = await getStudentBook(entry.story.id);
+                onSelectStory(bookDetailToStory(book, studentId));
+            }
+        } catch (e) {
+            const message =
+                e instanceof ApiError
+                    ? messageForErrorCode(e.code)
+                    : e instanceof NetworkError
+                      ? MESSAGES.errors.network
+                      : MESSAGES.errors.libraryUnavailable;
+            setError(message);
+        } finally {
+            setOpeningId(null);
         }
     };
 
+    const openingEntry = openingId
+        ? entries.find((item) => item.story.id === openingId)
+        : undefined;
+
     // Loading state
-    if (isLoading) {
+    if (isLoading || openingId) {
         return (
             <div className="w-full max-w-4xl mx-auto text-center py-16">
                 <span className="material-symbols-outlined text-6xl text-primary animate-spin">
                     progress_activity
                 </span>
-                <p className="mt-4 text-lg text-gray-400">Cargando tu biblioteca...</p>
+                <p className="mt-4 text-lg text-gray-400">
+                    {openingId
+                        ? openingEntry?.kind === 'design'
+                            ? t('library.openDesign')
+                            : openingEntry?.kind === 'presentation'
+                              ? t('library.openPresentation')
+                              : openingEntry?.kind === 'communication'
+                                ? t('library.openCommunication')
+                                : t('library.openStory')
+                        : t('library.loading')}
+                </p>
             </div>
         );
     }
@@ -113,19 +261,19 @@ const StudentLibrary: React.FC<StudentLibraryProps> = ({
         return (
             <div className="w-full max-w-4xl mx-auto text-center py-16">
                 <span className="material-symbols-outlined text-6xl text-red-400">error</span>
-                <p className="mt-4 text-lg text-red-400">Error: {error}</p>
+                <p className="mt-4 text-lg text-red-400" role="alert">{error}</p>
                 <button
                     onClick={onBack}
-                    className="mt-6 px-6 py-3 bg-primary rounded-xl font-bold hover:bg-primary/80 transition-colors"
+                    className="mt-6 px-6 py-3 min-h-11 bg-primary rounded-xl font-bold hover:bg-primary/80 transition-colors"
                 >
-                    Volver al Menú
+                    {t('library.backToMenu')}
                 </button>
             </div>
         );
     }
 
     // Empty state
-    if (stories.length === 0) {
+    if (entries.length === 0) {
         return (
             <div className="w-full max-w-4xl mx-auto text-center py-16">
                 <div className="mb-8">
@@ -134,17 +282,17 @@ const StudentLibrary: React.FC<StudentLibraryProps> = ({
                     </span>
                 </div>
                 <h2 className="text-2xl md:text-3xl font-black mb-4">
-                    Tu biblioteca está vacía
+                    {t('library.emptyTitle')}
                 </h2>
                 <p className="text-gray-400 text-lg mb-8">
-                    ¡Crea tu primer cuento y aparecerá aquí!
+                    {t('library.emptyHint')}
                 </p>
                 <button
                     onClick={onBack}
-                    className="px-8 py-4 bg-primary rounded-2xl font-bold text-lg hover:bg-primary/80 transition-all hover:scale-105 flex items-center gap-3 mx-auto"
+                    className="px-8 py-4 min-h-11 bg-primary rounded-2xl font-bold text-lg hover:bg-primary/80 transition-all hover:scale-105 flex items-center gap-3 mx-auto"
                 >
                     <span className="material-symbols-outlined">auto_stories</span>
-                    Crear mi primer cuento
+                    {t('library.createFirst')}
                 </button>
             </div>
         );
@@ -158,20 +306,55 @@ const StudentLibrary: React.FC<StudentLibraryProps> = ({
                     📚 Mi Biblioteca
                 </h2>
                 <p className="text-gray-400">
-                    {stories.length} {stories.length === 1 ? 'cuento' : 'cuentos'} guardados
+                    {visibleEntries.length}{' '}
+                    {visibleEntries.length === 1 ? 'cuento' : 'cuentos'} guardados
                 </p>
+                <button
+                    type="button"
+                    onClick={() => setShowFavoritesOnly((prev) => !prev)}
+                    aria-pressed={showFavoritesOnly}
+                    className={`mt-4 min-h-11 px-5 py-3 rounded-xl border-2 font-bold inline-flex items-center gap-2 transition-all ${
+                        showFavoritesOnly
+                            ? 'border-primary bg-primary/20 text-white'
+                            : 'border-white/10 hover:border-white/30 text-gray-400'
+                    }`}
+                >
+                    <span className="material-symbols-outlined">
+                        {showFavoritesOnly ? 'star' : 'star_border'}
+                    </span>
+                    {showFavoritesOnly
+                        ? t('library.all')
+                        : t('library.favorites')}
+                </button>
             </div>
 
-            {/* Stories Grid */}
-            <ScanningGrid
-                options={storyOptions}
-                onSelect={handleSelect}
-                columns={Math.min(3, storyOptions.length)}
-                scanInterval={scanInterval}
-                soundEnabled={soundEnabled}
-                voiceEnabled={voiceEnabled}
-                isPaused={isPaused}
-            />
+            {visibleEntries.length === 0 ? (
+                <div className="text-center py-12">
+                    <span className="material-symbols-outlined text-6xl text-gray-600">
+                        star_border
+                    </span>
+                    <p className="mt-4 text-lg text-gray-400">
+                        {t('library.favorites')}: 0
+                    </p>
+                    <button
+                        type="button"
+                        onClick={() => setShowFavoritesOnly(false)}
+                        className="mt-6 px-6 py-3 min-h-11 bg-primary rounded-xl font-bold hover:bg-primary/80 transition-colors"
+                    >
+                        {t('library.all')}
+                    </button>
+                </div>
+            ) : (
+                <ScanningGrid
+                    options={storyOptions}
+                    onSelect={handleSelect}
+                    columns={Math.min(3, storyOptions.length)}
+                    scanInterval={scanInterval}
+                    soundEnabled={soundEnabled}
+                    voiceEnabled={voiceEnabled}
+                    isPaused={isPaused}
+                />
+            )}
         </div>
     );
 };

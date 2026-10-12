@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { updateStudentSettings } from '../services/supabase';
+import {
+    mapProfileSettings,
+    saveProfileSettings,
+} from '../services/backendProfiles';
 import type { StudentSettings } from '../types/database';
 import ConnectionStatus from './ConnectionStatus';
 
@@ -40,8 +43,8 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
         setSaveMessage(null);
 
         try {
-            const updated = await updateStudentSettings(studentId, localSettings);
-            onSettingsChange?.(updated);
+            const updated = await saveProfileSettings(studentId, localSettings);
+            onSettingsChange?.(mapProfileSettings(updated) ?? (localSettings as StudentSettings));
             setSaveMessage('✓ Configuración guardada');
             setTimeout(() => setSaveMessage(null), 3000);
         } catch (error) {

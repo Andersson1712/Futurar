@@ -52,7 +52,7 @@ const ConnectionStatus: React.FC<ConnectionStatusProps> = ({ onConnectHID }) => 
                             {connectedDevice.productName}
                         </span>
                     ) : (
-                        <span className="text-gray-500">No conectado</span>
+                        <span className="text-gray-400">No conectado</span>
                     )}
                 </div>
 
@@ -79,7 +79,7 @@ const ConnectionStatus: React.FC<ConnectionStatusProps> = ({ onConnectHID }) => 
 
                 {/* Métodos alternativos */}
                 <div className="mt-4 pt-4 border-t border-white/10">
-                    <p className="text-sm text-gray-500 mb-2">Métodos de entrada activos:</p>
+                    <p className="text-sm text-gray-400 mb-2">Métodos de entrada activos:</p>
                     <div className="flex flex-wrap gap-2">
                         <span className="px-3 py-1 bg-white/5 rounded-full text-xs text-gray-400">
                             <kbd>Espacio</kbd>
@@ -102,7 +102,7 @@ const ConnectionStatus: React.FC<ConnectionStatusProps> = ({ onConnectHID }) => 
             {/* Información adicional */}
             <button
                 onClick={() => setShowDetails(!showDetails)}
-                className="mt-4 text-sm text-gray-500 hover:text-gray-400 flex items-center gap-1"
+                className="mt-4 text-sm text-gray-400 hover:text-gray-400 flex items-center gap-1"
             >
                 <span className="material-symbols-outlined text-sm">
                     {showDetails ? 'expand_less' : 'expand_more'}

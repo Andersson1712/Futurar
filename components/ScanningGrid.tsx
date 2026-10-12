@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { ScanOption } from '../types';
 import { useInputDevice } from '../hooks/useInputDevice';
+import { useScanSettingsOptional } from '../contexts/ScanSettingsContext';
 import { playSelectionSound } from '../utils/audio';
 import { speakOption, stopSpeaking } from '../utils/speech';
+import { t } from '../utils/messages';
 
 interface ScanningGridProps {
   options: ScanOption[];
@@ -26,49 +28,89 @@ const ScanningGrid: React.FC<ScanningGridProps> = ({
   isPaused = false
 }) => {
   const [index, setIndex] = useState(0);
-  const hasSelectedRef = useRef(false);
+  const [isSelecting, setIsSelecting] = useState(false);
+  const selectionTimeoutRef = useRef<number | null>(null);
+
+  // Per-profile scanning: sweep on/off + input mode (SPEC-015)
+  const scanSettings = useScanSettingsOptional();
+  const scanningAllowed = scanSettings
+    ? scanSettings.sweepEnabled &&
+      (scanSettings.inputMode === 'scan' || scanSettings.inputMode === 'switch')
+    : true;
 
   // Resetear índice cuando cambian las opciones
   useEffect(() => {
     setIndex(0);
-    hasSelectedRef.current = false;
+    setIsSelecting(false);
+
+    if (selectionTimeoutRef.current !== null) {
+      window.clearTimeout(selectionTimeoutRef.current);
+      selectionTimeoutRef.current = null;
+    }
   }, [options]);
 
-  // Avanzar al siguiente elemento automáticamente (respeta pausa)
+  // Limpiar el timeout al desmontar
   useEffect(() => {
-    if (isPaused) return; // No iniciar timer si está pausado
+    return () => {
+      if (selectionTimeoutRef.current !== null) {
+        window.clearTimeout(selectionTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // Avanzar al siguiente elemento automáticamente (respeta pausa y selección)
+  useEffect(() => {
+    if (isPaused || isSelecting || !scanningAllowed) return; // Cancelar el timer durante la selección
 
     const timer = setInterval(() => {
       setIndex((prev) => (prev + 1) % options.length);
     }, scanInterval);
     return () => clearInterval(timer);
-  }, [options.length, scanInterval, isPaused]);
+  }, [options.length, scanInterval, isPaused, isSelecting, scanningAllowed]);
 
   // Leer en voz alta la opción actual durante el barrido (respeta pausa)
   useEffect(() => {
-    if (voiceEnabled && options[index] && !isPaused) {
+    if (voiceEnabled && options[index] && !isPaused && !isSelecting) {
       speakOption(options[index].label);
     }
-  }, [index, voiceEnabled, options, isPaused]);
+  }, [index, voiceEnabled, options, isPaused, isSelecting]);
 
-  // Manejar activación (selección del elemento actual)
-  const handleActivate = useCallback(() => {
-    if (hasSelectedRef.current) return;
-    hasSelectedRef.current = true;
+  // Selección única: pausa el barrido, actúa de inmediato y se libera luego
+  const selectOption = useCallback((option: ScanOption) => {
+    if (isSelecting || isPaused) return;
 
-    // Parar la voz
+    setIsSelecting(true);
     stopSpeaking();
 
     if (soundEnabled) {
       playSelectionSound();
     }
 
-    onSelect(options[index]);
+    onSelect(option);
 
-    setTimeout(() => {
-      hasSelectedRef.current = false;
+    selectionTimeoutRef.current = window.setTimeout(() => {
+      setIsSelecting(false);
+      selectionTimeoutRef.current = null;
     }, 500);
-  }, [index, onSelect, options, soundEnabled]);
+  }, [isSelecting, isPaused, onSelect, soundEnabled]);
+
+  // Manejar activación (selección del elemento actual del barrido)
+  const handleActivate = useCallback(() => {
+    const option = options[index];
+    if (!option) return;
+
+    selectOption(option);
+  }, [index, options, selectOption]);
+
+  // SPEC-011: lo presionado gana al foco del barrido (pointerdown, no release)
+  const handlePointerDown = useCallback(
+    (event: React.PointerEvent, option: ScanOption) => {
+      event.preventDefault();
+      event.stopPropagation();
+      selectOption(option);
+    },
+    [selectOption]
+  );
 
   // Usar hook de entrada
   const { connectedDevice, isHIDSupported } = useInputDevice({
@@ -112,6 +154,8 @@ const ScanningGrid: React.FC<ScanningGridProps> = ({
           return (
             <div
               key={opt.id}
+              data-option={opt.id}
+              onPointerDown={(e) => handlePointerDown(e, opt)}
               className={`
                 relative flex flex-col items-center justify-center 
                 ${compact ? 'p-3 md:p-4 rounded-xl' : 'p-4 md:p-6 lg:p-8 rounded-2xl md:rounded-3xl'}
@@ -120,12 +164,6 @@ const ScanningGrid: React.FC<ScanningGridProps> = ({
                   ? 'bg-primary border-2 md:border-4 border-white shadow-[0_0_30px_rgba(19,127,236,0.5)] scale-[1.02] md:scale-105 z-20'
                   : 'bg-slate-800 border border-slate-700 opacity-70 hover:opacity-90 hover:scale-[1.01]'}
               `}
-              data-no-scan="true"
-              onClick={(e) => {
-                e.stopPropagation();
-                stopSpeaking();
-                onSelect(opt);
-              }}
             >
               {/* Indicador de selección activa */}
               {isActive && (
@@ -162,7 +200,7 @@ const ScanningGrid: React.FC<ScanningGridProps> = ({
 
               {/* Descripción opcional */}
               {!compact && opt.description && (
-                <p className={`mt-1 md:mt-2 text-xs md:text-sm font-medium text-center ${isActive ? 'text-white/80' : 'text-gray-500'}`}>
+                <p className={`mt-1 md:mt-2 text-xs md:text-sm font-medium text-center ${isActive ? 'text-white/80' : 'text-gray-400'}`}>
                   {opt.description}
                 </p>
               )}
@@ -183,8 +221,8 @@ const ScanningGrid: React.FC<ScanningGridProps> = ({
 
       {/* Indicador de soporte HID */}
       {!compact && isHIDSupported && !connectedDevice && (
-        <p className="text-center text-gray-500 text-xs md:text-sm mt-4 md:mt-6">
-          Presiona <kbd className="px-1.5 py-0.5 bg-slate-800 rounded text-xs">Espacio</kbd> o <kbd className="px-1.5 py-0.5 bg-slate-800 rounded text-xs">Enter</kbd> para seleccionar
+        <p className="text-center text-gray-400 text-xs md:text-sm mt-4 md:mt-6">
+          {t('scan.keyboardHint')}
         </p>
       )}
     </div>

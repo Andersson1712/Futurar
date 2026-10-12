@@ -12,6 +12,19 @@ dist
 dist-ssr
 *.local
 
+# Playwright artifacts
+test-results
+playwright-report
+blob-report
+
+# Coverage
+coverage
+
+# Env files: NEVER commit secrets (keep .env.example tracked)
+.env
+.env.*
+!.env.example
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

@@ -1,8 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../services/supabase';
+import {
+    createProfile,
+    deactivateProfile,
+    listProfiles,
+    mapProfileSettings,
+    mapProfileToStudent,
+    saveProfileSettings,
+    updateProfile,
+} from '../services/backendProfiles';
+import { useAuth } from '../contexts/AuthContext';
+import LoginForm from './LoginForm';
 import type { Student, StudentSettings, Story } from '../types/database';
 import StudentEditor from './StudentEditor';
 import GlobalConfigModal from './GlobalConfigModal';
+import ApiKeyPanel from './ApiKeyPanel';
+import AiModelPanel from './AiModelPanel';
+import { t } from '../utils/messages';
 
 // ID de docente por defecto para modo sin autenticación
 const DEFAULT_TEACHER_ID = '00000000-0000-0000-0000-000000000001';
@@ -17,6 +30,7 @@ interface TeacherPanelProps {
 }
 
 const TeacherPanel: React.FC<TeacherPanelProps> = ({ onSwitchToStudent }) => {
+    const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
     const [students, setStudents] = useState<StudentWithData[]>([]);
     const [selectedStudent, setSelectedStudent] = useState<StudentWithData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -26,31 +40,24 @@ const TeacherPanel: React.FC<TeacherPanelProps> = ({ onSwitchToStudent }) => {
     const [showConfig, setShowConfig] = useState(false);
 
     const [editingStudent, setEditingStudent] = useState<StudentWithData | null>(null);
-    const [activeTab, setActiveTab] = useState<'students' | 'stats'>('students');
+    const [activeTab, setActiveTab] = useState<'students' | 'stats' | 'credentials' | 'models'>('students');
 
-    // Cargar estudiantes (automáticamente al inicio)
+    // Cargar estudiantes (automáticamente al iniciar sesión)
     useEffect(() => {
-        loadStudents();
-    }, []);
+        if (isAuthenticated) {
+            loadStudents();
+        }
+    }, [isAuthenticated]);
 
     const loadStudents = async () => {
         setIsLoading(true);
         try {
-            const { data, error } = await supabase
-                .from('students')
-                .select(`
-                  *,
-                  student_settings (*),
-                  stories (*)
-                `)
-                .order('name');
+            const profiles = await listProfiles(false);
 
-            if (error) throw error;
-
-            // Mapper para asegurar estructura correcta (supabase a veces devuelve array en relaciones 1:1 si no está marcado explícitamente en cliente)
-            const processedData = (data as any[]).map(s => ({
-                ...s,
-                student_settings: Array.isArray(s.student_settings) ? s.student_settings[0] : s.student_settings
+            const processedData = profiles.map(profile => ({
+                ...mapProfileToStudent(profile),
+                student_settings: mapProfileSettings(profile.settings),
+                stories: [],
             }));
 
             setStudents(processedData as StudentWithData[]);
@@ -72,17 +79,12 @@ const TeacherPanel: React.FC<TeacherPanelProps> = ({ onSwitchToStudent }) => {
     };
 
     const handleDeleteStudent = async (studentId: string) => {
-        if (!confirm('¿Estás seguro de eliminar este estudiante? Se eliminarán también todas sus historias.')) {
+        if (!confirm('¿Estás seguro de desactivar este estudiante? Sus cuentos se conservan.')) {
             return;
         }
 
         try {
-            const { error } = await supabase
-                .from('students')
-                .delete()
-                .eq('id', studentId);
-
-            if (error) throw error;
+            await deactivateProfile(studentId);
 
             setStudents(prev => prev.filter(s => s.id !== studentId));
             if (selectedStudent?.id === studentId) {
@@ -97,63 +99,32 @@ const TeacherPanel: React.FC<TeacherPanelProps> = ({ onSwitchToStudent }) => {
     const handleSaveStudent = async (studentData: Partial<Student>, settingsData: Partial<StudentSettings>) => {
         try {
             let studentId = editingStudent?.id;
-            const isNewStudent = !studentId;
 
             if (studentId) {
-                // Actualizar estudiante existente
-                const { error: stuError } = await supabase
-                    .from('students')
-                    .update(studentData)
-                    .eq('id', studentId);
-
-                if (stuError) throw stuError;
+                await updateProfile(studentId, {
+                    name: studentData.name,
+                    age: studentData.age ?? undefined,
+                    birthdate: studentData.birthdate ?? undefined,
+                    avatarIcon: studentData.avatar_icon ?? undefined,
+                    notes: studentData.notes ?? undefined,
+                    isActive: studentData.is_active ?? undefined,
+                });
             } else {
-                // Crear nuevo estudiante
-                const { data: newStudent, error: stuError } = await supabase
-                    .from('students')
-                    .insert({
-                        ...studentData,
-                        teacher_id: DEFAULT_TEACHER_ID
-                    })
-                    .select()
-                    .single();
+                if (!studentData.name) {
+                    throw new Error('El nombre del estudiante es obligatorio');
+                }
 
-                if (stuError) throw stuError;
-                studentId = newStudent.id;
+                const created = await createProfile({
+                    name: studentData.name,
+                    age: studentData.age ?? undefined,
+                    birthdate: studentData.birthdate ?? undefined,
+                    avatarIcon: studentData.avatar_icon ?? undefined,
+                    notes: studentData.notes ?? undefined,
+                });
+                studentId = created.id;
             }
 
-            // Gestionar configuración (Settings)
-            // Verificar si ya existe configuración para este estudiante
-            const { data: existingSettings } = await supabase
-                .from('student_settings')
-                .select('id')
-                .eq('student_id', studentId)
-                .single();
-
-            if (existingSettings) {
-                // Actualizar settings
-                const { error: setError } = await supabase
-                    .from('student_settings')
-                    .update(settingsData)
-                    .eq('student_id', studentId);
-
-                if (setError) throw setError;
-            } else {
-                // Crear settings
-                const { error: setError } = await supabase
-                    .from('student_settings')
-                    .insert({
-                        student_id: studentId,
-                        ...settingsData
-                    });
-
-                if (setError) throw setError;
-            }
-
-            // Si es nuevo estudiante, crear elementos predeterminados
-            if (isNewStudent && studentId) {
-                await seedDefaultElements(studentId);
-            }
+            await saveProfileSettings(studentId, settingsData);
 
             setShowEditor(false);
             loadStudents();
@@ -163,64 +134,9 @@ const TeacherPanel: React.FC<TeacherPanelProps> = ({ onSwitchToStudent }) => {
         }
     };
 
-    // Función para insertar elementos predeterminados para un nuevo estudiante
-    const seedDefaultElements = async (studentId: string) => {
-        const defaultProtagonists = [
-            { label: 'Animales', icon: 'pets' },
-            { label: 'Personas', icon: 'face_6' },
-            { label: 'Robots', icon: 'smart_toy' },
-            { label: 'Fantasía', icon: 'auto_fix' }
-        ];
-
-        const defaultScenarios = [
-            { label: 'Selva', icon: 'forest' },
-            { label: 'Espacio', icon: 'rocket_launch' },
-            { label: 'Castillo', icon: 'castle' },
-            { label: 'Bajo el Mar', icon: 'water' }
-        ];
-
-        const defaultMissions = [
-            { label: 'Explorar', icon: 'explore' },
-            { label: 'Rescatar', icon: 'volunteer_activism' },
-            { label: 'Descubrir', icon: 'search' },
-            { label: 'Proteger', icon: 'shield' }
-        ];
-
-        const defaultStyles = [
-            { label: 'Acuarela', icon: 'water_drop' },
-            { label: 'Cartoon', icon: 'animation' },
-            { label: 'Realista', icon: 'camera' },
-            { label: 'Pixel Art', icon: 'grid_on' }
-        ];
-
-        try {
-            await Promise.all([
-                supabase.from('student_protagonists').insert(
-                    defaultProtagonists.map(p => ({ student_id: studentId, ...p, is_enabled: true }))
-                ),
-                supabase.from('student_scenarios').insert(
-                    defaultScenarios.map(s => ({ student_id: studentId, ...s, is_enabled: true }))
-                ),
-                supabase.from('student_missions').insert(
-                    defaultMissions.map(m => ({ student_id: studentId, ...m, is_enabled: true }))
-                ),
-                supabase.from('student_styles').insert(
-                    defaultStyles.map(st => ({ student_id: studentId, ...st, is_enabled: true }))
-                )
-            ]);
-        } catch (err) {
-            console.error('Error seeding default elements:', err);
-        }
-    };
-
     const handleToggleActive = async (student: Student) => {
         try {
-            const { error } = await supabase
-                .from('students')
-                .update({ is_active: !student.is_active })
-                .eq('id', student.id);
-
-            if (error) throw error;
+            await updateProfile(student.id, { isActive: !student.is_active });
             loadStudents();
         } catch (err) {
             console.error('Error actualizando estudiante:', err);
@@ -246,6 +162,20 @@ const TeacherPanel: React.FC<TeacherPanelProps> = ({ onSwitchToStudent }) => {
         'emoji_people', 'accessibility_new', 'child_care', 'school'
     ];
 
+    if (isAuthLoading) {
+        return (
+            <div className="min-h-[100dvh] flex items-center justify-center bg-background-dark">
+                <span className="material-symbols-outlined text-5xl text-primary animate-spin">
+                    progress_activity
+                </span>
+            </div>
+        );
+    }
+
+    if (!isAuthenticated) {
+        return <LoginForm onSuccess={() => undefined} />;
+    }
+
     if (showEditor) {
         return (
             <StudentEditor
@@ -258,7 +188,7 @@ const TeacherPanel: React.FC<TeacherPanelProps> = ({ onSwitchToStudent }) => {
     }
 
     return (
-        <div className="min-h-screen bg-background-dark text-white font-display">
+        <div className="min-h-[100dvh] bg-background-dark text-white font-display">
             {/* Header */}
             <header className="bg-surface-dark border-b border-border-accent px-6 py-4">
                 <div className="max-w-7xl mx-auto flex items-center justify-between">
@@ -275,7 +205,7 @@ const TeacherPanel: React.FC<TeacherPanelProps> = ({ onSwitchToStudent }) => {
                     <div className="flex items-center gap-3">
                         <button
                             onClick={() => setShowConfig(true)}
-                            className="p-2 hover:bg-white/10 rounded-lg text-gray-400 hover:text-white transition-colors"
+                            className="p-2 min-w-11 min-h-11 hover:bg-white/10 rounded-lg text-gray-400 hover:text-white transition-colors"
                             title="Configuración Global"
                         >
                             <span className="material-symbols-outlined">settings</span>
@@ -315,9 +245,33 @@ const TeacherPanel: React.FC<TeacherPanelProps> = ({ onSwitchToStudent }) => {
                         <span className="material-symbols-outlined mr-2 align-middle">analytics</span>
                         Estadísticas
                     </button>
+                    <button
+                        onClick={() => setActiveTab('credentials')}
+                        className={`px-6 py-3 rounded-xl font-bold transition-colors ${activeTab === 'credentials'
+                            ? 'bg-primary text-white'
+                            : 'bg-surface-dark text-gray-400 hover:text-white'
+                            }`}
+                    >
+                        <span className="material-symbols-outlined mr-2 align-middle">key</span>
+                        {t('credentials.tab')}
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('models')}
+                        className={`px-6 py-3 rounded-xl font-bold transition-colors ${activeTab === 'models'
+                            ? 'bg-primary text-white'
+                            : 'bg-surface-dark text-gray-400 hover:text-white'
+                            }`}
+                    >
+                        <span className="material-symbols-outlined mr-2 align-middle">tune</span>
+                        {t('models.tab')}
+                    </button>
                 </div>
 
                 {/* Content */}
+                {activeTab === 'credentials' && <ApiKeyPanel />}
+
+                {activeTab === 'models' && <AiModelPanel />}
+
                 {activeTab === 'stats' && (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
                         <div className="bg-surface-dark rounded-2xl p-6 border border-border-accent">

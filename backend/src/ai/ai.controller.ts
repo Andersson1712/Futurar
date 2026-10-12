@@ -1,122 +1,262 @@
-import { Controller, Post, Get, Body, HttpCode, HttpStatus } from '@nestjs/common';
-import { AIService } from './ai.service';
-import { GenerateStoryDto, ValidateApiKeyDto } from './dto/generate-story.dto';
-import { GenerateImageDto } from './dto/generate-image.dto';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Inject,
+  MessageEvent,
+  Optional,
+  Param,
+  Post,
+  Req,
+  Sse,
+  UseGuards,
+  UseInterceptors,
+} from '@nestjs/common';
+import { Observable } from 'rxjs';
+import {
+  ApiAcceptedResponse,
+  ApiBadGatewayResponse,
+  ApiBadRequestResponse,
+  ApiBearerAuth,
+  ApiConflictResponse,
+  ApiHeader,
+  ApiNotFoundResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiProduces,
+  ApiServiceUnavailableResponse,
+  ApiTags,
+  ApiTooManyRequestsResponse,
+  ApiUnprocessableEntityResponse,
+} from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
+import { requestCorrelationId } from '../observability/correlation-id';
+import { AiErrorDto } from '../common/dto/ai-error.dto';
+import { AiErrorException } from '../common/errors/ai-error.exception';
+import {
+  SupabaseAuthGuard,
+  type AuthenticatedRequest,
+} from '../common/guards/supabase-auth.guard';
+import {
+  IDEMPOTENCY_KEY_HEADER,
+  IdempotencyInterceptor,
+} from '../common/interceptors/idempotency.interceptor';
+import { BOOK_GENERATION_USE_CASE } from './application/book-generation.use-case';
+import type { BookGenerationUseCase } from './application/book-generation.use-case';
+import { DESIGN_GENERATION_USE_CASE } from './application/design-generation.use-case';
+import type { DesignGenerationUseCase } from './application/design-generation.use-case';
+import { PRESENTATION_GENERATION_USE_CASE } from './application/presentation-generation.use-case';
+import type { PresentationGenerationUseCase } from './application/presentation-generation.use-case';
+import { COMMUNICATION_GENERATION_USE_CASE } from './application/communication-generation.use-case';
+import type { CommunicationGenerationUseCase } from './application/communication-generation.use-case';
+import { JobStatusStream } from './application/job-status.stream';
+import { GenerateBookRequestDto } from './dto/generate-book-request.dto';
+import { GenerateDesignRequestDto } from './dto/generate-design-request.dto';
+import { GeneratePresentationRequestDto } from './dto/generate-presentation-request.dto';
+import { GenerateCommunicationRequestDto } from './dto/generate-communication-request.dto';
+import {
+  GenerateBookResponseDto,
+  JobStatusDto,
+} from './dto/generate-book-response.dto';
+import { AiEndpointsEnabledGuard } from './guards/ai-endpoints-enabled.guard';
 
+@ApiTags('ai')
+@ApiBearerAuth()
 @Controller('ai')
-export class AIController {
-    constructor(private readonly aiService: AIService) { }
+export class AiController {
+  constructor(
+    @Inject(BOOK_GENERATION_USE_CASE)
+    private readonly bookGeneration: BookGenerationUseCase,
+    // Optional so pre-existing standalone AiController test modules (books)
+    // keep resolving without the design provider; AiModule always provides
+    // it, and the handler below degrades to 501 when it is absent.
+    @Optional()
+    @Inject(DESIGN_GENERATION_USE_CASE)
+    private readonly designGeneration: DesignGenerationUseCase | undefined,
+    // Optional so pre-existing standalone AiController test modules (books,
+    // designs) keep resolving without the presentation provider; AiModule
+    // always provides it, and the handler below degrades to 501 when absent.
+    @Optional()
+    @Inject(PRESENTATION_GENERATION_USE_CASE)
+    private readonly presentationGeneration:
+      PresentationGenerationUseCase | undefined,
+    // Optional so pre-existing standalone AiController test modules (books,
+    // designs, presentations) keep resolving without the board provider;
+    // AiModule always provides it, and the handler below degrades to 501
+    // when absent.
+    @Optional()
+    @Inject(COMMUNICATION_GENERATION_USE_CASE)
+    private readonly communicationGeneration:
+      CommunicationGenerationUseCase | undefined,
+    private readonly jobStatusStream: JobStatusStream,
+  ) {}
 
-    /**
-     * Genera un cuento usando el proveedor de IA especificado
-     */
-    @Post('story')
-    @HttpCode(HttpStatus.OK)
-    async generateStory(@Body() dto: GenerateStoryDto) {
-        const providerConfig = {
-            provider: dto.provider,
-            apiKey: dto.apiKey,
-            accountId: dto.accountId,
-            model: dto.model,
-        };
+  @Post('books/generate')
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @UseGuards(AiEndpointsEnabledGuard, SupabaseAuthGuard)
+  @UseInterceptors(IdempotencyInterceptor)
+  @HttpCode(HttpStatus.ACCEPTED)
+  @ApiOperation({ summary: 'Request AI book generation' })
+  @ApiHeader({
+    name: IDEMPOTENCY_KEY_HEADER,
+    required: true,
+    description: 'Unique 8-128 character key for this request',
+  })
+  @ApiAcceptedResponse({ type: GenerateBookResponseDto })
+  @ApiBadRequestResponse({ type: AiErrorDto })
+  @ApiConflictResponse({ type: AiErrorDto })
+  @ApiUnprocessableEntityResponse({ type: AiErrorDto })
+  @ApiBadGatewayResponse({ type: AiErrorDto })
+  @ApiTooManyRequestsResponse({ type: AiErrorDto })
+  @ApiServiceUnavailableResponse({ type: AiErrorDto })
+  async generate(
+    @Body() dto: GenerateBookRequestDto,
+    @Req() request: AuthenticatedRequest,
+  ): Promise<GenerateBookResponseDto> {
+    return this.bookGeneration.requestGeneration({
+      ...dto,
+      userId: request.user?.id ?? '',
+      correlationId: requestCorrelationId(request),
+    });
+  }
 
-        const storyConfig = {
-            protagonist: dto.protagonist,
-            scenery: dto.scenery,
-            mission: dto.mission,
-            style: dto.style,
-            storySize: dto.storySize,
-            customStructure: dto.customStructure,
-        };
-
-        const result = await this.aiService.generateStory(providerConfig, storyConfig);
-
-        return {
-            success: true,
-            data: result,
-        };
+  @Post('designs/generate')
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @UseGuards(AiEndpointsEnabledGuard, SupabaseAuthGuard)
+  @UseInterceptors(IdempotencyInterceptor)
+  @HttpCode(HttpStatus.ACCEPTED)
+  @ApiOperation({ summary: 'Request AI flyer design generation' })
+  @ApiHeader({
+    name: IDEMPOTENCY_KEY_HEADER,
+    required: true,
+    description: 'Unique 8-128 character key for this request',
+  })
+  @ApiAcceptedResponse({ type: GenerateBookResponseDto })
+  @ApiBadRequestResponse({ type: AiErrorDto })
+  @ApiConflictResponse({ type: AiErrorDto })
+  @ApiUnprocessableEntityResponse({ type: AiErrorDto })
+  @ApiBadGatewayResponse({ type: AiErrorDto })
+  @ApiTooManyRequestsResponse({ type: AiErrorDto })
+  @ApiServiceUnavailableResponse({ type: AiErrorDto })
+  async generateDesign(
+    @Body() dto: GenerateDesignRequestDto,
+    @Req() request: AuthenticatedRequest,
+  ): Promise<GenerateBookResponseDto> {
+    if (!this.designGeneration) {
+      throw new AiErrorException(
+        501,
+        'NOT_IMPLEMENTED',
+        'Design endpoints are disabled',
+      );
     }
 
-    /**
-     * Genera una imagen usando el proveedor especificado
-     */
-    @Post('image')
-    @HttpCode(HttpStatus.OK)
-    async generateImage(@Body() dto: GenerateImageDto) {
-        const providerConfig = {
-            provider: dto.provider,
-            apiKey: dto.apiKey,
-            accountId: dto.accountId,
-            model: dto.model,
-        };
+    return this.designGeneration.requestGeneration({
+      ...dto,
+      userId: request.user?.id ?? '',
+      correlationId: requestCorrelationId(request),
+    });
+  }
 
-        const result = await this.aiService.generateImage(providerConfig, dto.prompt, dto.style);
-
-        return {
-            success: true,
-            data: result,
-        };
+  @Post('presentations/generate')
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @UseGuards(AiEndpointsEnabledGuard, SupabaseAuthGuard)
+  @UseInterceptors(IdempotencyInterceptor)
+  @HttpCode(HttpStatus.ACCEPTED)
+  @ApiOperation({ summary: 'Request AI presentation generation' })
+  @ApiHeader({
+    name: IDEMPOTENCY_KEY_HEADER,
+    required: true,
+    description: 'Unique 8-128 character key for this request',
+  })
+  @ApiAcceptedResponse({ type: GenerateBookResponseDto })
+  @ApiBadRequestResponse({ type: AiErrorDto })
+  @ApiConflictResponse({ type: AiErrorDto })
+  @ApiUnprocessableEntityResponse({ type: AiErrorDto })
+  @ApiBadGatewayResponse({ type: AiErrorDto })
+  @ApiTooManyRequestsResponse({ type: AiErrorDto })
+  @ApiServiceUnavailableResponse({ type: AiErrorDto })
+  async generatePresentation(
+    @Body() dto: GeneratePresentationRequestDto,
+    @Req() request: AuthenticatedRequest,
+  ): Promise<GenerateBookResponseDto> {
+    if (!this.presentationGeneration) {
+      throw new AiErrorException(
+        501,
+        'NOT_IMPLEMENTED',
+        'Presentation endpoints are disabled',
+      );
     }
 
-    /**
-     * Valida una API key para un proveedor específico
-     */
-    @Post('validate-key')
-    @HttpCode(HttpStatus.OK)
-    async validateApiKey(@Body() dto: ValidateApiKeyDto) {
-        const isValid = await this.aiService.validateApiKey({
-            provider: dto.provider,
-            apiKey: dto.apiKey,
-            accountId: dto.accountId,
-        });
+    return this.presentationGeneration.requestGeneration({
+      ...dto,
+      userId: request.user?.id ?? '',
+      correlationId: requestCorrelationId(request),
+    });
+  }
 
-        return {
-            success: true,
-            isValid,
-        };
+  @Post('communications/generate')
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @UseGuards(AiEndpointsEnabledGuard, SupabaseAuthGuard)
+  @UseInterceptors(IdempotencyInterceptor)
+  @HttpCode(HttpStatus.ACCEPTED)
+  @ApiOperation({ summary: 'Request AI board generation' })
+  @ApiHeader({
+    name: IDEMPOTENCY_KEY_HEADER,
+    required: true,
+    description: 'Unique 8-128 character key for this request',
+  })
+  @ApiAcceptedResponse({ type: GenerateBookResponseDto })
+  @ApiBadRequestResponse({ type: AiErrorDto })
+  @ApiConflictResponse({ type: AiErrorDto })
+  @ApiUnprocessableEntityResponse({ type: AiErrorDto })
+  @ApiBadGatewayResponse({ type: AiErrorDto })
+  @ApiTooManyRequestsResponse({ type: AiErrorDto })
+  @ApiServiceUnavailableResponse({ type: AiErrorDto })
+  async generateCommunication(
+    @Body() dto: GenerateCommunicationRequestDto,
+    @Req() request: AuthenticatedRequest,
+  ): Promise<GenerateBookResponseDto> {
+    if (!this.communicationGeneration) {
+      throw new AiErrorException(
+        501,
+        'NOT_IMPLEMENTED',
+        'Communication endpoints are disabled',
+      );
     }
 
-    /**
-     * Obtiene la lista de proveedores de IA disponibles
-     */
-    @Get('providers')
-    getProviders() {
-        return {
-            success: true,
-            data: this.aiService.getAvailableProviders(),
-        };
-    }
+    return this.communicationGeneration.requestGeneration({
+      ...dto,
+      userId: request.user?.id ?? '',
+      correlationId: requestCorrelationId(request),
+    });
+  }
 
-    /**
-     * Obtiene información sobre los tamaños de cuento disponibles
-     */
-    @Get('story-sizes')
-    getStorySizes() {
-        return {
-            success: true,
-            data: [
-                {
-                    id: 'small',
-                    name: 'Pequeño',
-                    pages: 5,
-                    description: 'Cuento corto ideal para niños pequeños o lecturas rápidas',
-                    estimatedTime: '3-5 minutos',
-                },
-                {
-                    id: 'medium',
-                    name: 'Mediano',
-                    pages: 10,
-                    description: 'Cuento de longitud estándar con desarrollo completo',
-                    estimatedTime: '8-12 minutos',
-                },
-                {
-                    id: 'large',
-                    name: 'Grande',
-                    pages: 15,
-                    description: 'Cuento extenso con muchos detalles y aventuras',
-                    estimatedTime: '15-20 minutos',
-                },
-            ],
-        };
-    }
+  @Get('jobs/:id')
+  @UseGuards(AiEndpointsEnabledGuard, SupabaseAuthGuard)
+  @ApiOperation({ summary: 'Get generation job status' })
+  @ApiOkResponse({ type: JobStatusDto })
+  @ApiNotFoundResponse({ type: AiErrorDto })
+  @ApiServiceUnavailableResponse({ type: AiErrorDto })
+  async getJob(
+    @Param('id') jobId: string,
+    @Req() request: AuthenticatedRequest,
+  ): Promise<JobStatusDto> {
+    return this.bookGeneration.getJobStatus(jobId, request.user?.id ?? '');
+  }
+
+  @Sse('jobs/:id/events')
+  @UseGuards(AiEndpointsEnabledGuard, SupabaseAuthGuard)
+  @ApiOperation({ summary: 'Stream job status events (SSE)' })
+  @ApiProduces('text/event-stream')
+  @ApiOkResponse({ type: JobStatusDto })
+  @ApiNotFoundResponse({ type: AiErrorDto })
+  @ApiServiceUnavailableResponse({ type: AiErrorDto })
+  async streamJob(
+    @Param('id') jobId: string,
+    @Req() request: AuthenticatedRequest,
+  ): Promise<Observable<MessageEvent>> {
+    return this.jobStatusStream.open(jobId, request.user?.id ?? '');
+  }
 }
